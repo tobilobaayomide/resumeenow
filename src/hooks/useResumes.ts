@@ -7,7 +7,11 @@ export const useResumes = (userId: string | undefined) => {
 
   // Wrap fetchResumes in useCallback so it's stable and can be added to dependencies
   const fetchResumes = useCallback(async () => {
-    if (!userId) return;
+    if (!userId) {
+      setResumes([]);
+      setLoading(false);
+      return;
+    }
     
     try {
       setLoading(true);
@@ -50,7 +54,7 @@ export const useResumes = (userId: string | undefined) => {
         .single();
 
       if (error) throw error;
-      setResumes([data, ...resumes]);
+      setResumes((prev) => [data, ...prev]);
       return data; 
     } catch (error: any) {
       console.error('Error creating resume:', error.message);
@@ -59,14 +63,17 @@ export const useResumes = (userId: string | undefined) => {
   };
 
   const deleteResume = async (id: string) => {
+    if (!userId) return;
+
     try {
       const { error } = await supabase
         .from('resumes')
         .delete()
-        .eq('id', id);
+        .eq('id', id)
+        .eq('user_id', userId);
 
       if (error) throw error;
-      setResumes(resumes.filter(r => r.id !== id));
+      setResumes((prev) => prev.filter((r) => r.id !== id));
     } catch (error: any) {
       console.error('Error deleting resume:', error.message);
     }
