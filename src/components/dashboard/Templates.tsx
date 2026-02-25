@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { FiSearch, FiArrowRight, FiStar } from "react-icons/fi";
 import { useNavigate } from "react-router-dom";
+import { toast } from "sonner";
 import Sidebar from "./Sidebar";
 
 const Templates: React.FC = () => {
@@ -27,6 +28,7 @@ const Templates: React.FC = () => {
       description: "Clean, authoritative layout for senior roles.",
       color: "bg-slate-50",
       popular: true,
+      available: true,
     },
     {
       id: "studio",
@@ -35,6 +37,7 @@ const Templates: React.FC = () => {
       description: "Bold typography for designers and artists.",
       color: "bg-stone-50",
       popular: false,
+      available: true,
     },
     {
       id: "silicon",
@@ -43,6 +46,7 @@ const Templates: React.FC = () => {
       description: "Optimized for technical skills and projects.",
       color: "bg-blue-50/30",
       popular: true,
+      available: true,
     },
     {
       id: "ivy",
@@ -51,6 +55,7 @@ const Templates: React.FC = () => {
       description: "Traditional serif structure for CVs.",
       color: "bg-emerald-50/30",
       popular: false,
+      available: false,
     },
     {
       id: "mono",
@@ -59,6 +64,7 @@ const Templates: React.FC = () => {
       description: "Stripped back black & white aesthetic.",
       color: "bg-gray-50",
       popular: false,
+      available: true,
     },
     {
       id: "startup",
@@ -67,6 +73,7 @@ const Templates: React.FC = () => {
       description: "Modern, energetic, and concise.",
       color: "bg-orange-50/30",
       popular: false,
+      available: false,
     },
   ];
 
@@ -75,8 +82,13 @@ const Templates: React.FC = () => {
       ? templates
       : templates.filter((t) => t.category === selectedCategory);
 
-  const handleUseTemplate = (templateId: string) => {
-    navigate(`/builder/new?template=${templateId}`);
+  const handleUseTemplate = (template: (typeof templates)[number]) => {
+    if (!template.available) {
+      toast.info(`${template.name} is coming soon.`);
+      return;
+    }
+
+    navigate(`/builder/new?template=${template.id}`);
   };
 
   return (
@@ -137,8 +149,8 @@ const Templates: React.FC = () => {
               {filteredTemplates.map((template) => (
                 <div
                   key={template.id}
-                  onClick={() => handleUseTemplate(template.id)}
-                  className="group flex flex-col gap-3 md:gap-4 cursor-pointer"
+                  onClick={() => handleUseTemplate(template)}
+                  className={`group flex flex-col gap-3 md:gap-4 ${template.available ? 'cursor-pointer' : 'cursor-not-allowed opacity-80'}`}
                 >
                   {/* Visual Preview */}
                   <div
@@ -170,6 +182,13 @@ const Templates: React.FC = () => {
                         </span>
                       </div>
                     )}
+                    {!template.available && (
+                      <div className="absolute top-3 right-3 md:top-4 md:right-4 bg-white/80 px-2 md:px-3 py-1 rounded-full border border-gray-200">
+                        <span className="text-[9px] md:text-[10px] font-bold uppercase tracking-wider text-gray-700">
+                          Coming Soon
+                        </span>
+                      </div>
+                    )}
 
                     {/* Hover Overlay (Hidden on touch devices, visible on desktop hover) */}
                     <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px] opacity-0 md:group-hover:opacity-100 transition-opacity duration-300 hidden md:flex flex-col items-center justify-center gap-4 p-8 text-center">
@@ -180,7 +199,7 @@ const Templates: React.FC = () => {
                         {template.description}
                       </p>
                       <button className="bg-white text-black px-6 py-3 rounded-full text-xs font-bold hover:scale-105 transition-transform shadow-xl flex items-center gap-2">
-                        Use Template
+                        {template.available ? "Use Template" : "Notify Me"}
                       </button>
                     </div>
                   </div>
