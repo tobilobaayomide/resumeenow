@@ -40,9 +40,14 @@ const BuilderPage: React.FC = () => {
           .from('resumes')
           .select('*')
           .eq('id', id)
+          .eq('user_id', user.id)
           .single();
 
-        if (error) console.error('Error fetching resume:', error);
+        if (error) {
+          toast.error("Couldn't open that resume.");
+          navigate('/dashboard');
+          return;
+        }
         if (data) {
           setResumeData(data.content || INITIAL_DATA);
           setTemplateId(data.template_id || 'executive');
@@ -51,7 +56,7 @@ const BuilderPage: React.FC = () => {
       };
       fetchResume();
     }
-  }, [id, isNew, user]);
+  }, [id, isNew, user, navigate]);
 
   useEffect(() => {
     const handleResize = () => {
@@ -145,7 +150,11 @@ const BuilderPage: React.FC = () => {
         toast.success("Resume created successfully!");
         navigate(`/builder/${data.id}?template=${templateId}`, { replace: true });
       } else {
-        const { error } = await supabase.from('resumes').update(payload).eq('id', id);
+        const { error } = await supabase
+          .from('resumes')
+          .update(payload)
+          .eq('id', id)
+          .eq('user_id', user.id);
         if (error) throw error;
         toast.success("Resume saved successfully!");
       }
