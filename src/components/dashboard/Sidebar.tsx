@@ -6,7 +6,6 @@ import {
   FiLogOut, 
   FiLayout,  
   FiBriefcase,
-  FiUser
 } from 'react-icons/fi';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
@@ -52,7 +51,7 @@ const Sidebar: React.FC = () => {
             >
                 {/* Active Indicator Line */}
                 {active && (
-                    <div className="absolute left-0 top-1.5 bottom-1.5 w-[2px] bg-white rounded-r-full shadow-[0_0_8px_rgba(255,255,255,0.8)]"></div>
+                    <div className="absolute left-0 top-1.5 bottom-1.5 w-0.5 bg-white rounded-r-full shadow-[0_0_8px_rgba(255,255,255,0.8)]"></div>
                 )}
 
                 <span className={`transition-transform duration-300 ${active ? 'translate-x-2' : 'group-hover:translate-x-1'}`}>
@@ -86,7 +85,7 @@ const Sidebar: React.FC = () => {
     return (
         <>
             {/* ================= DESKTOP SIDEBAR ================= */}
-            <aside className="hidden md:flex w-[260px] bg-[#0C0C0C] flex-col h-screen sticky top-0 z-50 font-sans border-r border-[#1a1a1a]">
+            <aside className="hidden md:flex w-65 bg-[#0C0C0C] flex-col h-screen sticky top-0 z-50 font-sans border-r border-[#1a1a1a]">
                 
                 {/* 1. Brand Section - Clean & Minimal */}
                 <div className="h-24 flex items-center px-8">
