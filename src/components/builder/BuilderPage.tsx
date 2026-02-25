@@ -233,7 +233,7 @@ const BuilderPage: React.FC = () => {
             flex-1 h-full relative bg-[#525659] -ml-40 md:ml-0 flex flex-col min-w-0 transition-opacity duration-300
             ${mobileView === 'preview' ? 'opacity-100 z-30' : 'opacity-0 md:opacity-100 -z-10 md:z-auto'}
             absolute md:relative w-full h-full inset-0 md:inset-auto
-            print:!opacity-100 print:!z-50 print:!visible print:!static print:!block print:!h-auto print:!w-full print:!m-0 print:!bg-white print:!overflow-visible
+            print:opacity-100! print:z-50! print:visible! print:static! print:block! print:h-auto! print:w-full! print:m-0! print:bg-white! print:overflow-visible!
         `}>
            {/* Inner scrolling container needs reset for print */}
            <div className="flex-1 overflow-y-auto overflow-x-hidden md:overflow-auto flex justify-center items-start pt-4 md:pt-8 md:p-8 touch-pan-y w-full print:p-0 print:block print:h-auto print:overflow-visible">
