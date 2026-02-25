@@ -45,7 +45,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ open, onClose, mode }) => {
 
     try {
       if (currentMode === 'signup') {
-        const { error } = await supabase.auth.signUp({
+        const { data, error } = await supabase.auth.signUp({
           email,
           password,
           options: {
@@ -55,9 +55,16 @@ const AuthModal: React.FC<AuthModalProps> = ({ open, onClose, mode }) => {
           },
         });
         if (error) throw error;
+
+        if (data.session) {
+          toast.success("Account created successfully!");
+          onClose();
+          navigate("/dashboard");
+          return;
+        }
+
         toast.success("Success! Check your email for the confirmation link.");
         onClose();
-        navigate("/dashboard");
       } else {
         const { error } = await supabase.auth.signInWithPassword({
           email,
@@ -68,9 +75,9 @@ const AuthModal: React.FC<AuthModalProps> = ({ open, onClose, mode }) => {
         onClose();
         navigate("/dashboard");
       }
-    } catch (err: any) {
-      // Use Sonner for errors instead of inline text
-      toast.error(err.message || "An error occurred");
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "An error occurred";
+      toast.error(message);
     } finally {
       setLoading(false);
     }
@@ -83,8 +90,9 @@ const AuthModal: React.FC<AuthModalProps> = ({ open, onClose, mode }) => {
       });
       if (error) throw error;
       // On success, Supabase will redirect and session will be handled globally
-    } catch (err: any) {
-      toast.error(err.message || "Failed to login with Google");
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Failed to login with Google";
+      toast.error(message);
     }
   };
 
