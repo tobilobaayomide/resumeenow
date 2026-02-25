@@ -34,17 +34,18 @@ const LivePreview: React.FC<LivePreviewProps> = ({ data, zoom = 0.8, templateId 
           'p, h1, h2, h3, h4, h5, h6, li, td, th, span, div'
         )
       ).filter((el) => {
-        // Only include elements that:
-        // 1. Have direct text content (are leaf-like visually)
-        // 2. Have a real height (are visible)
         const rect = el.getBoundingClientRect();
         const hasHeight = rect.height > 0;
-        const hasText = el.innerText?.trim().length > 0;
+        
+        // CRITICAL FIX: Use textContent. innerText fails on hidden elements.
+        const hasText = (el.textContent || '').trim().length > 0;
+        
         // Exclude elements that are just wrappers (have block children)
         const hasBlockChildren = Array.from(el.children).some((child) => {
           const style = window.getComputedStyle(child);
           return style.display === 'block' || style.display === 'flex' || style.display === 'grid';
         });
+        
         return hasHeight && hasText && !hasBlockChildren;
       });
 
@@ -60,12 +61,8 @@ const LivePreview: React.FC<LivePreviewProps> = ({ data, zoom = 0.8, templateId 
         const relativeBottom = elBottom - currentPageStart;
 
         if (relativeBottom > CONTENT_HEIGHT_PER_PAGE) {
-          // Break at the TOP of THIS element (not the section it belongs to)
-          // This ensures we continue exactly where we left off
           const newPageStart = elTop;
 
-          // Only add a new break if it's actually a new position
-          // (avoid duplicate breaks if multiple elements overflow at same spot)
           if (newPageStart > currentPageStart) {
             breaks.push(newPageStart);
             currentPageStart = newPageStart;
@@ -81,7 +78,6 @@ const LivePreview: React.FC<LivePreviewProps> = ({ data, zoom = 0.8, templateId 
         setTimeout(calculatePageBreaks, 100);
       });
       resizeObserver.observe(measureRef.current);
-      // Initial calculation
       setTimeout(calculatePageBreaks, 100);
       return () => resizeObserver.disconnect();
     }
@@ -91,7 +87,6 @@ const LivePreview: React.FC<LivePreviewProps> = ({ data, zoom = 0.8, templateId 
 
   const renderPages = (isForPrint = false) => {
     return Array.from({ length: totalPages }).map((_, pageIndex) => {
-      // The exact pixel where this page's content starts
       const pageStart = pageBreaks[pageIndex];
 
       return (
@@ -133,15 +128,6 @@ const LivePreview: React.FC<LivePreviewProps> = ({ data, zoom = 0.8, templateId 
               paddingRight: PAGE_MARGIN_SIDE_PX,
             }}
           >
-            {/*
-              We shift the ENTIRE template UP by exactly `pageStart` pixels.
-              This means:
-              - Page 1: marginTop = 0 (shows from top)
-              - Page 2: marginTop = -450px (starts at pixel 450 of the content)
-              - Page 3: marginTop = -920px (starts at pixel 920 of the content)
-              The overflow:hidden on the parent clips everything outside the window.
-              This NEVER repeats sections - it just slides a window over the content.
-            */}
             <div style={{ marginTop: `-${pageStart}px` }}>
               <TemplateRenderer templateId={templateId} data={data} />
             </div>
@@ -159,8 +145,8 @@ const LivePreview: React.FC<LivePreviewProps> = ({ data, zoom = 0.8, templateId 
 
       {/* ============================================================
           HIDDEN MEASUREMENT DIV
-          Must match exact width + side padding of screen pages
-          so getBoundingClientRect() measurements are accurate
+          CRITICAL FIX: Using opacity: 0 instead of visibility: hidden
+          so the browser still calculates text heights perfectly.
       ============================================================ */}
       <div
         style={{
@@ -168,7 +154,7 @@ const LivePreview: React.FC<LivePreviewProps> = ({ data, zoom = 0.8, templateId 
           position: 'absolute',
           top: 0,
           left: -9999,
-          visibility: 'hidden',
+          opacity: 0, 
           pointerEvents: 'none',
           paddingLeft: PAGE_MARGIN_SIDE_PX,
           paddingRight: PAGE_MARGIN_SIDE_PX,
