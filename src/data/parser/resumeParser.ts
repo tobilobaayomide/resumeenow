@@ -12,7 +12,7 @@ export const RESUME_PARSER_DATE_RANGE_REGEX = new RegExp(
 );
 
 export const RESUME_PARSER_LOOSE_DATE_RANGE_REGEX = new RegExp(
-  `(${RESUME_PARSER_DATE_TOKEN})\\s*(?:-|–|—|to)\\s*(${RESUME_PARSER_DATE_TOKEN})`,
+  `(${RESUME_PARSER_DATE_TOKEN})\\s*(?:-|–|—|to|\\.|,|\\s)?\\s*(${RESUME_PARSER_DATE_TOKEN})`,
   'i',
 );
 
