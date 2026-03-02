@@ -12,10 +12,11 @@ import CtaSection from '../components/landing/CtaSection';
 import Footer from '../components/landing/Footer';
 import AuthModal from '../components/AuthModal';
 import type { TemplateId } from '../types/resume';
+import type { AuthModalMode } from '../types';
 
 const LandingPage: React.FC = () => {
   const [authOpen, setAuthOpen] = useState(false);
-  const [authMode, setAuthMode] = useState<"login" | "signup">("login");
+  const [authMode, setAuthMode] = useState<AuthModalMode>("login");
   const [pendingTemplate, setPendingTemplate] = useState<TemplateId | null>(null);
   const { user } = useAuth();
   const navigate = useNavigate();
