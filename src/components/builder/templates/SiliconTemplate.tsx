@@ -1,12 +1,25 @@
 import React from 'react';
+import type { BuilderTemplateComponentProps } from '../../../types/builder';
+import {
+  getPersonalLinkDisplayLabel,
+  getVisiblePersonalLinks,
+  toExternalLinkHref,
+} from '../../../domain/resume';
 
-interface SiliconTemplateProps {
-  data: any;
-  contentRef?: React.RefObject<HTMLDivElement>;
-}
-
-const SiliconTemplate: React.FC<SiliconTemplateProps> = ({ data, contentRef }) => {
-  const { personalInfo, summary, experience, education, skills } = data;
+const SiliconTemplate: React.FC<BuilderTemplateComponentProps> = ({ data, contentRef }) => {
+  const {
+    personalInfo,
+    summary,
+    experience,
+    volunteering,
+    projects,
+    education,
+    certifications,
+    skills,
+    languages,
+    achievements,
+  } = data;
+  const linkItems = getVisiblePersonalLinks(personalInfo);
 
   return (
     <div ref={contentRef} style={{ fontFamily: "'Courier New', Courier, monospace" }} className="text-black p-2">
@@ -30,10 +43,24 @@ const SiliconTemplate: React.FC<SiliconTemplateProps> = ({ data, contentRef }) =
 
         {/* Contact row */}
         <div className="flex flex-wrap gap-4 mt-4 pt-4 border-t border-gray-200 text-[10px] text-gray-500">
-          {personalInfo.email && <span>📧 {personalInfo.email}</span>}
+          {personalInfo.email && (
+            <a href={`mailto:${personalInfo.email}`} className="hover:underline break-all">
+              📧 {personalInfo.email}
+            </a>
+          )}
           {personalInfo.phone && <span>📱 {personalInfo.phone}</span>}
           {personalInfo.location && <span>📍 {personalInfo.location}</span>}
-          {personalInfo.website && <span>🔗 {personalInfo.website}</span>}
+          {linkItems.map((link) => (
+            <a
+              key={link.id}
+              href={toExternalLinkHref(link.url)}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hover:underline break-all"
+            >
+              🔗 {getPersonalLinkDisplayLabel(link)}
+            </a>
+          ))}
         </div>
       </div>
 
@@ -72,7 +99,7 @@ const SiliconTemplate: React.FC<SiliconTemplateProps> = ({ data, contentRef }) =
             ## Experience
           </div>
           <div className="space-y-5">
-            {experience.map((exp: any) => (
+            {experience.map((exp) => (
               <div key={exp.id}>
                 <div className="flex items-baseline justify-between">
                   <div>
@@ -95,6 +122,95 @@ const SiliconTemplate: React.FC<SiliconTemplateProps> = ({ data, contentRef }) =
         </section>
       )}
 
+      {projects.length > 0 && (
+        <section className="mb-6">
+          <div className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mb-3">
+            ## Projects
+          </div>
+          <div className="space-y-4">
+            {projects.map((project) => (
+              <div key={project.id}>
+                <div className="flex items-baseline justify-between gap-2">
+                  <span className="text-[12px] font-bold text-black">{project.name}</span>
+                  <span className="text-[10px] text-gray-400">
+                    [{project.startDate} → {project.endDate || 'now'}]
+                  </span>
+                </div>
+                {project.link && <p className="text-[10px] text-gray-400 mt-1 break-all">{project.link}</p>}
+                {project.description && <p className="text-[11px] text-gray-500 mt-1.5 leading-relaxed">{project.description}</p>}
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {volunteering.length > 0 && (
+        <section className="mb-6">
+          <div className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mb-3">
+            ## Volunteering
+          </div>
+          <div className="space-y-3">
+            {volunteering.map((item) => (
+              <div key={item.id}>
+                <div className="flex items-baseline justify-between gap-2">
+                  <span className="text-[12px] font-bold text-black">{item.role}</span>
+                  <span className="text-[10px] text-gray-400">
+                    [{item.startDate} → {item.endDate || 'now'}]
+                  </span>
+                </div>
+                <p className="text-[11px] text-gray-500">{item.company}</p>
+                {item.description && <p className="text-[11px] text-gray-500 mt-1">{item.description}</p>}
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {certifications.length > 0 && (
+        <section className="mb-6">
+          <div className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mb-3">
+            ## Certifications
+          </div>
+          <ul className="space-y-1">
+            {certifications.map((certification, index) => (
+              <li key={`${certification}-${index}`} className="text-[11px] text-gray-500">
+                - {certification}
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      {languages.length > 0 && (
+        <section className="mb-6">
+          <div className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mb-3">
+            ## Languages
+          </div>
+          <ul className="space-y-1">
+            {languages.map((language, index) => (
+              <li key={`${language}-${index}`} className="text-[11px] text-gray-500">
+                - {language}
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      {achievements.length > 0 && (
+        <section className="mb-6">
+          <div className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mb-3">
+            ## Achievements
+          </div>
+          <ul className="space-y-1">
+            {achievements.map((achievement, index) => (
+              <li key={`${achievement}-${index}`} className="text-[11px] text-gray-500">
+                - {achievement}
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
       {/* Education */}
       {education.length > 0 && (
         <section>
@@ -102,7 +218,7 @@ const SiliconTemplate: React.FC<SiliconTemplateProps> = ({ data, contentRef }) =
             ## Education
           </div>
           <div className="space-y-3">
-            {education.map((edu: any) => (
+            {education.map((edu) => (
               <div key={edu.id} className="flex items-baseline justify-between">
                 <div>
                   <span className="text-[12px] font-bold text-black">{edu.school}</span>

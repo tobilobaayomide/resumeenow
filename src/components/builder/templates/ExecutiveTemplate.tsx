@@ -1,19 +1,32 @@
 import React from 'react';
 import { FiMail, FiPhone, FiMapPin, FiGlobe } from 'react-icons/fi';
+import type { BuilderTemplateComponentProps, TemplateSectionTitleProps } from '../../../types/builder';
+import {
+  getPersonalLinkDisplayLabel,
+  getVisiblePersonalLinks,
+  toExternalLinkHref,
+} from '../../../domain/resume';
 
-const SectionTitle: React.FC<{ children: React.ReactNode }> = ({ children }) => (
+const SectionTitle: React.FC<TemplateSectionTitleProps> = ({ children }) => (
   <h3 className="font-bold text-[10px] uppercase tracking-[0.15em] text-gray-400 border-b border-gray-200 pb-1 mb-3">
     {children}
   </h3>
 );
 
-interface ExecutiveTemplateProps {
-  data: any;
-  contentRef?: React.RefObject<HTMLDivElement>;
-}
-
-const ExecutiveTemplate: React.FC<ExecutiveTemplateProps> = ({ data, contentRef }) => {
-  const { personalInfo, summary, experience, education, skills } = data;
+const ExecutiveTemplate: React.FC<BuilderTemplateComponentProps> = ({ data, contentRef }) => {
+  const {
+    personalInfo,
+    summary,
+    experience,
+    volunteering,
+    projects,
+    education,
+    certifications,
+    skills,
+    languages,
+    achievements,
+  } = data;
+  const linkItems = getVisiblePersonalLinks(personalInfo);
 
   return (
     <div ref={contentRef} className="font-sans text-black space-y-6">
@@ -26,7 +39,12 @@ const ExecutiveTemplate: React.FC<ExecutiveTemplateProps> = ({ data, contentRef 
         </p>
         <div className="flex flex-wrap gap-x-4 gap-y-1.5 text-[11px] font-semibold text-gray-400 uppercase tracking-wider">
           {personalInfo.email && (
-            <div className="flex items-center gap-1.5"><FiMail size={9} /> {personalInfo.email}</div>
+            <div className="flex items-center gap-1.5">
+              <FiMail size={9} />
+              <a href={`mailto:${personalInfo.email}`} className="hover:underline break-all">
+                {personalInfo.email}
+              </a>
+            </div>
           )}
           {personalInfo.phone && (
             <div className="flex items-center gap-1.5"><FiPhone size={9} /> {personalInfo.phone}</div>
@@ -34,9 +52,19 @@ const ExecutiveTemplate: React.FC<ExecutiveTemplateProps> = ({ data, contentRef 
           {personalInfo.location && (
             <div className="flex items-center gap-1.5"><FiMapPin size={9} /> {personalInfo.location}</div>
           )}
-          {personalInfo.website && (
-            <div className="flex items-center gap-1.5"><FiGlobe size={9} /> {personalInfo.website}</div>
-          )}
+          {linkItems.map((link) => (
+            <div key={link.id} className="flex items-center gap-1.5">
+              <FiGlobe size={9} />
+              <a
+                href={toExternalLinkHref(link.url)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="hover:underline break-all"
+              >
+                {getPersonalLinkDisplayLabel(link)}
+              </a>
+            </div>
+          ))}
         </div>
       </header>
 
@@ -45,14 +73,14 @@ const ExecutiveTemplate: React.FC<ExecutiveTemplateProps> = ({ data, contentRef 
           {summary && (
             <section>
               <SectionTitle>Summary</SectionTitle>
-              <p className="text-[12px] leading-relaxed text-gray-600 whitespace-pre-wrap">{summary}</p>
+              <p className="text-[12px] leading-relaxed text-gray-600 text-justify whitespace-pre-wrap">{summary}</p>
             </section>
           )}
           {experience.length > 0 && (
             <section>
               <SectionTitle>Experience</SectionTitle>
               <div className="space-y-5">
-                {experience.map((exp: any) => (
+                {experience.map((exp) => (
                   <div key={exp.id}>
                     <div className="flex justify-between items-baseline">
                       <h4 className="font-bold text-[13px] text-gray-900">
@@ -66,9 +94,57 @@ const ExecutiveTemplate: React.FC<ExecutiveTemplateProps> = ({ data, contentRef 
                       {exp.company || <span className="text-gray-300">Company</span>}
                     </p>
                     {exp.description && (
-                      <p className="text-[11px] leading-relaxed text-gray-600 whitespace-pre-wrap">
+                      <p className="text-[11px] leading-relaxed text-gray-600 text-justify whitespace-pre-wrap">
                         {exp.description}
                       </p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
+          {projects.length > 0 && (
+            <section>
+              <SectionTitle>Projects</SectionTitle>
+              <div className="space-y-4">
+                {projects.map((project) => (
+                  <div key={project.id}>
+                    <div className="flex justify-between items-baseline gap-2">
+                      <h4 className="font-bold text-[12px] text-gray-900">
+                        {project.name || <span className="text-gray-300">Project</span>}
+                      </h4>
+                      <span className="text-[10px] text-gray-400 whitespace-nowrap">
+                        {project.startDate}{project.endDate ? ` — ${project.endDate}` : ''}
+                      </span>
+                    </div>
+                    {project.link && (
+                      <p className="text-[10px] text-gray-400 font-semibold mt-0.5 break-all">{project.link}</p>
+                    )}
+                    {project.description && (
+                      <p className="text-[11px] leading-relaxed text-gray-600 mt-1">{project.description}</p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
+          {volunteering.length > 0 && (
+            <section>
+              <SectionTitle>Volunteering</SectionTitle>
+              <div className="space-y-4">
+                {volunteering.map((item) => (
+                  <div key={item.id}>
+                    <div className="flex justify-between items-baseline gap-2">
+                      <h4 className="font-bold text-[12px] text-gray-900">
+                        {item.role || <span className="text-gray-300">Role</span>}
+                      </h4>
+                      <span className="text-[10px] text-gray-400 whitespace-nowrap">
+                        {item.startDate}{item.endDate ? ` — ${item.endDate}` : ''}
+                      </span>
+                    </div>
+                    <p className="text-[10px] text-gray-400 font-semibold mt-0.5">{item.company}</p>
+                    {item.description && (
+                      <p className="text-[11px] leading-relaxed text-gray-600 mt-1">{item.description}</p>
                     )}
                   </div>
                 ))}
@@ -82,7 +158,7 @@ const ExecutiveTemplate: React.FC<ExecutiveTemplateProps> = ({ data, contentRef 
             <section>
               <SectionTitle>Education</SectionTitle>
               <div className="space-y-4">
-                {education.map((edu: any) => (
+                {education.map((edu) => (
                   <div key={edu.id}>
                     <h4 className="font-bold text-[11px] text-gray-900">
                       {edu.school || <span className="text-gray-300">School</span>}
@@ -92,7 +168,7 @@ const ExecutiveTemplate: React.FC<ExecutiveTemplateProps> = ({ data, contentRef 
                       {edu.startDate}{edu.endDate ? ` — ${edu.endDate}` : ''}
                     </p>
                     {edu.description && (
-                      <p className="text-[10px] text-gray-500 mt-1 leading-snug">{edu.description}</p>
+                      <p className="text-[10px] text-gray-500 mt-1 text-justifyleading-snug">{edu.description}</p>
                     )}
                   </div>
                 ))}
@@ -112,6 +188,42 @@ const ExecutiveTemplate: React.FC<ExecutiveTemplateProps> = ({ data, contentRef 
                   </span>
                 ))}
               </div>
+            </section>
+          )}
+          {certifications.length > 0 && (
+            <section>
+              <SectionTitle>Certifications</SectionTitle>
+              <ul className="space-y-1">
+                {certifications.map((certification, index) => (
+                  <li key={`${certification}-${index}`} className="text-[10px] text-gray-600 leading-snug">
+                    {certification}
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
+          {languages.length > 0 && (
+            <section>
+              <SectionTitle>Languages</SectionTitle>
+              <ul className="space-y-1">
+                {languages.map((language, index) => (
+                  <li key={`${language}-${index}`} className="text-[10px] text-gray-600 leading-snug">
+                    {language}
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
+          {achievements.length > 0 && (
+            <section>
+              <SectionTitle>Achievements</SectionTitle>
+              <ul className="space-y-1">
+                {achievements.map((achievement, index) => (
+                  <li key={`${achievement}-${index}`} className="text-[10px] text-gray-600 text-justify leading-snug">
+                    {achievement}
+                  </li>
+                ))}
+              </ul>
             </section>
           )}
         </div>
