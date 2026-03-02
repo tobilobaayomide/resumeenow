@@ -1,31 +1,24 @@
 import React from 'react';
 import { 
-  FiGrid, 
-  FiFileText, 
-  FiSettings, 
   FiLogOut, 
-  FiLayout,  
-  FiBriefcase,
+  FiLock,
+  FiStar,
 } from 'react-icons/fi';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { useAuth } from '../../context/AuthContext';
+import { useAuth } from '../../context/useAuth';
+import { usePlan } from '../../context/usePlan';
+import {
+    DASHBOARD_MAIN_MENU_ITEMS,
+    DASHBOARD_MOBILE_DOCK_ITEMS,
+    DASHBOARD_PREFERENCES_ITEMS,
+} from '../../data/dashboard';
+import type { DashboardNavItem } from '../../types/dashboard';
 
 const Sidebar: React.FC = () => {
     const { user, signOut } = useAuth();
+    const { isPro, tier, openUpgrade } = usePlan();
     const navigate = useNavigate();
     const location = useLocation();
-
-    // Grouping for better extensive feeling
-    const mainMenuItems = [
-        { icon: FiGrid, label: 'Overview', path: '/dashboard' },
-        { icon: FiFileText, label: 'My Resumes', path: '/dashboard/myresumes' },
-        { icon: FiLayout, label: 'Templates', path: '/dashboard/templates' },
-    ];
-
-    const preferencesItems = [
-        { icon: FiBriefcase, label: 'Career Profile', path: '/dashboard/profile' },
-        { icon: FiSettings, label: 'Settings', path: '/dashboard/settings' },
-    ];
 
     const handleSignOut = async () => {
         await signOut();
@@ -33,46 +26,48 @@ const Sidebar: React.FC = () => {
     };
 
     const isActive = (path: string) => {
-        if (path === '/dashboard' && location.pathname === '/dashboard') return true;
-        return location.pathname.startsWith(path) && path !== '/dashboard';
+        if (path === '/dashboard') return location.pathname === '/dashboard';
+        return location.pathname === path || location.pathname.startsWith(`${path}/`);
     };
 
     // --- Desktop Nav Item ---
-    const DesktopNavItem = ({ item }: { item: any }) => {
+    const DesktopNavItem = ({ item }: { item: DashboardNavItem }) => {
         const active = isActive(item.path);
         return (
             <button
                 onClick={() => navigate(item.path)}
-                className={`group w-full flex items-center gap-3 px-3 py-2 text-sm font-medium transition-all duration-300 relative ${
+                className={`group w-full flex items-center gap-3 px-3 py-2.5 text-sm font-medium transition-all duration-200 rounded-xl border ${
                     active 
-                        ? 'text-white' 
-                        : 'text-zinc-500 hover:text-zinc-300'
+                        ? 'text-white bg-white/6 border-white/10 shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]' 
+                        : 'text-zinc-500 border-transparent hover:text-zinc-200 hover:bg-white/3'
                 }`}
+                aria-label={`Go to ${item.label}`}
             >
-                {/* Active Indicator Line */}
-                {active && (
-                    <div className="absolute left-0 top-1.5 bottom-1.5 w-0.5 bg-white rounded-r-full shadow-[0_0_8px_rgba(255,255,255,0.8)]"></div>
-                )}
-
-                <span className={`transition-transform duration-300 ${active ? 'translate-x-2' : 'group-hover:translate-x-1'}`}>
+                <span>
                     <item.icon size={16} className={active ? 'text-white' : 'text-zinc-600 group-hover:text-zinc-400'} />
                 </span>
-                <span className={`transition-transform duration-300 ${active ? 'translate-x-2' : 'group-hover:translate-x-1'}`}>
-                    {item.label}
-                </span>
+                <span>{item.label}</span>
+                {item.proPage && !isPro && (
+                    <span className="ml-auto inline-flex items-center gap-1 text-[9px] uppercase tracking-[0.12em] text-zinc-600">
+                        <FiLock size={10} />
+                        Pro
+                    </span>
+                )}
             </button>
         );
     };
 
     // --- Mobile Dock Item ---
-    const MobileDockItem = ({ item }: { item: any }) => {
+    const MobileDockItem = ({ item }: { item: DashboardNavItem }) => {
         const active = isActive(item.path);
         return (
             <button
                 onClick={() => navigate(item.path)}
+                aria-label={`Go to ${item.label}`}
+                title={item.label}
                 className={`group relative flex flex-col items-center justify-center w-12 h-12 rounded-2xl transition-all duration-300 ${
                     active 
-                        ? 'bg-neutral-800 text-white shadow-xl shadow-black/20 ' 
+                        ? 'bg-neutral-800 text-white shadow-lg shadow-black/30 ring-1 ring-white/10' 
                         : 'text-zinc-500 hover:text-white hover:bg-neutral-800/50'
                 }`}
             >
@@ -110,7 +105,7 @@ const Sidebar: React.FC = () => {
                     {/* Main Group */}
                     <div className="space-y-1">
                         <p className="px-3 text-[10px] font-bold text-zinc-600 uppercase tracking-[0.2em] mb-4">Workspace</p>
-                        {mainMenuItems.map((item) => (
+                        {DASHBOARD_MAIN_MENU_ITEMS.map((item) => (
                             <DesktopNavItem key={item.label} item={item} />
                         ))}
                     </div>
@@ -118,7 +113,7 @@ const Sidebar: React.FC = () => {
                     {/* Preferences Group */}
                     <div className="space-y-1">
                         <p className="px-3 text-[10px] font-bold text-zinc-600 uppercase tracking-[0.2em] mb-4">You</p>
-                        {preferencesItems.map((item) => (
+                        {DASHBOARD_PREFERENCES_ITEMS.map((item) => (
                             <DesktopNavItem key={item.label} item={item} />
                         ))}
                     </div>
@@ -141,6 +136,24 @@ const Sidebar: React.FC = () => {
                                     {/* Masking email for aesthetics */}
                                     {user?.email?.split('@')[0]}
                                 </span>
+                                <div className="mt-1 flex items-center gap-2">
+                                    <span className={`inline-flex items-center rounded-full px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-[0.15em] ${
+                                        isPro
+                                            ? 'bg-white/10 text-white border border-white/20'
+                                            : 'bg-zinc-800 text-zinc-400 border border-zinc-700'
+                                    }`}>
+                                        {tier}
+                                    </span>
+                                    {!isPro && (
+                                        <button
+                                            onClick={() => openUpgrade()}
+                                            className="inline-flex items-center gap-1 text-[9px] font-bold uppercase tracking-[0.12em] text-zinc-500 hover:text-white transition-colors"
+                                        >
+                                            <FiStar size={10} />
+                                            Upgrade
+                                        </button>
+                                    )}
+                                </div>
                             </div>
                         </div>
 
@@ -148,6 +161,7 @@ const Sidebar: React.FC = () => {
                             onClick={handleSignOut} 
                             className="text-zinc-600 hover:text-red-400 p-1.5 rounded-md hover:bg-neutral-900 transition-all"
                             title="Sign out"
+                            aria-label="Sign out"
                         >
                             <FiLogOut size={14} />
                         </button>
@@ -156,9 +170,9 @@ const Sidebar: React.FC = () => {
             </aside>
 
             {/* ================= MOBILE BOTTOM DOCK (Glassmorphism) ================= */}
-            <div className="md:hidden fixed bottom-6 left-1/2 transform -translate-x-1/2 z-50 w-auto">
+            <div className="md:hidden fixed left-1/2 -translate-x-1/2 z-50 w-auto bottom-[max(1.5rem,env(safe-area-inset-bottom))]">
                 <div className="flex items-center gap-2 bg-[#121212]/20 backdrop-blur-2xl border border-white/5 p-2 rounded-3xl shadow-[0_10px_40px_-10px_rgba(0,0,0,0.5)] ring-1 ring-white/5">
-                    {[...mainMenuItems, ...preferencesItems].slice(0, 4).map((item) => (
+                    {DASHBOARD_MOBILE_DOCK_ITEMS.map((item) => (
                         <MobileDockItem key={item.label} item={item} />
                     ))}
                     
@@ -166,6 +180,8 @@ const Sidebar: React.FC = () => {
                     
                     <button 
                          onClick={handleSignOut}
+                         aria-label="Sign out"
+                         title="Sign out"
                          className="group flex flex-col items-center justify-center w-12 h-12 rounded-2xl text-zinc-500 hover:text-red-400 hover:bg-red-500/10 transition-colors"
                     >
                         <FiLogOut size={20} />
