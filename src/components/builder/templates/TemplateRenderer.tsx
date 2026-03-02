@@ -3,12 +3,8 @@ import ExecutiveTemplate from './ExecutiveTemplate';
 import StudioTemplate from './StudioTemplate';
 import SiliconTemplate from './SiliconTemplate';
 import MonoTemplate from './MonoTemplate';
-
-interface TemplateRendererProps {
-  templateId: string;
-  data: any;
-  contentRef?: React.RefObject<HTMLDivElement>;
-}
+import AtsTemplate from './AtsTemplate';
+import type { TemplateRendererProps } from '../../../types/builder';
 
 const TemplateRenderer: React.FC<TemplateRendererProps> = ({ templateId, data, contentRef }) => {
 
@@ -21,6 +17,8 @@ const TemplateRenderer: React.FC<TemplateRendererProps> = ({ templateId, data, c
       return <SiliconTemplate data={data} contentRef={contentRef} />;
     case 'mono':
       return <MonoTemplate data={data} contentRef={contentRef} />;
+    case 'ats':
+      return <AtsTemplate data={data} contentRef={contentRef} />;
     default:
       return <ExecutiveTemplate data={data} contentRef={contentRef} />;
   }
