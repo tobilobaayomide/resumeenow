@@ -1,45 +1,53 @@
 import React from 'react';
 import { FiArrowRight } from 'react-icons/fi';
+import type { CtaSectionProps } from '../../types/landing';
 
-const CTASection: React.FC = () => {
+const CTASection: React.FC<CtaSectionProps> = ({ onPrimaryClick }) => {
   return (
-    <section className="py-16 md:py-24 bg-white">
+    <section id="get-started" className="py-20 md:py-28 bg-white">
       <div className="max-w-7xl mx-auto px-4 md:px-6">
-        
-        {/* Architectural Grey Container */}
-        <div className="relative rounded-2xl md:rounded-[3rem] bg-[#F3F4F6] overflow-hidden">
-            
-          {/* Subtle Noise Texture */}
-          <div className="absolute inset-0 opacity-[0.03]" 
-               style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")` }}>
-          </div>
+        <div className="relative overflow-hidden rounded-[28px] md:rounded-[44px] border border-black/5 bg-[#F5F6F8] shadow-[0_18px_60px_rgba(15,17,21,0.10)] transition-[transform,box-shadow] duration-300 ease-out md:hover:-translate-y-[2px] md:hover:shadow-[0_24px_70px_rgba(15,17,21,0.14)] motion-reduce:transition-none motion-reduce:transform-none">
+          <div
+            className="absolute inset-0 opacity-[0.02]"
+            style={{
+              backgroundImage:
+                'url("data:image/svg+xml,%3Csvg viewBox=\'0 0 200 200\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cfilter id=\'noiseFilter\'%3E%3CfeTurbulence type=\'fractalNoise\' baseFrequency=\'0.65\' numOctaves=\'3\' stitchTiles=\'stitch\'/%3E%3C/filter%3E%3Crect width=\'100%25\' height=\'100%25\' filter=\'url(%23noiseFilter)\'/%3E%3C/svg%3E")',
+            }}
+          />
+          <div className="pointer-events-none absolute -top-18 -right-12 h-62 w-62 rounded-full bg-white/80 blur-3xl" />
+          <div className="pointer-events-none absolute -bottom-20 -left-14 h-68 w-68 rounded-full blur-3xl bg-[#DDE6F8]/55" />
 
-          {/* Soft Ambient Light */}
-          <div className="absolute top-0 right-0 w-75 h-75 md:w-159 md:h-150 bg-linear-to-br from-white/60 to-transparent opacity-50 blur-2xl md:blur-3xl pointer-events-none -translate-y-1/3 translate-x-1/3"></div>
-            
-          <div className="relative z-10 px-4 py-12 md:px-8 md:py-24 flex flex-col md:flex-row md:items-center justify-between gap-8 md:gap-12">
-            
-            {/* Left Side: Typography */}
-            <div className="max-w-xl mx-auto md:mx-0 mb-8 md:mb-0">
-              <h2 className="text-3xl md:text-5xl lg:text-7xl text-gray-900 tracking-tighter leading-tight md:leading-[0.95] mb-6">
-                Stop formatting.<br />
-                <span className="text-gray-400">Start applying.</span>
+          <div className="relative z-10 px-5 py-12 md:px-10 md:py-20 flex flex-col md:flex-row md:items-end md:justify-between gap-6 md:gap-10">
+            <div className="max-w-3xl">
+              <p className="text-[11px] uppercase tracking-[0.18em] text-gray-500 mb-4">
+                Ready to launch your next application?
+              </p>
+              <h2 className="text-4xl md:text-6xl lg:text-[68px] text-gray-900 leading-[0.96] tracking-[-0.02em]">
+                Build free today.
+                <br />
+                <span className="text-gray-400">Upgrade when ready.</span>
               </h2>
-            </div>
-            
-            {/* Right Side: Button */}
-            <div className="shrink-0 w-full -mt-15 md:mt-0 md:w-auto">
-               <button className="group relative inline-flex items-center justify-center gap-4 bg-black opacity-80 text-white w-full md:w-auto px-6 md:px-10 py-5 md:py-8 rounded-full text-lg md:text-2xl font-semibold transition-all duration-500 hover:bg-black hover:scale-[1.02] shadow-xl hover:shadow-gray-900/20">
-                  <span className="relative z-10">Build My Resume</span>
-                  <div className="relative z-10 w-10 h-10 md:w-12 md:h-12 bg-white/20 rounded-full flex items-center justify-center transition-transform duration-300 group-hover:translate-x-2 group-hover:-rotate-45">
-                    <FiArrowRight size={22} color="currentColor" />
-                  </div>
-               </button>
+              <p className="mt-4 text-sm md:text-base text-gray-600 max-w-xl">
+                No card required. Start with templates and live editing instantly.
+              </p>
             </div>
 
+            <div className="w-full md:w-auto md:min-w-[320px]">
+              <button
+                onClick={onPrimaryClick}
+                className="group w-full md:w-auto h-14 md:h-16 px-7 md:px-10 rounded-full bg-[#0F1115] text-white inline-flex items-center justify-center gap-3 text-base md:text-lg font-semibold shadow-[0_12px_30px_rgba(15,17,21,0.28)] transition-[transform,box-shadow,background-color] duration-300 ease-out hover:-translate-y-[1px] hover:bg-[#11141a] hover:shadow-[0_15px_36px_rgba(15,17,21,0.30)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/40 focus-visible:ring-offset-2 motion-reduce:transition-none motion-reduce:transform-none"
+              >
+                <span>Start Building Now</span>
+                <span className="w-9 h-9 md:w-[42px] md:h-[42px] rounded-full bg-white/16 inline-flex items-center justify-center transition-transform duration-300 ease-out group-hover:translate-x-[2px] motion-reduce:transition-none motion-reduce:transform-none">
+                  <FiArrowRight size={20} color="currentColor" />
+                </span>
+              </button>
+              <p className="mt-3 text-xs text-gray-500 text-left md:text-right">
+                Takes less than 2 minutes to start.
+              </p>
+            </div>
           </div>
         </div>
-
       </div>
     </section>
   );
