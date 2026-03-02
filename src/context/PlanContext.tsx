@@ -11,8 +11,12 @@ const resolveStorageKey = (userId: string): string => `${STORAGE_KEY_PREFIX}:${u
 
 const getStoredTier = (userId: string | null): PlanTier => {
   if (!userId) return 'free';
-  const stored = window.localStorage.getItem(resolveStorageKey(userId));
-  return stored === 'pro' ? 'pro' : 'free';
+  try {
+    const stored = window.localStorage.getItem(resolveStorageKey(userId));
+    return stored === 'pro' ? 'pro' : 'free';
+  } catch {
+    return 'free';
+  }
 };
 
 export const PlanProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
