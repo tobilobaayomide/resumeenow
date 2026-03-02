@@ -1,11 +1,6 @@
 import React, { useRef, useState, useEffect } from 'react';
 import TemplateRenderer from '../templates/TemplateRenderer'; 
-
-interface LivePreviewProps {
-  data: any;
-  zoom?: number;
-  templateId?: string;
-}
+import type { LivePreviewProps } from '../../../types/builder';
 
 const A4_WIDTH_PX = 794;
 const A4_HEIGHT_PX = 1123;
