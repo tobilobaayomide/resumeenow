@@ -20,7 +20,7 @@ const LandingTemplatePreview: React.FC<{ templateId: TemplateId }> = ({ template
   return (
     <div className="absolute inset-0 overflow-hidden bg-linear-to-b from-white to-gray-50">
       <div className="absolute left-1/2 top-0 -translate-x-1/2 origin-top scale-[0.36] md:scale-[0.37] pointer-events-none">
-        <div className="w-[794px] h-[1123px] bg-white border border-gray-200 shadow-sm p-[24px] overflow-hidden">
+        <div className="w-198.5 h-280.75 bg-white border border-gray-200 shadow-sm p-6 overflow-hidden">
           <TemplateRenderer templateId={templateId} data={PREVIEW_RESUME_DATA} />
         </div>
       </div>
