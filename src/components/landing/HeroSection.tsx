@@ -1,195 +1,111 @@
 import React from "react";
-import { DiGoogleCloudPlatform } from "react-icons/di";
-import { FiUploadCloud, FiZap } from "react-icons/fi";
+import { FiCheck, FiUploadCloud } from "react-icons/fi";
 import dashboard from "../../assets/dashboard.png";
-
-// Example company logos (replace with your own as needed)
-const companies = [
-  { name: "Google", logo: "https://upload.wikimedia.org/wikipedia/commons/2/2f/Google_2015_logo.svg" },
-  { name: "Microsoft", logo: "https://upload.wikimedia.org/wikipedia/commons/4/44/Microsoft_logo.svg" },
-  { name: "Amazon", logo: "https://upload.wikimedia.org/wikipedia/commons/a/a9/Amazon_logo.svg" },
-  { name: "Netflix", logo: "https://upload.wikimedia.org/wikipedia/commons/0/08/Netflix_2015_logo.svg" },
-  { name: "Spotify", logo: "https://upload.wikimedia.org/wikipedia/commons/1/19/Spotify_logo_without_text.svg" },
-  { name: "Facebook", logo: "https://upload.wikimedia.org/wikipedia/commons/0/05/Facebook_Logo_(2019).png" },
-];
+import {
+  HERO_PROOF_CARDS,
+  HERO_QUICK_VALUE_POINTS,
+} from "../../data/landing";
 
 const HeroSection: React.FC = () => (
-  <section className="relative min-h-screen flex flex-col justify-center pt-28 pb-0 bg-white overflow-hidden">
-    {/* 1. Full Modern Grid Background (z-0) */}
-    <div className="absolute inset-0 flex justify-center mt-22 z-0">
-      <svg
-        className="absolute inset-0 w-full h-full"
-        style={{
-          maskImage: "linear-gradient(to bottom, white 60%, transparent 100%)",
-          WebkitMaskImage:
-            "linear-gradient(to bottom, white 60%, transparent 100%)",
-        }}
-        xmlns="http://www.w3.org/2000/svg"
-      >
-        <defs>
-          <pattern
-            id="modern-grid"
-            width="60"
-            height="60"
-            patternUnits="userSpaceOnUse"
-          >
-            <path
-              d="M 60 0 L 0 0 0 60"
-              fill="none"
-              stroke="currentColor"
-              className="text-gray-300"
-              strokeWidth="1"
-            />
-          </pattern>
-        </defs>
-        <rect width="100%" height="100%" fill="url(#modern-grid)" />
-      </svg>
+  <section className="relative overflow-hidden bg-white pt-28 pb-14 md:pt-32 md:pb-20">
+    <div className="pointer-events-none absolute inset-0">
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,rgba(17,24,39,0.11),transparent_56%)]" />
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_left,rgba(115,115,115,0.11),transparent_62%)]" />
+      <div className="absolute inset-0 opacity-[0.04] bg-[linear-gradient(rgba(15,23,42,0.4)_1px,transparent_1px),linear-gradient(90deg,rgba(15,23,42,0.4)_1px,transparent_1px)] bg-size-[44px_44px]" />
     </div>
 
-    {/* 2. White Masking Blobs (z-10) */}
-    <div className="absolute top-0 right-0 w-75 md:w-125 h-125 md:h-100 bg-white rounded-full blur-[100px] z-10 translate-x-1/4 -translate-y-1/4"></div>
-    <div className="absolute bottom-0 left-0 w-75 md:w-175 h-125 md:h-75 bg-white rounded-full blur-[100px] z-10 -translate-x-1/4 translate-y-1/4"></div>
-    <div className="absolute top-0 left-0 w-75 md:w-125 h-125 md:h-100 bg-white rounded-full blur-[100px] z-10 -translate-x-1/4 -translate-y-1/4"></div>
-    <div className="absolute bottom-0 right-0 w-75 md:w-175 h-125 md:h-75 bg-white rounded-full blur-[100px] z-10 translate-x-1/4 translate-y-1/4"></div>
-
-    {/* 3. Colored Glows (z-20) */}
-    <div className="absolute top-0 right-0 w-50 md:w-100 h-100 md:h-75 bg-purple-300/60 rounded-full blur-[120px] z-20 translate-x-1/3 -translate-y-1/4"></div>
-    <div className="absolute bottom-0 left-0 w-50 md:w-100 h-100 md:h-75 bg-blue-300/60 rounded-full blur-[120px] z-20 -translate-x-1/3 translate-y-1/4"></div>
-    <div className="absolute top-0 left-0 w-50 md:w-100 h-100 md:h-75 bg-green-300/60 rounded-full blur-[120px] z-20 -translate-x-1/3 -translate-y-1/4"></div>
-    <div className="absolute bottom-0 right-0 w-50 md:w-100 h-100 md:h-75 bg-yellow-300/60 rounded-full blur-[120px] z-20 translate-x-1/3 translate-y-1/4"></div>
-
-    {/* 4. Main Content Container (z-30) */}
-    <div className="max-w-6xl mx-auto px-6 lg:px-0 w-full grid lg:grid-cols-2 gap-12 items-center relative z-30">
-      
-      {/* Left Column: Text & CTA */}
-      <div className="flex flex-col items-start text-left pt-10 lg:pt-0">
-        <div className="inline-flex items-center px-4 py-1.5 mb-6 rounded-full border border-gray-200 bg-white/60 backdrop-blur-md text-sm text-gray-700 shadow-sm hover:shadow-md transition-shadow cursor-pointer">
-          <span className="flex text-blue-600 mr-2 animate-pulse">
-            <DiGoogleCloudPlatform size={20} />
-          </span>
-          ResumeNow 2.0 is live
+    <div className="max-w-7xl mx-auto top-12 md:top-0 px-6 relative z-10 grid lg:grid-cols-12 gap-12 lg:gap-10 items-center">
+      <div className="lg:col-span-5">
+        <div className="inline-flex items-center rounded-full border border-black/10 bg-white px-4 py-1.5 text-sm text-black/70 shadow-sm animate-in fade-in slide-in-from-bottom-3 duration-500">
+          AI workflows + live resume controls
         </div>
 
-        <h1 className="text-5xl md:text-6xl lg:text-7xl text-gray-900 mb-6 tracking-tight leading-[1.1]">
-          Create Your Resume <br />
-          <span className="text-transparent bg-clip-text bg-gray-400">
-            Effortlessly
+        <h1 className="mt-6 text-4xl md:text-6xl lg:text-[64px] tracking-[-0.03em] leading-[1.02] text-gray-900 animate-in fade-in slide-in-from-bottom-4 duration-700 delay-100">
+          From rough draft to
+          <br />
+          <span className="text-zinc-400 ">
+            interview-ready fast.
           </span>
         </h1>
 
-        <p className="text-lg font-light md:text-xl text-gray-600 mb-10 max-w-lg leading-relaxed">
-          Build a professional resume in minutes with our easy-to-use,
-          customizable templates. Stand out and land your dream job!
+        <p className="mt-6 text-lg md:text-xl text-gray-600 font-light max-w-lg leading-relaxed animate-in fade-in slide-in-from-bottom-4 duration-700 delay-150">
+          Start from your existing PDF or from scratch, then refine every section with live preview
+          and focused AI tools built directly into the editor.
         </p>
 
-        <div className="flex flex-col sm:flex-row items-center gap-4 w-full sm:w-auto">
+        <div className="mt-9 flex flex-col sm:flex-row items-center gap-4 w-full sm:w-auto animate-in fade-in slide-in-from-bottom-4 duration-700 delay-200">
           <a
             href="#get-started"
-            className="w-full sm:w-auto text-center bg-[#0f1115] text-white px-8 py-4 rounded-full text-lg font-medium hover:bg-[#2d2f31] transition-all shadow-lg hover:shadow-xl hover:-translate-y-0.5"
+            className="group w-full sm:w-auto text-center bg-black text-white px-8 py-4 rounded-full text-lg font-medium border border-black transition-all duration-300 hover:bg-zinc-900 hover:-translate-y-0.5 shadow-[0_16px_36px_rgba(0,0,0,0.30)]"
           >
-            Start Building for Free
+            <span className="inline-flex items-center gap-2">
+              Start Free Workspace
+            </span>
           </a>
           <a
             href="#templates"
-            className="w-full sm:w-auto text-center bg-white text-gray-900 border border-gray-200 px-8 py-4 rounded-full text-lg font-medium hover:bg-gray-50 transition-all shadow-sm hover:shadow-md hover:-translate-y-0.5"
+            className="w-full sm:w-auto text-center bg-white text-black border border-black/15 px-7 py-4 rounded-full text-lg font-medium transition-all duration-300 hover:bg-zinc-50 hover:-translate-y-0.5 shadow-[0_10px_22px_rgba(0,0,0,0.08)]"
           >
-            View Templates
+            Explore Templates
           </a>
         </div>
+        <p className="mt-3 text-sm text-gray-500 animate-in fade-in duration-700 delay-300">
+          No credit card required to start.
+        </p>
 
-        {/* Trusted By Section */}
-        <div className="mt-10 flex flex-row items-center gap-2 sm:gap-4">
-          <div className="flex -space-x-3">
-            <img className="w-8 h-8 rounded-full border-2 border-white shadow-sm" src="https://i.pravatar.cc/100?img=1" alt="User avatar" />
-            <img className="w-8 h-8 rounded-full border-2 border-white shadow-sm" src="https://i.pravatar.cc/100?img=2" alt="User avatar" />
-            <img className="w-8 h-8 rounded-full border-2 border-white shadow-sm" src="https://i.pravatar.cc/100?img=3" alt="User avatar" />
-            <img className="w-8 h-8 rounded-full border-2 border-white shadow-sm" src="https://i.pravatar.cc/100?img=4" alt="User avatar" />
-          </div>
-          <div className="flex flex-row items-center text-sm text-gray-600 gap-2">
-            Trusted by explorers, job seekers worldwide
-          </div>
-        </div>
+        <ul className="mt-8 space-y-3 animate-in fade-in slide-in-from-bottom-4 duration-700 delay-300">
+          {HERO_QUICK_VALUE_POINTS.map((item) => (
+            <li key={item} className="flex items-center gap-3 text-sm md:text-base text-gray-600">
+              <span className="w-5 h-5 rounded-full bg-zinc-100 text-black inline-flex items-center justify-center">
+                <FiCheck size={13} />
+              </span>
+              {item}
+            </li>
+          ))}
+        </ul>
       </div>
 
-      {/* Right Column: Bleeding Image Mockup & Floating Cards (hidden on mobile) */}
-      <div className="relative w-full items-center mt-10 lg:mt-0 hidden lg:flex">
-        
-        {/* Floating Card 1: Upload Resume */}
-        <div className="absolute -left-2 top-12 lg:-left-12 lg:top-32 z-40 bg-white/80 backdrop-blur-xl -rotate-5 border border-white/60 shadow-xl rounded-2xl p-4 flex items-start gap-4 transition-transform duration-500 hover:-translate-y-2 cursor-pointer max-w-65">
-          <div className="w-12 h-12 shrink-0 bg-blue-100/80 rounded-full flex items-center justify-center text-blue-600 shadow-inner">
-            <FiUploadCloud size={24} />
+      <div className="lg:col-span-7 lg:-mr-50">
+        <div className="relative hidden md:flex mx-auto w-full max-w-none lg:w-[112%] lg:translate-x-5 animate-in fade-in slide-in-from-right-8 duration-700 delay-200">
+          <div className="absolute -inset-10 bg-[radial-gradient(ellipse_at_center,rgba(0,0,0,0.18),transparent_62%)] blur-2xl" />
+          <div className="relative rounded-4xl border border-black/10 bg-white/75 backdrop-blur-xl p-3 md:p-4 lg:p-5 shadow-[0_30px_80px_rgba(0,0,0,0.22)]">
+            <img
+              src={dashboard}
+              alt="Resume builder interface"
+              className="w-full h-auto rounded-3xl border border-slate-200/70 shadow-xl"
+            />
           </div>
-          <div className="pr-2">
-            <p className="text-sm font-bold text-gray-900">Upload Existing</p>
-            <p className="text-xs text-gray-500 font-light mt-1 leading-relaxed">Upload your current resume to enhance or update it with AI</p>
-          </div>
-        </div>
 
-        {/* Floating Card 2: Create Resume */}
-        <div className="absolute -left-6 bottom-12 lg:left-5 lg:bottom-18 z-40 bg-white/80 backdrop-blur-xl rotate-3 border border-white/60 shadow-xl rounded-2xl p-4 flex items-start gap-4 transition-transform duration-500 hover:-translate-y-2 cursor-pointer max-w-65">
-          <div className="w-12 h-12 shrink-0 bg-purple-100/80 rounded-full flex items-center justify-center text-purple-600 shadow-inner">
-            <FiZap size={24} />
+          <div className="absolute -left-2 md:-left-6 lg:-left-12 top-6 md:top-10 lg:top-14 max-w-55 lg:max-w-60 rounded-2xl border border-black/10 bg-white/92 shadow-xl px-3.5 py-3 backdrop-blur-md">
+            <div className="flex items-start gap-3">
+              <span className="w-14 h-9 rounded-full bg-black text-white inline-flex items-center justify-center">
+                <FiUploadCloud size={18} />
+              </span>
+              <div>
+                <p className="text-sm font-semibold text-gray-900">Upload + Parse</p>
+                <p className="text-xs text-gray-500 mt-1">Map your PDF into editable resume sections.</p>
+              </div>
+            </div>
           </div>
-          <div className="pr-2">
-            <p className="text-sm font-bold text-gray-900">Create Resume</p>
-            <p className="text-xs text-gray-500 font-light mt-1 leading-relaxed">Start afresh and build a professional resume in a few minutes</p>
-          </div>
-        </div>
-
-        {/* Frosted Glass Container & Image */}
-        <div
-          className="
-            w-full
-            p-4
-            bg-white/40
-            backdrop-blur-xl
-            rounded-2xl
-            border border-white/60
-            shadow-2xl
-            flex
-            justify-center
-            items-center
-            z-0
-            lg:absolute lg:left-16 lg:w-[calc(140%+8rem)] lg:h-120.5 lg:max-w-none
-          "
-        >
-          <img
-            src={dashboard}
-            alt="Resume Builder Interface"
-            className="
-              w-full
-              h-auto
-              rounded-l-2xl shadow-2xl border border-gray-200/60 object-cover object-left
-              max-w-full
-              relative
-              transition-transform duration-700 hover:scale-[1.02]
-              z-10
-            "
-            style={{ objectPosition: 'left center' }}
-          />
         </div>
       </div>
     </div>
 
-    {/* 5. Joined Companies Section */}
-  <div className="w-full  py-8 md:py-12 mt-25 mb-10 relative z-30">
-  <div className="max-w-5xl mx-auto px-6 flex flex-col items-center">
-    <p className="text-gray-500 text-sm md:text-base mb-6 text-center">
-      <span className="font-normal text-gray-700 opacity-70 hover:opacity-100">TRUSTED BY PROFESSIONALS AT</span>
-    </p>
-    <div className="flex flex-wrap justify-center items-center gap-6 md:gap-20">
-      {companies.map((company) => (
-        <img
-          key={company.name}
-          src={company.logo}
-          alt={company.name}
-          className="h-8 md:h-10 w-auto opacity-40 grayscale hover:opacity-100 hover:grayscale-0 transition duration-300 cursor-pointer"
-          style={{ maxWidth: 120 }}
-        />
-      ))}
+    <div className="relative z-10 max-w-7xl mx-auto px-6 mt-25">
+      <div className="grid sm:grid-cols-3 gap-3 md:gap-4">
+        {HERO_PROOF_CARDS.map((card, index) => (
+          <div
+            key={card.title}
+            className={`rounded-2xl px-4 md:px-5 py-4 backdrop-blur-sm shadow-sm border ${
+              index === 0 ? "bg-black text-white border-black" : "bg-white/90 text-slate-900 border-slate-200"
+            }`}
+          >
+            <p className={`text-sm font-semibold ${index === 0 ? "text-white" : "text-slate-900"}`}>{card.title}</p>
+            <p className={`text-xs md:text-sm mt-1.5 ${index === 0 ? "text-zinc-300" : "text-slate-600"}`}>{card.detail}</p>
+          </div>
+        ))}
+      </div>
     </div>
-  </div>
-</div>
   </section>
 );
 
