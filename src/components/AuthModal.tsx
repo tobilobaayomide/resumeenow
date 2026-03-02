@@ -1,24 +1,19 @@
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { FiX, FiMail, FiLock, FiUser } from "react-icons/fi";
 import { AiOutlineApple } from "react-icons/ai";
 import { FcGoogle } from "react-icons/fc";
 import { supabase } from "../lib/supabase";
 import { toast } from "sonner";
-
-interface AuthModalProps {
-  open: boolean;
-  onClose: () => void;
-  mode: "login" | "signup";
-}
+import type { AuthModalMode, AuthModalProps, OAuthProvider } from "../types/ui";
 
 const AuthModal: React.FC<AuthModalProps> = ({ open, onClose, mode }) => {
-  const [currentMode, setCurrentMode] = useState<"login" | "signup">(mode);
-  const [isAnimating, setIsAnimating] = useState(false);
+  const [currentMode, setCurrentMode] = useState<AuthModalMode>(mode);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
   const [loading, setLoading] = useState(false);
+  const [oauthLoading, setOauthLoading] = useState<OAuthProvider | null>(null);
 
   const navigate = useNavigate();
 
@@ -29,14 +24,30 @@ const AuthModal: React.FC<AuthModalProps> = ({ open, onClose, mode }) => {
     setFullName("");
   }, [mode, open]);
 
+  useEffect(() => {
+    if (!open) return;
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    const handleKeydown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        onClose();
+      }
+    };
+
+    window.addEventListener("keydown", handleKeydown);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", handleKeydown);
+    };
+  }, [open, onClose]);
+
   if (!open) return null;
 
   const toggleMode = () => {
-    setIsAnimating(true);
-    setTimeout(() => {
-      setCurrentMode(prev => prev === "login" ? "signup" : "login");
-      setIsAnimating(false);
-    }, 200);
+    setCurrentMode((prev) => (prev === "login" ? "signup" : "login"));
+    setPassword("");
   };
 
   const handleAuth = async (e: React.FormEvent) => {
@@ -44,7 +55,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ open, onClose, mode }) => {
     setLoading(true);
 
     try {
-      if (currentMode === 'signup') {
+      if (currentMode === "signup") {
         const { data, error } = await supabase.auth.signUp({
           email,
           password,
@@ -83,140 +94,204 @@ const AuthModal: React.FC<AuthModalProps> = ({ open, onClose, mode }) => {
     }
   };
 
-  const handleGoogleLogin = async () => {
+  const handleOAuthLogin = async (provider: OAuthProvider) => {
+    setOauthLoading(provider);
     try {
       const { error } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
+        provider,
+        options: {
+          redirectTo: window.location.origin,
+        },
       });
       if (error) throw error;
-      // On success, Supabase will redirect and session will be handled globally
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : "Failed to login with Google";
+      const message = err instanceof Error ? err.message : `Failed to login with ${provider}`;
+      toast.error(message);
+    } finally {
+      setOauthLoading(null);
+    }
+  };
+
+  const handleForgotPassword = async () => {
+    if (!email.trim()) {
+      toast.error("Enter your email first, then tap Forgot password.");
+      return;
+    }
+
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/reset-password`,
+      });
+      if (error) throw error;
+      toast.success("Password reset link sent. Check your inbox.");
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Failed to send reset link";
       toast.error(message);
     }
   };
 
+  const closeModal = () => {
+    if (loading || oauthLoading) return;
+    onClose();
+  };
+
+  const isBusy = loading || oauthLoading !== null;
+
   return (
     <div className="fixed inset-0 z-100 flex items-center justify-center p-4">
       <div
-        className="absolute inset-0 bg-gray-900/60 backdrop-blur-md transition-opacity duration-300"
-        onClick={onClose}
+        className="absolute inset-0 bg-black/55 backdrop-blur-sm transition-opacity duration-300"
+        onClick={closeModal}
         aria-hidden="true"
       />
-      <div 
-        className="relative bg-white rounded-3xl shadow-[0_20px_60px_-15px_rgba(0,0,0,0.3)] max-w-105 w-full overflow-hidden border border-white/50 animate-in fade-in zoom-in-95 duration-300"
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="auth-modal-title"
+        aria-describedby="auth-modal-description"
+        className="relative w-full max-w-105 overflow-hidden rounded-3xl border border-black/10 bg-white shadow-[0_28px_70px_rgba(0,0,0,0.25)] animate-in fade-in zoom-in-95 duration-300"
       >
         <button
-          className="absolute top-5 right-5 p-2 rounded-full text-gray-400 hover:text-gray-900 hover:bg-gray-100 transition-all duration-200 z-10"
-          onClick={onClose}
+          type="button"
+          aria-label="Close auth modal"
+          className="absolute top-4 right-4 p-2 rounded-full text-gray-400 hover:text-gray-900 hover:bg-gray-100 transition-all duration-200 z-10 disabled:opacity-50"
+          onClick={closeModal}
+          disabled={isBusy}
         >
           <FiX size={20} />
         </button>
-        <div className="p-8 md:p-10">
-          <div className="text-center mb-8">
-            <h2 className="text-2xl font-bold text-gray-900 tracking-tight">
-              {currentMode === "login" ? "Welcome Back" : "Create Your Account"}
+
+        <div className="p-7 md:p-8">
+          <div className="text-center mb-7">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-black/45 mb-2">
+              ResumeNow Access
+            </p>
+            <h2 id="auth-modal-title" className="text-2xl font-semibold text-gray-900 tracking-tight">
+              {currentMode === "login" ? "Welcome back" : "Create your account"}
             </h2>
-            <p className="text-gray-500 mt-2 text-sm font-light">
-              {currentMode === "login" 
-                ? "Enter your details to access your resume." 
-                : "Start building your professional career today."}
+            <p id="auth-modal-description" className="text-gray-500 mt-2 text-sm font-light">
+              {currentMode === "login"
+                ? "Sign in to continue editing and exporting your resume."
+                : "Start your workspace and build job-ready resumes faster."}
             </p>
           </div>
-          <div className="grid grid-cols-2 gap-3 mb-6">
-            <button 
-              onClick={handleGoogleLogin}
+
+          <div className="grid grid-cols-2 gap-2.5 mb-5">
+            <button
+              onClick={() => handleOAuthLogin("google")}
               type="button"
-              className="flex items-center justify-center gap-2 py-2.5 border border-gray-200 rounded-xl hover:bg-gray-50 hover:border-gray-300 transition-all duration-200"
+              disabled={isBusy}
+              className="h-11 flex items-center justify-center gap-2 border border-gray-200 rounded-xl hover:bg-gray-50 hover:border-gray-300 transition-all duration-200 disabled:opacity-60 disabled:cursor-not-allowed"
             >
-              <FcGoogle size={20} />
-              <span className="text-sm font-medium text-gray-700">Google</span>
+              <FcGoogle size={19} />
+              <span className="text-sm font-medium text-gray-700">
+                {oauthLoading === "google" ? "Connecting..." : "Google"}
+              </span>
             </button>
-            <button 
+            <button
               type="button"
-              className="flex items-center justify-center gap-2 py-2.5 border border-gray-200 rounded-xl hover:bg-gray-50 hover:border-gray-300 transition-all duration-200"
+              onClick={() => handleOAuthLogin("apple")}
+              disabled={isBusy}
+              className="h-11 flex items-center justify-center gap-2 border border-gray-200 rounded-xl hover:bg-gray-50 hover:border-gray-300 transition-all duration-200 disabled:opacity-60 disabled:cursor-not-allowed"
             >
-              <AiOutlineApple size={20} />
-              <span className="text-sm font-medium text-gray-700">Apple</span>
+              <AiOutlineApple size={19} />
+              <span className="text-sm font-medium text-gray-700">
+                {oauthLoading === "apple" ? "Connecting..." : "Apple"}
+              </span>
             </button>
           </div>
-          <div className="relative mb-6">
+
+          <div className="relative mb-5">
             <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-gray-100"></div>
+              <div className="w-full border-t border-gray-100" />
             </div>
             <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-white px-3 text-gray-400 font-medium tracking-wider">Or continue with</span>
+              <span className="bg-white px-3 text-gray-400 font-medium tracking-wider">Or continue with email</span>
             </div>
           </div>
-          
-          <form onSubmit={handleAuth} className={`flex flex-col gap-4 transition-opacity duration-200 ${isAnimating ? 'opacity-50' : 'opacity-100'}`}>
+
+          <form key={currentMode} onSubmit={handleAuth} className="flex flex-col gap-3.5 animate-in fade-in duration-200">
             {currentMode === "signup" && (
               <div className="relative group">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400 group-focus-within:text-black transition-colors">
                   <FiUser size={18} />
                 </div>
                 <input
+                  id="auth-full-name"
+                  name="full_name"
                   type="text"
-                  placeholder="Full Name"
+                  placeholder="Full name"
                   required
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
-                  className="w-full bg-gray-50 text-gray-900 border-none rounded-xl py-3 pl-10 pr-4 placeholder-gray-400 focus:ring-2 focus:ring-gray-100 focus:bg-white transition-all duration-200 font-medium text-sm outline-none"
+                  className="w-full bg-gray-50 text-gray-900 border border-transparent rounded-xl py-3 pl-10 pr-4 placeholder-gray-400 focus:ring-2 focus:ring-black/5 focus:border-black/10 focus:bg-white transition-all duration-200 font-medium text-sm outline-none"
                 />
               </div>
             )}
+
             <div className="relative group">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400 group-focus-within:text-black transition-colors">
                 <FiMail size={18} />
               </div>
               <input
+                id="auth-email"
+                name="email"
                 type="email"
                 placeholder="Email address"
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full bg-gray-50 text-gray-900 border-none rounded-xl py-3 pl-10 pr-4 placeholder-gray-400 focus:ring-2 focus:ring-gray-100 focus:bg-white transition-all duration-200 font-medium text-sm outline-none"
+                className="w-full bg-gray-50 text-gray-900 border border-transparent rounded-xl py-3 pl-10 pr-4 placeholder-gray-400 focus:ring-2 focus:ring-black/5 focus:border-black/10 focus:bg-white transition-all duration-200 font-medium text-sm outline-none"
               />
             </div>
+
             <div className="relative group">
-               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400 group-focus-within:text-black transition-colors">
-                  <FiLock size={18} />
-               </div>
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400 group-focus-within:text-black transition-colors">
+                <FiLock size={18} />
+              </div>
               <input
+                id="auth-password"
+                name="password"
                 type="password"
                 placeholder="Password"
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 minLength={6}
-                className="w-full bg-gray-50 text-gray-900 border-none rounded-xl py-3 pl-10 pr-4 placeholder-gray-400 focus:ring-2 focus:ring-gray-100 focus:bg-white transition-all duration-200 font-medium text-sm outline-none"
+                className="w-full bg-gray-50 text-gray-900 border border-transparent rounded-xl py-3 pl-10 pr-4 placeholder-gray-400 focus:ring-2 focus:ring-black/5 focus:border-black/10 focus:bg-white transition-all duration-200 font-medium text-sm outline-none"
               />
             </div>
+
             {currentMode === "login" && (
-                <div className="flex justify-end">
-                    <button type="button" className="text-xs font-medium text-gray-500 hover:text-gray-900">
-                      Forgot password?
-                    </button>
-                </div>
+              <div className="flex justify-end -mt-0.5">
+                <button
+                  type="button"
+                  onClick={handleForgotPassword}
+                  disabled={isBusy}
+                  className="text-xs font-medium text-gray-500 hover:text-gray-900 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                >
+                  Forgot password?
+                </button>
+              </div>
             )}
+
             <button
               type="submit"
-              disabled={loading}
-              className="mt-2 bg-gray-900 hover:bg-black text-white rounded-xl py-3.5 font-semibold text-sm transition-all duration-200 shadow-lg hover:shadow-xl hover:-translate-y-0.5 flex items-center justify-center gap-2 group disabled:opacity-70 disabled:cursor-not-allowed"
+              disabled={isBusy}
+              className="mt-1 bg-black hover:bg-zinc-900 text-white rounded-xl py-3.5 font-semibold text-sm transition-all duration-200 shadow-[0_14px_30px_rgba(0,0,0,0.24)] hover:-translate-y-0.5 flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed"
             >
-              {loading 
-                ? "Processing..." 
-                : (currentMode === "login" ? "Sign In" : "Create Account")
-              }
+              {loading ? "Processing..." : (currentMode === "login" ? "Sign In" : "Create Account")}
             </button>
           </form>
-          <div className="mt-8 text-center bg-gray-50 -mx-8 -mb-10 p-6 border-t border-gray-100">
-            <p className="text-sm text-gray-500 font-medium">
+
+          <div className="mt-6 text-center">
+            <p className="text-sm text-gray-500">
               {currentMode === "login" ? "Don't have an account?" : "Already have an account?"}
               <button
-                className="ml-2 text-gray-900 hover:text-gray-600 font-bold transition-colors"
+                type="button"
+                className="ml-2 text-gray-900 hover:text-gray-600 font-semibold transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
                 onClick={toggleMode}
-                disabled={loading}
+                disabled={isBusy}
               >
                 {currentMode === "login" ? "Sign Up" : "Log In"}
               </button>
