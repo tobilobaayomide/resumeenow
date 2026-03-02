@@ -1,12 +1,9 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { FiMenu, FiX, FiUser } from "react-icons/fi";
-import { useAuth } from "../../context/AuthContext";
-
-interface NavbarProps {
-  onLogin: () => void;
-  onSignup: () => void;
-}
+import { useAuth } from "../../context/useAuth";
+import { LANDING_NAV_ITEMS } from "../../data/landing";
+import type { NavbarProps } from "../../types/landing";
 
 const Navbar: React.FC<NavbarProps> = ({ onLogin, onSignup }) => {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -54,7 +51,7 @@ const Navbar: React.FC<NavbarProps> = ({ onLogin, onSignup }) => {
                             className="h-6 w-6 object-contain grayscale group-hover:grayscale-0 transition-all duration-500"
                         />
                         <span className="text-lg font-medium tracking-tight text-black/90">
-                           Resumee<span className="text-zinc-500">Now.</span>
+                           Resume<span className="text-zinc-500">Now.</span>
                         </span>
                     </div>
                 </div>
@@ -62,13 +59,13 @@ const Navbar: React.FC<NavbarProps> = ({ onLogin, onSignup }) => {
 
           {/* Desktop Navigation */}
           <div className="hidden md:flex items-center space-x-8">
-            {["Features", "Templates", "Pricing", "Blog"].map((item) => (
+            {LANDING_NAV_ITEMS.map((item) => (
               <a
-                key={item}
-                href={`#${item.toLowerCase()}`}
+                key={item.href}
+                href={item.href}
                 className="text-sm font-medium text-gray-600 hover:text-black transition-colors px-3 py-2 rounded-lg hover:bg-gray-50/50"
               >
-                {item}
+                {item.label}
               </a>
             ))}
           </div>
@@ -124,14 +121,14 @@ const Navbar: React.FC<NavbarProps> = ({ onLogin, onSignup }) => {
           }`}
         >
           <div className="flex flex-col p-6 space-y-4">
-            {["Features", "Templates", "Pricing", "Blog"].map((item) => (
+            {LANDING_NAV_ITEMS.map((item) => (
               <a
-                key={item}
-                href={`#${item.toLowerCase()}`}
+                key={item.href}
+                href={item.href}
                 className="text-lg font-medium text-gray-800 hover:text-blue-600 transition-colors"
                 onClick={() => setMenuOpen(false)}
               >
-                {item}
+                {item.label}
               </a>
             ))}
             <div className="h-px bg-gray-100 my-2"></div>
