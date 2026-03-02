@@ -1,0 +1,171 @@
+import React, { useState, useEffect } from 'react';
+import {
+  LANDING_FALLBACK_DEMO_VIDEO_URL,
+  LANDING_FEATURE_ITEMS,
+  LANDING_FEATURE_ROTATION_MS,
+  LANDING_FEATURE_TRANSITION_MS,
+} from "../../data/landing";
+
+const FeaturesSection: React.FC = () => {
+  const [activeFeature, setActiveFeature] = useState(0);
+  const [cycleSeed, setCycleSeed] = useState(0);
+  // Auto-rotate features with deterministic timing.
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      setActiveFeature((current) => (current + 1) % LANDING_FEATURE_ITEMS.length);
+    }, LANDING_FEATURE_ROTATION_MS);
+
+    return () => {
+      window.clearTimeout(timer);
+    };
+  }, [activeFeature, cycleSeed]);
+
+  const handleFeatureClick = (index: number) => {
+    setActiveFeature(index);
+    setCycleSeed((seed) => seed + 1);
+  };
+
+  return (
+    <section id="features" className="relative py-24 bg-white overflow-hidden">
+      <style>{`
+        @keyframes featureLoaderFill {
+          from { width: 0%; }
+          to { width: 100%; }
+        }
+      `}</style>
+      
+  
+
+      <div className="max-w-7xl mx-auto px-6 relative z-10">
+        
+        {/* Interactive Showcase Layout */}
+        <div className="grid lg:grid-cols-12 gap-12 lg:gap-20 items-center">
+          
+          {/* Left Column (Tall Media Window) */}
+          <div className="lg:col-span-7 relative order-2 lg:order-1 h-full min-h-125 flex items-center">
+            {/* Restrained ambient depth behind the video */}
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[88%] h-[76%] rounded-full bg-black/12 blur-[72px] pointer-events-none -z-10"></div>
+            
+            {/* Glassmorphic Container */}
+            <div className="w-full h-full max-h-175 p-2 md:p-3 bg-white/80 backdrop-blur-xl rounded-4xl border border-black/10 shadow-[0_28px_70px_rgba(0,0,0,0.18)] relative z-10 flex flex-col">
+              <div className="relative w-full h-full bg-zinc-900 rounded-2xl overflow-hidden shadow-inner min-h-100">
+                
+                {/* Video Element */}
+                <video 
+                  key={activeFeature}
+                  className="absolute inset-0 w-full h-full object-cover opacity-95"
+                  autoPlay 
+                  preload="metadata"
+                  muted 
+                  loop 
+                  playsInline
+                >
+                  <source src={LANDING_FEATURE_ITEMS[activeFeature].media} type="video/mp4" />
+                  <source src={LANDING_FALLBACK_DEMO_VIDEO_URL} type="video/mp4" />
+                  Your browser does not support the video tag.
+                </video>
+
+                {/* Subtle Overlay gradient */}
+                <div className="absolute inset-0 bg-linear-to-tr from-black/10 to-transparent pointer-events-none"></div>
+              </div>
+            </div>
+          </div>
+
+          {/* Right Column (Header + Compact Feature Texts) */}
+          <div className="lg:col-span-5 flex flex-col justify-center gap-8 order-1 lg:order-2">
+            
+            {/* Header */}
+            <div>
+              <p className="text-[11px] uppercase tracking-[0.22em] text-black/45 font-medium">
+                Product Features
+              </p>
+              <h2 className="mt-4 text-4xl md:text-5xl text-gray-900 mb-4 tracking-[-0.02em] leading-[1.05]">
+                Built for how people <br className="hidden md:block" />
+                <span className="text-zinc-500">
+                  actually build resumes
+                </span>
+              </h2>
+              <p className="font-light text-gray-600 leading-relaxed">
+                Parse, edit, optimize, and export in one flow. No context switching, no duplicate data entry.
+              </p>
+              <div className="mt-6 h-px w-16 bg-black/15" />
+            </div>
+
+            {/* Features Accordion List - COMPACT */}
+            <div className="flex flex-col gap-2.5">
+              {LANDING_FEATURE_ITEMS.map((feature, index) => {
+                const isActive = activeFeature === index;
+                
+                return (
+                  <div 
+                    key={feature.id}
+                    onClick={() => handleFeatureClick(index)}
+                    className={`relative p-4 rounded-xl cursor-pointer transition-all overflow-hidden group ${
+                      isActive 
+                        ? 'bg-white shadow-[0_12px_28px_rgba(0,0,0,0.08)] border border-black/15 opacity-100' 
+                        : 'hover:bg-zinc-50/50 border border-transparent opacity-65 hover:opacity-100 hover:border-black/10'
+                    }`}
+                    style={{ transitionDuration: `${LANDING_FEATURE_TRANSITION_MS}ms` }}
+                  >
+                    {isActive && <div className="absolute left-0 top-3 bottom-3 w-px bg-black/35 rounded-full" />}
+                    <div className="flex items-start gap-4 relative z-10">
+                      
+                      {/* Icon */}
+                      <div
+                        className={`w-10 h-10 shrink-0 rounded-lg flex items-center justify-center transition-colors ${
+                          isActive ? "bg-black text-white" : "bg-zinc-100 text-zinc-500"
+                        }`}
+                        style={{ transitionDuration: `${LANDING_FEATURE_TRANSITION_MS}ms` }}
+                      >
+                        {feature.icon}
+                      </div>
+                      
+                      <div className="flex-1 pt-1">
+                        <h3
+                          className={`font-medium tracking-[-0.01em] transition-colors ${isActive ? "text-black" : "text-zinc-600"}`}
+                          style={{ transitionDuration: `${LANDING_FEATURE_TRANSITION_MS}ms` }}
+                        >
+                          {feature.title}
+                        </h3>
+                        
+                        <div 
+                          className={`grid transition-all ease-out ${
+                            isActive ? 'grid-rows-[1fr] opacity-100 mt-2' : 'grid-rows-[0fr] opacity-0 mt-0'
+                          }`}
+                          style={{ transitionDuration: `${LANDING_FEATURE_TRANSITION_MS}ms` }}
+                        >
+                          <div className="overflow-hidden">
+                            <p className="text-sm font-extralight leading-relaxed text-gray-600 pb-1">
+                              {feature.description}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Horizontal Progress Bar for Active Item (At Bottom) */}
+                    {isActive && (
+                      <div className="absolute left-0 bottom-0 right-0 h-px bg-black/12 w-full overflow-hidden">
+                        <div 
+                          className="h-full bg-black rounded-full"
+                          style={{
+                            animation: `featureLoaderFill ${LANDING_FEATURE_ROTATION_MS}ms linear forwards`,
+                          }}
+                          key={`feature-loader-${activeFeature}-${cycleSeed}`}
+                        ></div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+            
+          </div>
+
+        </div>
+      </div>
+    </section>
+  );
+};
+
+export default FeaturesSection;
