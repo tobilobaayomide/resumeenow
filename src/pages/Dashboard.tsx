@@ -1,71 +1,82 @@
-import React, { useState, useEffect } from "react";
-import { useAuth } from "../context/AuthContext";
-import { useNavigate } from "react-router-dom";
-import { useResumes } from "../hooks/useResumes";
-import DashboardView from "../components/dashboard/DashboardView";
+import React, { useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { toast } from 'sonner';
+import DashboardView from '../components/dashboard/DashboardView';
+import { useAuth } from '../context/useAuth';
+import { useResumes } from '../hooks/useResumes';
+import { getErrorMessage } from '../lib/errors';
+import type { TemplateId } from '../types/resume';
 
 const Dashboard: React.FC = () => {
   const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
 
-  const {
-    resumes,
-    loading: resumesLoading,
-    deleteResume,
-    refreshResumes // Added this function from hook
-  } = useResumes(user?.id);
+  const { resumes, loading: resumesLoading, deleteResume, refreshResumes } = useResumes(user?.id);
 
   const username =
-    user?.user_metadata?.full_name ||
-    user?.email?.split('@')[0] ||
-    "User";
+    user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'User';
 
-  const [newTitle, setNewTitle] = useState("");
-
-  // Redirect if not logged in
   useEffect(() => {
-    if (!authLoading && !user) navigate("/");
+    if (!authLoading && !user) navigate('/');
   }, [user, authLoading, navigate]);
 
-  // REFRESH DATA ON MOUNT / FOCUS
-  // This ensures that when you come back from Builder, the list is fresh.
   useEffect(() => {
-    if (user && refreshResumes) {
-        refreshResumes();
+    if (user) {
+      void refreshResumes().catch(() => {
+        // errors are surfaced by the hook via state
+      });
     }
-  }, [user, refreshResumes]); // refreshResumes is stable now thanks to useCallback
+  }, [user, refreshResumes]);
 
-  // Just go to /builder/new with the template ID
-  const handleCreateResume = (templateId: string) => {
-    const titleParam = newTitle.trim() ? `&title=${encodeURIComponent(newTitle.trim())}` : '';
-    navigate(`/builder/new?template=${templateId}${titleParam}`);
-    setNewTitle("");
-  };
-
-  const handleTitleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setNewTitle(e.target.value);
+  const handleCreateResume = (templateId: TemplateId) => {
+    navigate(`/builder/new?template=${templateId}`);
   };
 
   const handleDeleteResume = async (id: string) => {
-    if (window.confirm("Are you sure you want to delete this resume?")) {
-      await deleteResume(id);
-    }
+    toast('Are you sure you want to delete this resume?', {
+      action: {
+        label: 'Delete',
+        onClick: async () => {
+          try {
+            await deleteResume(id);
+            toast.success('Resume deleted successfully.');
+          } catch (error: unknown) {
+            toast.error(getErrorMessage(error, 'Failed to delete resume.'));
+          }
+        },
+      },
+      cancel: {
+        label: 'Cancel',
+        onClick: () => {},
+      },
+    });
   };
 
-  const handleUploadResume = async (file: File) => {
-    alert(`Uploaded file: ${file.name}`);
+  const handleUploadResume = async (file: File, templateId: TemplateId) => {
+    const loadingToast = toast.loading('Parsing resume...');
+    try {
+      const { parseResumeFile } = await import('../lib/resumeParser');
+      const { data, suggestedTitle } = await parseResumeFile(file);
+      toast.dismiss(loadingToast);
+      toast.success('Resume parsed. Review and adjust before saving.');
+      navigate(`/builder/new?template=${templateId}&title=${encodeURIComponent(suggestedTitle)}`, {
+        state: {
+          importedResumeData: data,
+          importedTitle: suggestedTitle,
+        },
+      });
+    } catch (error: unknown) {
+      toast.dismiss(loadingToast);
+      toast.error(getErrorMessage(error, 'Failed to parse uploaded resume.'));
+    }
   };
 
   if (authLoading) return null;
 
   return (
     <DashboardView
-      userEmail={user?.email}
       resumes={resumes}
       isLoading={resumesLoading}
-      newTitle={newTitle}
-      isCreating={false} 
-      onTitleChange={handleTitleChange}
       onCreateResume={handleCreateResume}
       onDeleteResume={handleDeleteResume}
       onUploadResume={handleUploadResume}
