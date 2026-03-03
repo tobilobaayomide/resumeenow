@@ -33,14 +33,14 @@ const MonoTemplate: React.FC<BuilderTemplateComponentProps> = ({
             <span className="text-gray-200">Your Name</span>
           )}
         </h1>
-        <p className="text-[14px] font-light text-gray-700 tracking-wide">
+        <p className="text-[14px] font-light text-black tracking-wide">
           {personalInfo.jobTitle || (
             <span className="text-gray-200">Job Title</span>
           )}
         </p>
-        <div className="flex flex-wrap gap-x-6 gap-y-0.5 text-[11px] text-gray-500 pt-1">
+        <div className="flex flex-wrap gap-x-6 gap-y-0.5 text-[11px] text-black pt-1">
           {personalInfo.email && (
-            <a href={`mailto:${personalInfo.email}`} className="hover:underline break-all">
+            <a href={`mailto:${personalInfo.email}`} className="hover:underline break-all text-blue-600">
               {personalInfo.email}
             </a>
           )}
@@ -52,7 +52,7 @@ const MonoTemplate: React.FC<BuilderTemplateComponentProps> = ({
               href={toExternalLinkHref(link.url)}
               target="_blank"
               rel="noopener noreferrer"
-              className="hover:underline break-all"
+              className="hover:underline break-all text-blue-600"
             >
               {getPersonalLinkDisplayLabel(link)}
             </a>
