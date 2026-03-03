@@ -110,14 +110,14 @@ const AtsTemplate: React.FC<BuilderTemplateComponentProps> = ({ data, contentRef
                     href={item.href}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="hover:underline break-all"
+                    className="hover:underline break-all text-blue-600"
                   >
                     {item.label}
                   </a>
                 ) : item.type === 'email' ? (
                   <a
                     href={`mailto:${item.value}`}
-                    className="hover:underline break-all"
+                    className="hover:underline break-all text-blue-600"
                   >
                     {item.value}
                   </a>
