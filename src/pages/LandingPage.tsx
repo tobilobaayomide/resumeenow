@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { lazy, Suspense, useState } from 'react';
 import { useAuth } from '../context/useAuth';
 import { useNavigate } from 'react-router-dom';
 import Navbar from '../components/landing/Navbar';
@@ -10,9 +10,10 @@ import StepsSection from '../components/landing/StepsSection';
 import TrustedSection from '../components/landing/TrustedSection';
 import CtaSection from '../components/landing/CtaSection';
 import Footer from '../components/landing/Footer';
-import AuthModal from '../components/AuthModal';
 import type { TemplateId } from '../types/resume';
 import type { AuthModalMode } from '../types';
+
+const AuthModal = lazy(() => import('../components/AuthModal'));
 
 const LandingPage: React.FC = () => {
   const [authOpen, setAuthOpen] = useState(false);
@@ -69,14 +70,18 @@ const LandingPage: React.FC = () => {
         }}
       />
       <Footer />
-      <AuthModal
-        open={authOpen}
-        onClose={() => {
-          setAuthOpen(false);
-          if (!user) setPendingTemplate(null);
-        }}
-        mode={authMode}
-      />
+      <Suspense fallback={null}>
+        {authOpen ? (
+          <AuthModal
+            open={authOpen}
+            onClose={() => {
+              setAuthOpen(false);
+              if (!user) setPendingTemplate(null);
+            }}
+            mode={authMode}
+          />
+        ) : null}
+      </Suspense>
     </div>
   );
 };
