@@ -41,7 +41,7 @@ const ExecutiveTemplate: React.FC<BuilderTemplateComponentProps> = ({ data, cont
           {personalInfo.email && (
             <div className="flex items-center gap-1.5">
               <FiMail size={9} />
-              <a href={`mailto:${personalInfo.email}`} className="hover:underline break-all">
+              <a href={`mailto:${personalInfo.email}`} className="hover:underline break-all text-blue-600">
                 {personalInfo.email}
               </a>
             </div>
@@ -59,7 +59,7 @@ const ExecutiveTemplate: React.FC<BuilderTemplateComponentProps> = ({ data, cont
                 href={toExternalLinkHref(link.url)}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="hover:underline break-all"
+                className="hover:underline break-all text-blue-600"
               >
                 {getPersonalLinkDisplayLabel(link)}
               </a>
