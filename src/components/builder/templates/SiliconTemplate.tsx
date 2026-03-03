@@ -31,7 +31,7 @@ const SiliconTemplate: React.FC<BuilderTemplateComponentProps> = ({ data, conten
             <h1 className="text-[22px] font-bold tracking-tight text-black">
               {personalInfo.fullName || <span className="text-gray-300">Your Name</span>}
             </h1>
-            <p className="text-[12px] text-gray-500 mt-1">
+            <p className="text-[12px] text-gray-800 mt-1">
               {personalInfo.jobTitle || <span className="text-gray-300">Job Title</span>}
             </p>
           </div>
@@ -42,7 +42,7 @@ const SiliconTemplate: React.FC<BuilderTemplateComponentProps> = ({ data, conten
         </div>
 
         {/* Contact row */}
-        <div className="flex flex-wrap gap-4 mt-4 pt-4 border-t border-gray-200 text-[10px] text-gray-500">
+        <div className="flex flex-wrap gap-4 mt-4 pt-4 border-t border-gray-200 text-[10px] text-gray-800">
           {personalInfo.email && (
             <a href={`mailto:${personalInfo.email}`} className="hover:underline break-all">
               📧 {personalInfo.email}
@@ -112,7 +112,7 @@ const SiliconTemplate: React.FC<BuilderTemplateComponentProps> = ({ data, conten
                   </span>
                 </div>
                 {exp.description && (
-                  <p className="text-[11px] text-gray-500 mt-1.5 leading-relaxed pl-2 border-l border-gray-200">
+                  <p className="text-[11px] text-gray-500 mt-1.5 leading-relaxed pl-2 border-l border-gray-200 text-justify whitespace-pre-line">
                     {exp.description}
                   </p>
                 )}
@@ -173,7 +173,7 @@ const SiliconTemplate: React.FC<BuilderTemplateComponentProps> = ({ data, conten
           </div>
           <ul className="space-y-1">
             {certifications.map((certification, index) => (
-              <li key={`${certification}-${index}`} className="text-[11px] text-gray-500">
+              <li key={`${certification}-${index}`} className="text-[11px] text-black font-bold">
                 - {certification}
               </li>
             ))}
@@ -203,7 +203,7 @@ const SiliconTemplate: React.FC<BuilderTemplateComponentProps> = ({ data, conten
           </div>
           <ul className="space-y-1">
             {achievements.map((achievement, index) => (
-              <li key={`${achievement}-${index}`} className="text-[11px] text-gray-500">
+              <li key={`${achievement}-${index}`} className="text-[11px] text-black font-bold text-justify">
                 - {achievement}
               </li>
             ))}
