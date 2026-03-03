@@ -1,6 +1,6 @@
 import React from "react";
 import { FiCheck, FiUploadCloud } from "react-icons/fi";
-import dashboard from "../../assets/dashboard.png";
+import dashboard from "../../assets/dashboard-hero.jpg";
 import {
   HERO_PROOF_CARDS,
   HERO_QUICK_VALUE_POINTS,
