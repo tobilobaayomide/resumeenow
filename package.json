@@ -8,7 +8,9 @@
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "loop:make": "bash scripts/make-loop.sh"
+    "loop:make": "bash scripts/make-loop.sh",
+    "assets:check": "node scripts/check-image-sizes.mjs",
+    "assets:optimize": "bash scripts/optimize-image.sh"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.97.0",
