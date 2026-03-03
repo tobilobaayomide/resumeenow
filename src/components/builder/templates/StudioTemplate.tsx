@@ -46,7 +46,7 @@ const StudioTemplate: React.FC<BuilderTemplateComponentProps> = ({ data, content
               <FiMail size={10} className="text-white/40 mt-0.5 shrink-0" />
               <a
                 href={`mailto:${personalInfo.email}`}
-                className="text-[10px] text-white/70 break-all leading-snug hover:underline"
+                className="text-[10px] text-white break-all leading-snug hover:underline"
               >
                 {personalInfo.email}
               </a>
@@ -71,7 +71,7 @@ const StudioTemplate: React.FC<BuilderTemplateComponentProps> = ({ data, content
                 href={toExternalLinkHref(link.url)}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-[10px] text-white/70 break-all hover:underline"
+                className="text-[10px] text-white break-all hover:underline"
               >
                 {getPersonalLinkDisplayLabel(link)}
               </a>
