@@ -1,13 +1,13 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type Dispatch, type SetStateAction } from 'react';
 import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../context/useAuth';
 import { usePlan } from '../../context/usePlan';
 import type { BuilderPageMobileView, UseBuilderPageControllerResult } from '../../types/builder';
-import { INITIAL_RESUME_DATA, normalizeTemplateId, type ResumeData, type TemplateId } from '../../types/resume';
+import type { TemplateId } from '../../types/resume';
 import { useBuilderAiFlows } from './useBuilderAiFlows';
-import { useBuilderDraftMutations } from './useBuilderDraftMutations';
 import { useBuilderPersistence } from './useBuilderPersistence';
 import { useBuilderProfileImport } from './useBuilderProfileImport';
+import { useBuilderStore } from '../../store/builderStore';
 
 interface BuilderLocationState {
   importedResumeData?: unknown;
@@ -20,13 +20,24 @@ export const useBuilderPageController = (): UseBuilderPageControllerResult => {
   const location = useLocation();
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { isPro, requestAccess, openUpgrade } = usePlan();
+  const { isPro, openUpgrade } = usePlan();
 
-  const [resumeData, setResumeData] = useState<ResumeData>(INITIAL_RESUME_DATA);
-  const [templateId, setTemplateId] = useState<TemplateId>(
-    normalizeTemplateId(searchParams.get('template')),
-  );
-  const [title, setTitle] = useState(searchParams.get('title') || 'Untitled Resume');
+  const templateId = useBuilderStore((store) => store.templateId);
+  const title = useBuilderStore((store) => store.title);
+  const setResumeData = useBuilderStore((store) => store.setResumeData);
+  const setTemplateId = useBuilderStore((store) => store.setTemplateId);
+  const setTitle = useBuilderStore((store) => store.setTitle);
+
+  const setTemplateIdDispatch: Dispatch<SetStateAction<TemplateId>> = (value) => {
+    const next =
+      typeof value === 'function' ? (value as (prev: TemplateId) => TemplateId)(templateId) : value;
+    setTemplateId(next);
+  };
+
+  const setTitleDispatch: Dispatch<SetStateAction<string>> = (value) => {
+    const next = typeof value === 'function' ? (value as (prev: string) => string)(title) : value;
+    setTitle(next);
+  };
   const [zoom, setZoom] = useState(1);
   const [mobileView, setMobileView] = useState<BuilderPageMobileView>('editor');
   const [isEditorCollapsed, setIsEditorCollapsed] = useState(false);
@@ -46,28 +57,15 @@ export const useBuilderPageController = (): UseBuilderPageControllerResult => {
     locationState,
     user,
     navigate,
-    title,
-    templateId,
-    resumeData,
-    setResumeData,
-    setTemplateId,
-    setTitle,
   });
 
-  const { handleProAction, aiModalProps } = useBuilderAiFlows({
-    searchParams,
-    requestAccess,
-    resumeData,
-    setResumeData,
-  });
+  const { handleProAction, aiModalProps } = useBuilderAiFlows();
 
   const { isImporting, handleImportProfile } = useBuilderProfileImport({
     user,
     setResumeData,
     setMobileView,
   });
-  const draftMutations = useBuilderDraftMutations({ setResumeData });
-
   useEffect(() => {
     const handleResize = () => {
       if (window.innerWidth < 1024) {
@@ -95,8 +93,8 @@ export const useBuilderPageController = (): UseBuilderPageControllerResult => {
       isSaving,
       isAutosaving,
       onBackToDashboard: handleBackToDashboard,
-      onTitleChange: setTitle,
-      onTemplateChange: setTemplateId,
+      onTitleChange: setTitleDispatch,
+      onTemplateChange: setTemplateIdDispatch,
       onMobileViewChange: setMobileView,
       onProAction: handleProAction,
       onToggleEditorCollapse: () => setIsEditorCollapsed((prev) => !prev),
@@ -110,12 +108,9 @@ export const useBuilderPageController = (): UseBuilderPageControllerResult => {
     workspaceProps: {
       mobileView,
       isEditorCollapsed,
-      resumeData,
-      templateId,
       zoom,
       onZoomOut: () => setZoom((value) => Math.max(0.2, value - 0.1)),
       onZoomIn: () => setZoom((value) => Math.min(2, value + 0.1)),
-      ...draftMutations,
     },
     aiModalProps,
   };
