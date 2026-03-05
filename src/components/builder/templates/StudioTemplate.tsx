@@ -2,10 +2,12 @@ import React from 'react';
 import { FiMail, FiPhone, FiMapPin, FiGlobe } from 'react-icons/fi';
 import type { BuilderTemplateComponentProps } from '../../../types/builder';
 import {
+  getActiveSkillItems,
   getPersonalLinkDisplayLabel,
   getVisiblePersonalLinks,
   toExternalLinkHref,
 } from '../../../domain/resume';
+import { toDescriptionBullets } from './utils';
 
 const StudioTemplate: React.FC<BuilderTemplateComponentProps> = ({ data, contentRef }) => {
   const {
@@ -21,6 +23,7 @@ const StudioTemplate: React.FC<BuilderTemplateComponentProps> = ({ data, content
     achievements,
   } = data;
   const linkItems = getVisiblePersonalLinks(personalInfo);
+  const activeSkills = getActiveSkillItems(skills);
 
   return (
     <div ref={contentRef} className="font-sans text-black flex h-full min-h-225">
@@ -46,7 +49,7 @@ const StudioTemplate: React.FC<BuilderTemplateComponentProps> = ({ data, content
               <FiMail size={10} className="text-white/40 mt-0.5 shrink-0" />
               <a
                 href={`mailto:${personalInfo.email}`}
-                className="text-[10px] text-white/70 break-all leading-snug hover:underline"
+                className="text-[10px] text-white break-all leading-snug hover:underline"
               >
                 {personalInfo.email}
               </a>
@@ -71,7 +74,7 @@ const StudioTemplate: React.FC<BuilderTemplateComponentProps> = ({ data, content
                 href={toExternalLinkHref(link.url)}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-[10px] text-white/70 break-all hover:underline"
+                className="text-[10px] text-white break-all hover:underline"
               >
                 {getPersonalLinkDisplayLabel(link)}
               </a>
@@ -80,11 +83,11 @@ const StudioTemplate: React.FC<BuilderTemplateComponentProps> = ({ data, content
         </div>
 
         {/* Skills */}
-        {skills.length > 0 && (
+        {activeSkills.length > 0 && (
           <div className="space-y-3">
             <h3 className="text-[9px] font-black uppercase tracking-[0.25em] text-white/30">Skills</h3>
             <div className="flex flex-col gap-2">
-              {skills.map((skill: string, i: number) => (
+              {activeSkills.map((skill, i) => (
                 <div key={i} className="flex items-center gap-2">
                   <div className="w-1 h-1 rounded-full bg-white/30 shrink-0" />
                   <span className="text-[10px] text-white/70">{skill}</span>
@@ -209,7 +212,22 @@ const StudioTemplate: React.FC<BuilderTemplateComponentProps> = ({ data, content
                     </p>
                   </div>
                   {project.link && <p className="text-[10px] text-gray-400 mt-1 break-all">{project.link}</p>}
-                  {project.description && <p className="text-[11px] text-gray-500 mt-2 leading-relaxed">{project.description}</p>}
+                  {project.description && (() => {
+                    const bullets = toDescriptionBullets(project.description);
+                    if (bullets.length > 0) {
+                      return (
+                        <ul className="list-disc pl-4 text-[11px] text-gray-500 mt-2 leading-relaxed space-y-0.5">
+                          {bullets.map((line, index) => (
+                            <li key={`${project.id}-desc-${index}`}>{line}</li>
+                          ))}
+                        </ul>
+                      );
+                    }
+
+                    return (
+                      <p className="text-[11px] text-gray-500 mt-2 leading-relaxed">{project.description}</p>
+                    );
+                  })()}
                 </div>
               ))}
             </div>

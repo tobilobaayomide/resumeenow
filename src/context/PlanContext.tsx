@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import { toast } from 'sonner';
 import UpgradeModal from '../components/ui/UpgradeModal';
 import { PlanContext, type PlanTier, type ProFeature } from './plan-context';
 import { useAuth } from './useAuth';
@@ -8,6 +7,17 @@ const STORAGE_KEY_PREFIX = 'resumeenow_plan_tier';
 const FREE_MONTHLY_CREDITS = 20;
 
 const resolveStorageKey = (userId: string): string => `${STORAGE_KEY_PREFIX}:${userId}`;
+const showToast = (type: 'success' | 'error', message: string): void => {
+    void import('sonner')
+    .then(({ toast }) => {
+      toast[type](message);
+    })
+    .catch((error) => {
+      if (typeof console !== 'undefined' && typeof console.error === 'function') {
+        console.error('Failed to load toast library for showToast:', error);
+      }
+    });
+};
 
 const getStoredTier = (userId: string | null): PlanTier => {
   if (!userId) return 'free';
@@ -64,7 +74,7 @@ export const PlanProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const upgradeToPro = () => {
     if (!user) {
-      toast.error('Login required.');
+      showToast('error', 'Login required.');
       return;
     }
 
@@ -74,7 +84,7 @@ export const PlanProvider: React.FC<{ children: React.ReactNode }> = ({ children
     });
     window.localStorage.setItem(resolveStorageKey(user.id), 'pro');
     closeUpgrade();
-    toast.success('Pro UI unlocked. Billing integration is the next step.');
+    showToast('success', 'Pro UI unlocked. Billing integration is the next step.');
   };
 
   const value = {

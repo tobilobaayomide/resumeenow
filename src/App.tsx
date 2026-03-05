@@ -1,6 +1,5 @@
 import { lazy, Suspense, type ReactElement } from 'react';
 import { BrowserRouter as Router, Navigate, Route, Routes } from 'react-router-dom';
-import { Toaster } from 'sonner';
 import { useAuth } from './context/useAuth';
 
 const LandingPage = lazy(() => import('./pages/LandingPage'));
@@ -12,6 +11,7 @@ const CareerProfile = lazy(() => import('./components/dashboard/CareerProfile'))
 const Settings = lazy(() => import('./components/dashboard/Settings'));
 const BuilderPage = lazy(() => import('./components/builder/BuilderPage'));
 const ResetPasswordPage = lazy(() => import('./pages/ResetPasswordPage'));
+const AppToaster = lazy(() => import('./components/ui/AppToaster'));
 
 const ProtectedRoute = ({ children }: { children: ReactElement }) => {
   const { user, loading } = useAuth();
@@ -25,7 +25,9 @@ const AppFallback = () => <div className="h-screen bg-white" />;
 export default function App() {
   return (
     <Router>
-      <Toaster position="top-center" richColors />
+      <Suspense fallback={null}>
+        <AppToaster />
+      </Suspense>
       <Suspense fallback={<AppFallback />}>
         <Routes>
           <Route path="/" element={<LandingPage />} />

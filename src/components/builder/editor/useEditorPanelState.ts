@@ -1,45 +1,37 @@
 import { useCallback, useState } from 'react';
+import type { EditorSectionTabId } from '../../../types/builder';
 import type {
-  EditorPanelProps,
-  EditorSectionTabId,
-} from '../../../types/builder';
-import type {
+  ResumeSkillGroup,
+  ResumeSkillsMode,
   ResumeEducationItem,
   ResumeExperienceItem,
   ResumeLinkItem,
   ResumeProjectItem,
 } from '../../../types/resume';
+import { getActiveSkillItems } from '../../../types/resume';
 import { hasValueIgnoreCase } from './utils';
+import { useBuilderStore } from '../../../store/builderStore';
+import { useBuilderDraftMutations } from '../../../hooks/builder/useBuilderDraftMutations';
 
-interface UseEditorPanelStateArgs {
-  data: EditorPanelProps['data'];
-  onLinksChange: EditorPanelProps['onLinksChange'];
-  onExperienceChange: EditorPanelProps['onExperienceChange'];
-  onEducationChange: EditorPanelProps['onEducationChange'];
-  onVolunteeringChange: EditorPanelProps['onVolunteeringChange'];
-  onProjectsChange: EditorPanelProps['onProjectsChange'];
-  onCertificationsChange: EditorPanelProps['onCertificationsChange'];
-  onSkillsChange: EditorPanelProps['onSkillsChange'];
-  onLanguagesChange: EditorPanelProps['onLanguagesChange'];
-  onAchievementsChange: EditorPanelProps['onAchievementsChange'];
-  onSectionToggle?: (section: EditorSectionTabId) => void;
-}
-
-export const useEditorPanelState = ({
-  data,
-  onLinksChange,
-  onExperienceChange,
-  onEducationChange,
-  onVolunteeringChange,
-  onProjectsChange,
-  onCertificationsChange,
-  onSkillsChange,
-  onLanguagesChange,
-  onAchievementsChange,
-  onSectionToggle,
-}: UseEditorPanelStateArgs) => {
+export const useEditorPanelState = (onSectionToggle?: (section: EditorSectionTabId) => void) => {
+  const data = useBuilderStore((store) => store.resumeData);
+  const {
+    onPersonalInfoChange,
+    onLinksChange,
+    onSummaryChange,
+    onExperienceChange,
+    onEducationChange,
+    onVolunteeringChange,
+    onProjectsChange,
+    onCertificationsChange,
+    onSkillsChange,
+    onLanguagesChange,
+    onAchievementsChange,
+  } = useBuilderDraftMutations();
   const [openSection, setOpenSection] = useState<EditorSectionTabId>('personal');
   const [newSkill, setNewSkill] = useState('');
+  const [newSkillGroupLabel, setNewSkillGroupLabel] = useState('');
+  const [activeSkillGroupId, setActiveSkillGroupId] = useState<string | null>(null);
   const [newLanguage, setNewLanguage] = useState('');
   const [newCertification, setNewCertification] = useState('');
   const [newAchievement, setNewAchievement] = useState('');
@@ -65,6 +57,7 @@ export const useEditorPanelState = ({
   const resolvedActiveEducationId = resolveActiveId(activeEducationId, data.education);
   const resolvedActiveVolunteeringId = resolveActiveId(activeVolunteeringId, data.volunteering);
   const resolvedActiveProjectId = resolveActiveId(activeProjectId, data.projects);
+  const resolvedActiveSkillGroupId = resolveActiveId(activeSkillGroupId, data.skills.groups);
 
   const addExperience = () => {
     const nextId = `exp-${Date.now()}`;
@@ -211,13 +204,183 @@ export const useEditorPanelState = ({
 
   const addSkill = () => {
     const trimmedSkill = newSkill.trim();
-    if (!trimmedSkill || hasValueIgnoreCase(data.skills, trimmedSkill)) return;
-    onSkillsChange([...data.skills, trimmedSkill]);
+    if (!trimmedSkill || hasValueIgnoreCase(getActiveSkillItems(data.skills), trimmedSkill)) return;
+
+    if (data.skills.mode === 'grouped') {
+      let nextGroups = data.skills.groups;
+      let targetGroupId = resolvedActiveSkillGroupId;
+
+      if (!targetGroupId) {
+        const fallbackGroup: ResumeSkillGroup = {
+          id: `skills-group-${Date.now()}`,
+          label: 'Core Skills',
+          items: [],
+        };
+        nextGroups = [...data.skills.groups, fallbackGroup];
+        targetGroupId = fallbackGroup.id;
+        setActiveSkillGroupId(targetGroupId);
+      }
+
+      const groupedSkills = nextGroups.map((group) =>
+        group.id === targetGroupId
+          ? { ...group, items: [...group.items, trimmedSkill] }
+          : group,
+      );
+
+      onSkillsChange({
+        mode: 'grouped',
+        list: getActiveSkillItems({
+          ...data.skills,
+          mode: 'grouped',
+          groups: groupedSkills,
+        }),
+        groups: groupedSkills,
+      });
+      setNewSkill('');
+      return;
+    }
+
+    onSkillsChange({
+      ...data.skills,
+      mode: 'list',
+      list: [...data.skills.list, trimmedSkill],
+    });
     setNewSkill('');
   };
 
-  const removeSkill = (skill: string) =>
-    onSkillsChange(data.skills.filter((existingSkill) => existingSkill !== skill));
+  const removeSkill = (skill: string, groupId?: string) => {
+    if (data.skills.mode === 'grouped') {
+      const nextGroups = data.skills.groups.map((group) => {
+        if (groupId && group.id !== groupId) return group;
+        return {
+          ...group,
+          items: group.items.filter((existingSkill) => existingSkill !== skill),
+        };
+      });
+
+      onSkillsChange({
+        mode: 'grouped',
+        list: getActiveSkillItems({
+          ...data.skills,
+          mode: 'grouped',
+          groups: nextGroups,
+        }),
+        groups: nextGroups,
+      });
+      return;
+    }
+
+    onSkillsChange({
+      ...data.skills,
+      mode: 'list',
+      list: data.skills.list.filter((existingSkill) => existingSkill !== skill),
+    });
+  };
+
+  const switchSkillMode = (mode: ResumeSkillsMode) => {
+    if (mode === data.skills.mode) return;
+
+    if (mode === 'grouped') {
+      const fallbackGroups =
+        data.skills.groups.length > 0
+          ? data.skills.groups
+          : data.skills.list.length > 0
+            ? [
+                {
+                  id: `skills-group-${Date.now()}`,
+                  label: 'Core Skills',
+                  items: data.skills.list,
+                },
+              ]
+            : [];
+
+      onSkillsChange({
+        mode: 'grouped',
+        list: getActiveSkillItems({
+          mode: 'grouped',
+          list: data.skills.list,
+          groups: fallbackGroups,
+        }),
+        groups: fallbackGroups,
+      });
+      setActiveSkillGroupId(fallbackGroups[0]?.id ?? null);
+      return;
+    }
+
+    onSkillsChange({
+      mode: 'list',
+      list: getActiveSkillItems(data.skills),
+      groups: data.skills.groups,
+    });
+  };
+
+  const addSkillGroup = () => {
+    const baseLabel = newSkillGroupLabel.trim() || 'New Group';
+    const existingLabels = new Set(
+      data.skills.groups.map((group) => group.label.trim().toLowerCase()).filter(Boolean),
+    );
+    let label = baseLabel;
+    let suffix = 2;
+    while (existingLabels.has(label.toLowerCase())) {
+      label = `${baseLabel} ${suffix}`;
+      suffix += 1;
+    }
+
+    const nextGroup: ResumeSkillGroup = {
+      id: `skills-group-${Date.now()}`,
+      label,
+      items: [],
+    };
+    const nextGroups = [...data.skills.groups, nextGroup];
+
+    onSkillsChange({
+      mode: 'grouped',
+      list: getActiveSkillItems({
+        ...data.skills,
+        mode: 'grouped',
+        groups: nextGroups,
+      }),
+      groups: nextGroups,
+    });
+
+    setNewSkillGroupLabel('');
+    setActiveSkillGroupId(nextGroup.id);
+  };
+
+  const removeSkillGroup = (groupId: string) => {
+    const nextGroups = data.skills.groups.filter((group) => group.id !== groupId);
+
+    onSkillsChange({
+      mode: 'grouped',
+      list: getActiveSkillItems({
+        ...data.skills,
+        mode: 'grouped',
+        groups: nextGroups,
+      }),
+      groups: nextGroups,
+    });
+
+    if (resolvedActiveSkillGroupId === groupId) {
+      setActiveSkillGroupId(nextGroups[0]?.id ?? null);
+    }
+  };
+
+  const updateSkillGroupLabel = (groupId: string, label: string) => {
+    const nextGroups = data.skills.groups.map((group) =>
+      group.id === groupId ? { ...group, label } : group,
+    );
+
+    onSkillsChange({
+      ...data.skills,
+      mode: 'grouped',
+      list: getActiveSkillItems({
+        ...data.skills,
+        mode: 'grouped',
+        groups: nextGroups,
+      }),
+      groups: nextGroups,
+    });
+  };
 
   const addLanguage = () => {
     const trimmedLanguage = newLanguage.trim();
@@ -275,10 +438,17 @@ export const useEditorPanelState = ({
     : -1;
 
   return {
+    data,
     openSection,
     toggle,
+    onPersonalInfoChange,
+    onSummaryChange,
     newSkill,
     setNewSkill,
+    newSkillGroupLabel,
+    setNewSkillGroupLabel,
+    resolvedActiveSkillGroupId,
+    setActiveSkillGroupId,
     newLanguage,
     setNewLanguage,
     newCertification,
@@ -314,6 +484,10 @@ export const useEditorPanelState = ({
     removeLink,
     addSkill,
     removeSkill,
+    switchSkillMode,
+    addSkillGroup,
+    removeSkillGroup,
+    updateSkillGroupLabel,
     addLanguage,
     removeLanguage,
     addCertification,

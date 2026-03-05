@@ -1,12 +1,5 @@
 import type { ComponentType, ReactElement, ReactNode } from 'react';
-import type {
-  ResumeData,
-  ResumeEducationItem,
-  ResumeExperienceItem,
-  ResumeLinkItem,
-  ResumePersonalInfo,
-  ResumeProjectItem,
-} from '../resume';
+import type { ResumePersonalInfo } from '../resume';
 
 export type EditorSectionTabId =
   | 'personal'
@@ -38,21 +31,6 @@ export interface BuilderEditorSectionTab {
 }
 
 export type BuilderPersonalInfoField = Exclude<keyof ResumePersonalInfo, 'links'>;
-
-export interface EditorPanelProps {
-  data: ResumeData;
-  onPersonalInfoChange: (field: BuilderPersonalInfoField, value: string) => void;
-  onLinksChange: (links: ResumeLinkItem[]) => void;
-  onSummaryChange: (summary: string) => void;
-  onExperienceChange: (experience: ResumeExperienceItem[]) => void;
-  onEducationChange: (education: ResumeEducationItem[]) => void;
-  onVolunteeringChange: (volunteering: ResumeExperienceItem[]) => void;
-  onProjectsChange: (projects: ResumeProjectItem[]) => void;
-  onCertificationsChange: (certifications: string[]) => void;
-  onSkillsChange: (skills: string[]) => void;
-  onLanguagesChange: (languages: string[]) => void;
-  onAchievementsChange: (achievements: string[]) => void;
-}
 
 export interface EditorInputProps {
   label?: string;

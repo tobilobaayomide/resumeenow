@@ -1,5 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import type { Dispatch, SetStateAction } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { User } from '@supabase/supabase-js';
 import type { NavigateFunction } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -14,6 +13,7 @@ import {
   type ResumeData,
   type TemplateId,
 } from '../../types/resume';
+import { useBuilderStore } from '../../store/builderStore';
 
 interface BuilderLocationState {
   importedResumeData?: unknown;
@@ -26,12 +26,6 @@ interface UseBuilderPersistenceArgs {
   locationState: BuilderLocationState | null;
   user: User | null;
   navigate: NavigateFunction;
-  title: string;
-  templateId: TemplateId;
-  resumeData: ResumeData;
-  setResumeData: Dispatch<SetStateAction<ResumeData>>;
-  setTemplateId: Dispatch<SetStateAction<TemplateId>>;
-  setTitle: Dispatch<SetStateAction<string>>;
 }
 
 interface UseBuilderPersistenceResult {
@@ -51,16 +45,18 @@ export const useBuilderPersistence = ({
   locationState,
   user,
   navigate,
-  title,
-  templateId,
-  resumeData,
-  setResumeData,
-  setTemplateId,
-  setTitle,
 }: UseBuilderPersistenceArgs): UseBuilderPersistenceResult => {
+  const resumeData = useBuilderStore((store) => store.resumeData);
+  const templateId = useBuilderStore((store) => store.templateId);
+  const title = useBuilderStore((store) => store.title);
+  const setResumeData = useBuilderStore((store) => store.setResumeData);
+  const setTemplateId = useBuilderStore((store) => store.setTemplateId);
+  const setTitle = useBuilderStore((store) => store.setTitle);
+
   const [isSaving, setIsSaving] = useState(false);
   const [isAutosaving, setIsAutosaving] = useState(false);
   const [hasHandledAutoDownload, setHasHandledAutoDownload] = useState(false);
+  const hasHydratedInitialState = useRef(false);
   const [savedSnapshot, setSavedSnapshot] = useState(() =>
     serializeDraft(
       searchParams.get('title') || 'Untitled Resume',
@@ -100,28 +96,31 @@ export const useBuilderPersistence = ({
   }, [setResumeData, setTemplateId, setTitle]);
 
   useEffect(() => {
-    if (isNew) {
-      const nextTemplateId = normalizeTemplateId(searchParams.get('template'));
-      const queryTitle = searchParams.get('title');
-      const importedTitle = locationState?.importedTitle;
-      const nextTitle = queryTitle || importedTitle || 'Untitled Resume';
-      const nextData = locationState?.importedResumeData
-        ? normalizeResumeData(locationState.importedResumeData)
-        : INITIAL_RESUME_DATA;
+    if (!isNew || hasHydratedInitialState.current) return;
 
-      setLoadedResumeState(
-        {
-          ...nextData,
-          summary: clampSummary(nextData.summary),
-        },
-        nextTemplateId,
-        nextTitle,
-      );
-    }
-  }, [isNew, locationState, searchParams, setLoadedResumeState]);
+    const nextTemplateId = normalizeTemplateId(searchParams.get('template'));
+    const queryTitle = searchParams.get('title');
+    const importedTitle = locationState?.importedTitle;
+    const nextTitle = queryTitle || importedTitle || 'Untitled Resume';
+    const nextData = locationState?.importedResumeData
+      ? normalizeResumeData(locationState.importedResumeData)
+      : INITIAL_RESUME_DATA;
+
+    setLoadedResumeState(
+      {
+        ...nextData,
+        summary: clampSummary(nextData.summary),
+      },
+      nextTemplateId,
+      nextTitle,
+    );
+    hasHydratedInitialState.current = true;
+    // Run only once on new builder load
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isNew, locationState]);
 
   useEffect(() => {
-    if (!isNew && id && user) {
+    if (!isNew && id && user && !hasHydratedInitialState.current) {
       const fetchResume = async () => {
         const { data, error } = await supabase
           .from('resumes')
@@ -152,6 +151,7 @@ export const useBuilderPersistence = ({
           resume.title || 'Untitled Resume',
           resume.updated_at,
         );
+        hasHydratedInitialState.current = true;
       };
 
       void fetchResume();

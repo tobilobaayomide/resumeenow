@@ -1,4 +1,5 @@
 import type { ResumeData, ResumePersonalInfo } from "./types";
+import { EMPTY_SKILLS_SECTION } from "./skills";
 
 export const EMPTY_PERSONAL_INFO: ResumePersonalInfo = {
   fullName: "",
@@ -18,7 +19,11 @@ export const INITIAL_RESUME_DATA: ResumeData = {
   projects: [],
   education: [],
   certifications: [],
-  skills: [],
+  skills: {
+    ...EMPTY_SKILLS_SECTION,
+    list: [],
+    groups: [],
+  },
   languages: [],
   achievements: [],
 };

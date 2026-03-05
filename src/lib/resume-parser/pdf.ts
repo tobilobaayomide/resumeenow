@@ -1,5 +1,3 @@
-import { GlobalWorkerOptions, getDocument } from 'pdfjs-dist';
-import pdfWorkerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
 import type { PdfTextItem } from '../../types/parser';
 import {
   cleanLine,
@@ -7,8 +5,40 @@ import {
   isNoiseLine,
   isReadableDocumentText,
 } from './text';
+type PdfJsModule = typeof import('pdfjs-dist');
+type PdfWorkerModule = { default: string };
 
-GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
+let pdfJsModulePromise: Promise<PdfJsModule> | null = null;
+let pdfWorkerModulePromise: Promise<PdfWorkerModule> | null = null;
+let workerConfigured = false;
+
+const getPdfJsModule = async (): Promise<PdfJsModule> => {
+  if (!pdfJsModulePromise) {
+    pdfJsModulePromise = import('pdfjs-dist');
+  }
+  return pdfJsModulePromise;
+};
+
+const getPdfWorkerUrl = async (): Promise<string> => {
+  if (!pdfWorkerModulePromise) {
+    pdfWorkerModulePromise = import('pdfjs-dist/build/pdf.worker.min.mjs?url');
+  }
+
+  const workerModule = await pdfWorkerModulePromise;
+  return workerModule.default;
+};
+
+const ensurePdfWorker = async (): Promise<void> => {
+  if (workerConfigured) return;
+
+  const [{ GlobalWorkerOptions }, workerUrl] = await Promise.all([
+    getPdfJsModule(),
+    getPdfWorkerUrl(),
+  ]);
+
+  GlobalWorkerOptions.workerSrc = workerUrl;
+  workerConfigured = true;
+};
 
 const toPdfTextItem = (item: unknown): PdfTextItem | null => {
   if (typeof item !== 'object' || item === null) return null;
@@ -86,6 +116,9 @@ const extractPageLines = (items: PdfTextItem[]): string[] => {
 };
 
 const extractPdfText = async (file: File): Promise<string> => {
+  await ensurePdfWorker();
+  const { getDocument } = await getPdfJsModule();
+
   const bytes = new Uint8Array(await file.arrayBuffer());
   const loadingTask = getDocument({ data: bytes });
   const pdf = await loadingTask.promise;

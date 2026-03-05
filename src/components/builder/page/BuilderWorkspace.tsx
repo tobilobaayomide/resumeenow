@@ -2,27 +2,19 @@ import React from 'react';
 import EditorPanel from '../editor/EditorPanel';
 import LivePreview from '../preview/LivePreview';
 import type { BuilderWorkspaceProps } from '../../../types/builder';
+import { useBuilderStore } from '../../../store/builderStore';
 
 const BuilderWorkspace: React.FC<BuilderWorkspaceProps> = ({
   mobileView,
   isEditorCollapsed,
-  resumeData,
-  templateId,
   zoom,
   onZoomOut,
   onZoomIn,
-  onPersonalInfoChange,
-  onLinksChange,
-  onSummaryChange,
-  onExperienceChange,
-  onEducationChange,
-  onVolunteeringChange,
-  onProjectsChange,
-  onCertificationsChange,
-  onSkillsChange,
-  onLanguagesChange,
-  onAchievementsChange,
-}) => (
+}) => {
+  const resumeData = useBuilderStore((store) => store.resumeData);
+  const templateId = useBuilderStore((store) => store.templateId);
+
+  return (
   <div className="flex flex-1 min-h-0 overflow-hidden relative isolate print:block print:h-auto print:overflow-visible">
     <div
       className={`
@@ -32,18 +24,6 @@ const BuilderWorkspace: React.FC<BuilderWorkspaceProps> = ({
       `}
     >
       <EditorPanel
-        data={resumeData}
-        onPersonalInfoChange={onPersonalInfoChange}
-        onLinksChange={onLinksChange}
-        onSummaryChange={onSummaryChange}
-        onExperienceChange={onExperienceChange}
-        onEducationChange={onEducationChange}
-        onVolunteeringChange={onVolunteeringChange}
-        onProjectsChange={onProjectsChange}
-        onCertificationsChange={onCertificationsChange}
-        onSkillsChange={onSkillsChange}
-        onLanguagesChange={onLanguagesChange}
-        onAchievementsChange={onAchievementsChange}
       />
     </div>
 
@@ -78,6 +58,7 @@ const BuilderWorkspace: React.FC<BuilderWorkspaceProps> = ({
       </div>
     </div>
   </div>
-);
+  );
+};
 
 export default BuilderWorkspace;

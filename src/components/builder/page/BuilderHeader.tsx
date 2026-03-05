@@ -134,7 +134,7 @@ const BuilderHeader: React.FC<BuilderHeaderProps> = ({
 
       <button
         onClick={() => onProAction('cover_letter', 'Cover Letter')}
-        className="hidden 2xl:flex px-3 py-2 rounded-full text-xs font-normal border border-gray-200 text-gray-700 hover:bg-gray-50 items-center gap-2 transition-colors"
+        className="hidden xl:flex px-3 py-2 rounded-full text-xs font-normal border border-gray-200 text-gray-700 hover:bg-gray-50 items-center gap-2 transition-colors"
         title="Cover Letter"
       >
         <FiFileText size={14} />
@@ -144,7 +144,7 @@ const BuilderHeader: React.FC<BuilderHeaderProps> = ({
 
       <button
         onClick={() => onProAction('ats_audit', 'ATS Audit')}
-        className="hidden 2xl:flex px-3 py-2 rounded-full text-xs font-normal border border-gray-200 text-gray-700 hover:bg-gray-50 items-center gap-2 transition-colors"
+        className="hidden xl:flex px-3 py-2 rounded-full text-xs font-normal border border-gray-200 text-gray-700 hover:bg-gray-50 items-center gap-2 transition-colors"
         title="ATS Audit"
       >
         <FiCheck size={14} />

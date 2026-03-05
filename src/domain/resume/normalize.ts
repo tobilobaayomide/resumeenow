@@ -4,6 +4,7 @@ import {
   type TemplateId,
 } from "../templates";
 import { EMPTY_PERSONAL_INFO, INITIAL_RESUME_DATA } from "./defaults";
+import { normalizeSkillsSection } from "./skills";
 import type {
   ResumeData,
   ResumeEducationItem,
@@ -203,7 +204,7 @@ export const normalizeResumeData = (value: unknown): ResumeData => {
     projects: normalizeProjectList(value.projects),
     education: normalizeEducationList(value.education),
     certifications: toStringArray(value.certifications),
-    skills: toStringArray(value.skills),
+    skills: normalizeSkillsSection(value.skills),
     languages: uniqueStringArray([
       ...toStringArray(value.languages),
       ...toStringArray(value.language),

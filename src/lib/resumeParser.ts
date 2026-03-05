@@ -16,15 +16,19 @@ import {
   parseExperienceSection,
   parseListAsExperience,
   parseProjectSection,
+  parseSkillsSection,
   parseSkillsText,
   toSuggestedTitle,
 } from './resume-parser/entities';
 import { extractRawText } from './resume-parser/pdf';
 import {
   collectSections,
+  extractSummaryFromPreamble,
   extractSkillsFromPreamble,
+  detectSectionHeading,
 } from './resume-parser/sections';
 import {
+  cleanLine,
   dedupeRepeatedHalves,
   isReadableDocumentText,
   splitLines,
@@ -41,7 +45,21 @@ export const parseResumeFile = async (file: File): Promise<ParsedResumeResult> =
   const lines = dedupeRepeatedHalves(splitLines(rawText));
   const sections = collectSections(lines);
 
-  const summaryText = sections.summary;
+  const sanitizeSummaryText = (value: string): string =>
+    value
+      .split('\n')
+      .map((line) => cleanLine(line))
+      .filter(Boolean)
+      .filter((line) => !EMAIL_REGEX.test(line))
+      .filter((line) => !PHONE_REGEX.test(line))
+      .filter((line) => !/linkedin|github|portfolio|behance|dribbble/i.test(line))
+      .filter((line) => !detectSectionHeading(line))
+      .join(' ')
+      .trim();
+
+  const summaryText = sanitizeSummaryText(
+    sections.summary || extractSummaryFromPreamble(sections.preamble),
+  );
   const experienceText = sections.experience;
   const projectsText = sections.projects;
   const educationText = sections.education;
@@ -51,7 +69,7 @@ export const parseResumeFile = async (file: File): Promise<ParsedResumeResult> =
 
   const email = rawText.match(EMAIL_REGEX)?.[0] ?? '';
   const phone = rawText.match(PHONE_REGEX)?.[0] ?? '';
-  const links = extractLinks(lines, rawText, email);
+  const links = extractLinks(lines, email);
   const website = links[0]?.url ?? '';
   const location = extractLocation(lines, email, phone, links);
 
@@ -81,7 +99,7 @@ export const parseResumeFile = async (file: File): Promise<ParsedResumeResult> =
     projects,
     education: parseEducationSection(educationText),
     certifications: parseCertificationsText(certificationsText),
-    skills: parseSkillsText(skillsText),
+    skills: parseSkillsSection(skillsText),
     languages: parseSkillsText(languagesText),
     achievements: parseCertificationsText(sections.awards),
   };

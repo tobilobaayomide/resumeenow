@@ -1,5 +1,5 @@
 import type { AtsAuditResult } from '../../types/builder';
-import type { ResumeData, TemplateId } from '../../types/resume';
+import { getActiveSkillItems, type ResumeData, type TemplateId } from '../../types/resume';
 
 export const SUMMARY_MAX_LENGTH = 500;
 export const AUTOSAVE_DELAY_MS = 2000;
@@ -80,10 +80,11 @@ export const runLocalAtsAudit = (
   jobDescription: string,
   targetRole: string,
 ): AtsAuditResult => {
+  const activeSkills = getActiveSkillItems(data.skills);
   const keywords = extractKeywords(`${targetRole} ${jobDescription}`);
   const resumeCorpus = [
     data.summary,
-    data.skills.join(' '),
+    activeSkills.join(' '),
     data.languages.join(' '),
     data.achievements.join(' '),
     ...data.experience.map(
@@ -111,7 +112,7 @@ export const runLocalAtsAudit = (
       : 50;
   const summaryScore =
     data.summary.trim().length >= 80 ? 100 : data.summary.trim() ? 60 : 0;
-  const skillScore = Math.min(100, data.skills.length * 10);
+  const skillScore = Math.min(100, activeSkills.length * 10);
   const experienceScore = Math.min(100, data.experience.length * 35);
   const impactScore = Math.min(100, quantifiedBulletCount * 12);
 
@@ -152,7 +153,7 @@ export const runLocalAtsAudit = (
       'Add at least one experience entry with measurable impact.',
     );
   }
-  if (data.skills.length < 8) {
+  if (activeSkills.length < 8) {
     suggestions.push(
       'Expand your skills list with role-specific tools and frameworks.',
     );

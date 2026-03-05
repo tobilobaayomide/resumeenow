@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from 'react';
 import type { Session, User } from '@supabase/supabase-js';
-import { supabase } from '../lib/supabase';
 import { AuthContext } from './auth-context';
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -9,24 +8,48 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session: activeSession } }) => {
-      setSession(activeSession);
-      setUser(activeSession?.user ?? null);
-      setLoading(false);
-    });
+    let mounted = true;
+    let unsubscribe: (() => void) | null = null;
 
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, activeSession) => {
-      setSession(activeSession);
-      setUser(activeSession?.user ?? null);
-      setLoading(false);
-    });
+    const initializeAuth = async () => {
+      try {
+        const { supabase } = await import('../lib/supabase');
+        const {
+          data: { session: activeSession },
+        } = await supabase.auth.getSession();
 
-    return () => subscription.unsubscribe();
+        if (!mounted) return;
+
+        setSession(activeSession);
+        setUser(activeSession?.user ?? null);
+        setLoading(false);
+
+        const {
+          data: { subscription },
+        } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+          setSession(nextSession);
+          setUser(nextSession?.user ?? null);
+          setLoading(false);
+        });
+
+        unsubscribe = () => subscription.unsubscribe();
+      } catch {
+        if (mounted) {
+          setLoading(false);
+        }
+      }
+    };
+
+    void initializeAuth();
+
+    return () => {
+      mounted = false;
+      unsubscribe?.();
+    };
   }, []);
 
   const signOut = async () => {
+    const { supabase } = await import('../lib/supabase');
     await supabase.auth.signOut();
   };
 

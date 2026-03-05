@@ -1,11 +1,11 @@
 import React from 'react';
 import { FiAward, FiPlus, FiX } from 'react-icons/fi';
-import type { EditorPanelProps } from '../../../../types/builder';
 import type { EditorPanelState } from '../useEditorPanelState';
+import type { ResumeData } from '../../../../types/resume';
 import { Section } from '../common';
 
 interface EditorAchievementsSectionProps {
-  data: EditorPanelProps['data'];
+  data: ResumeData;
   openSection: EditorPanelState['openSection'];
   toggle: EditorPanelState['toggle'];
   state: EditorPanelState;

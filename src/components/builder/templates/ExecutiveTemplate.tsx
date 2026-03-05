@@ -2,10 +2,12 @@ import React from 'react';
 import { FiMail, FiPhone, FiMapPin, FiGlobe } from 'react-icons/fi';
 import type { BuilderTemplateComponentProps, TemplateSectionTitleProps } from '../../../types/builder';
 import {
+  getActiveSkillItems,
   getPersonalLinkDisplayLabel,
   getVisiblePersonalLinks,
   toExternalLinkHref,
 } from '../../../domain/resume';
+import { toDescriptionBullets } from './utils';
 
 const SectionTitle: React.FC<TemplateSectionTitleProps> = ({ children }) => (
   <h3 className="font-bold text-[10px] uppercase tracking-[0.15em] text-gray-400 border-b border-gray-200 pb-1 mb-3">
@@ -27,6 +29,7 @@ const ExecutiveTemplate: React.FC<BuilderTemplateComponentProps> = ({ data, cont
     achievements,
   } = data;
   const linkItems = getVisiblePersonalLinks(personalInfo);
+  const activeSkills = getActiveSkillItems(skills);
 
   return (
     <div ref={contentRef} className="font-sans text-black space-y-6">
@@ -41,7 +44,7 @@ const ExecutiveTemplate: React.FC<BuilderTemplateComponentProps> = ({ data, cont
           {personalInfo.email && (
             <div className="flex items-center gap-1.5">
               <FiMail size={9} />
-              <a href={`mailto:${personalInfo.email}`} className="hover:underline break-all">
+              <a href={`mailto:${personalInfo.email}`} className="hover:underline break-all text-blue-600">
                 {personalInfo.email}
               </a>
             </div>
@@ -59,7 +62,7 @@ const ExecutiveTemplate: React.FC<BuilderTemplateComponentProps> = ({ data, cont
                 href={toExternalLinkHref(link.url)}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="hover:underline break-all"
+                className="hover:underline break-all text-blue-600"
               >
                 {getPersonalLinkDisplayLabel(link)}
               </a>
@@ -120,9 +123,22 @@ const ExecutiveTemplate: React.FC<BuilderTemplateComponentProps> = ({ data, cont
                     {project.link && (
                       <p className="text-[10px] text-gray-400 font-semibold mt-0.5 break-all">{project.link}</p>
                     )}
-                    {project.description && (
-                      <p className="text-[11px] leading-relaxed text-gray-600 mt-1">{project.description}</p>
-                    )}
+                    {project.description && (() => {
+                      const bullets = toDescriptionBullets(project.description);
+                      if (bullets.length > 0) {
+                        return (
+                          <ul className="list-disc pl-4 text-[11px] leading-relaxed text-gray-600 mt-1 space-y-0.5">
+                            {bullets.map((line, index) => (
+                              <li key={`${project.id}-desc-${index}`}>{line}</li>
+                            ))}
+                          </ul>
+                        );
+                      }
+
+                      return (
+                        <p className="text-[11px] leading-relaxed text-gray-600 mt-1">{project.description}</p>
+                      );
+                    })()}
                   </div>
                 ))}
               </div>
@@ -175,11 +191,11 @@ const ExecutiveTemplate: React.FC<BuilderTemplateComponentProps> = ({ data, cont
               </div>
             </section>
           )}
-          {skills.length > 0 && (
+          {activeSkills.length > 0 && (
             <section>
               <SectionTitle>Skills</SectionTitle>
               <div className="flex flex-wrap gap-1.5">
-                {skills.map((skill: string, index: number) => (
+                {activeSkills.map((skill, index) => (
                   <span
                     key={index}
                     className="bg-gray-100 border border-gray-200 px-2 py-0.5 rounded text-[10px] font-bold text-gray-600"

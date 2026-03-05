@@ -18,5 +18,15 @@ This project is a simple and modern resume maker built with React, Vite, and Tai
    npm run dev
    ```
 
+## Asset Size Workflow
+- Check image budgets (fails when files in `src/assets` or `public` exceed 300 KB):
+  ```sh
+  npm run assets:check
+  ```
+- Optimize and resize an image before committing:
+  ```sh
+  npm run assets:optimize -- src/assets/input.png src/assets/output.jpg 1600 72
+  ```
+
 ## License
 MIT

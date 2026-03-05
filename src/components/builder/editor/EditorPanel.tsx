@@ -1,6 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { BUILDER_EDITOR_SECTION_TABS } from '../../../data/builder';
-import type { EditorPanelProps } from '../../../types/builder';
 import EditorPanelHeader from './EditorPanelHeader';
 import EditorPanelResizeHandle from './EditorPanelResizeHandle';
 import EditorPanelTabs from './EditorPanelTabs';
@@ -22,20 +21,7 @@ const MIN_WIDTH = 360;
 const MAX_WIDTH = 700;
 const DEFAULT_WIDTH = 420;
 
-const EditorPanel: React.FC<EditorPanelProps> = ({
-  data,
-  onPersonalInfoChange,
-  onLinksChange,
-  onSummaryChange,
-  onExperienceChange,
-  onEducationChange,
-  onVolunteeringChange,
-  onProjectsChange,
-  onCertificationsChange,
-  onSkillsChange,
-  onLanguagesChange,
-  onAchievementsChange,
-}) => {
+const EditorPanel: React.FC = () => {
   const [panelWidth, setPanelWidth] = useState(DEFAULT_WIDTH);
   const [isDesktop, setIsDesktop] = useState<boolean>(() =>
     typeof window !== 'undefined' ? window.innerWidth >= 1024 : true,
@@ -45,21 +31,11 @@ const EditorPanel: React.FC<EditorPanelProps> = ({
   const startWidth = useRef(DEFAULT_WIDTH);
   const panelScrollRef = useRef<HTMLDivElement | null>(null);
 
-  const state = useEditorPanelState({
-    data,
-    onLinksChange,
-    onExperienceChange,
-    onEducationChange,
-    onVolunteeringChange,
-    onProjectsChange,
-    onCertificationsChange,
-    onSkillsChange,
-    onLanguagesChange,
-    onAchievementsChange,
-    onSectionToggle: () => {
-      if (panelScrollRef.current) panelScrollRef.current.scrollTop = 0;
-    },
+  const state = useEditorPanelState(() => {
+    if (panelScrollRef.current) panelScrollRef.current.scrollTop = 0;
   });
+
+  const data = state.data;
 
   const { openSection, toggle } = state;
 
@@ -129,13 +105,12 @@ const EditorPanel: React.FC<EditorPanelProps> = ({
 
       <div
         ref={panelScrollRef}
-        className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden overscroll-contain touch-pan-y flex flex-col bg-transparent px-3 py-3 pr-2.5 gap-2.5 pb-6"
+        className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden overscroll-contain touch-pan-y flex flex-col bg-transparent px-3 py-3 pr-5 gap-2.5 pb-6"
       >
         <EditorPersonalSection
           data={data}
           openSection={openSection}
           toggle={toggle}
-          onPersonalInfoChange={onPersonalInfoChange}
           state={state}
         />
 
@@ -143,7 +118,7 @@ const EditorPanel: React.FC<EditorPanelProps> = ({
           data={data}
           openSection={openSection}
           toggle={toggle}
-          onSummaryChange={onSummaryChange}
+          state={state}
         />
 
         <EditorExperienceSection
@@ -175,7 +150,6 @@ const EditorPanel: React.FC<EditorPanelProps> = ({
         />
 
         <EditorSkillsSection
-          data={data}
           openSection={openSection}
           toggle={toggle}
           state={state}

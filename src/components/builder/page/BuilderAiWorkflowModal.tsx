@@ -30,6 +30,7 @@ const BuilderAiWorkflowModal: React.FC<BuilderAiWorkflowModalProps> = ({
   onApplyAtsKeywordHints,
   onGenerateCoverLetter,
   onCopyCoverLetter,
+  isGenerating,
 }) => {
   if (!activeAiFlow) return null;
 
@@ -40,8 +41,11 @@ const BuilderAiWorkflowModal: React.FC<BuilderAiWorkflowModalProps> = ({
         if (event.target === event.currentTarget) onClose();
       }}
     >
-      <div className="w-full max-w-2xl rounded-2xl bg-white border border-gray-200 shadow-2xl overflow-hidden">
-        <div className="px-6 py-5 border-b border-gray-100 flex items-start justify-between">
+      {/* CHANGED: Added flex flex-col max-h-[90vh] to cap height */}
+      <div className="w-full max-w-2xl rounded-2xl bg-white border border-gray-200 shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+        
+        {/* Header - flex-shrink-0 keeps it always visible */}
+        <div className="px-6 py-5 border-b border-gray-100 flex items-start justify-between shrink-0">
           <div>
             <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-gray-400">
               AI Workflow
@@ -62,8 +66,9 @@ const BuilderAiWorkflowModal: React.FC<BuilderAiWorkflowModalProps> = ({
           </button>
         </div>
 
-        {activeAiFlow === 'ai_tailor' ? (
-          <>
+        {/* CHANGED: Body is now scrollable with overflow-y-auto flex-1 */}
+        <div className="overflow-y-auto flex-1">
+          {activeAiFlow === 'ai_tailor' ? (
             <div className="px-6 py-5 space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <label className="text-xs font-bold text-gray-600 uppercase tracking-wide">
@@ -99,24 +104,9 @@ const BuilderAiWorkflowModal: React.FC<BuilderAiWorkflowModalProps> = ({
               <p className="text-xs text-gray-500">
                 This applies a tailored summary in your editor so you can refine before saving.
               </p>
+
             </div>
-            <div className="px-6 py-4 bg-gray-50 border-t border-gray-100 flex items-center gap-3 justify-end">
-              <button
-                onClick={onClose}
-                className="h-10 px-4 rounded-xl border border-gray-200 bg-white text-sm font-semibold text-gray-600 hover:text-gray-900"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={onApplyTailor}
-                className="h-10 px-5 rounded-xl bg-black text-white text-sm font-semibold hover:bg-gray-800"
-              >
-                Apply Tailoring
-              </button>
-            </div>
-          </>
-        ) : activeAiFlow === 'ats_audit' ? (
-          <>
+          ) : activeAiFlow === 'ats_audit' ? (
             <div className="px-6 py-5 space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <label className="text-xs font-bold text-gray-600 uppercase tracking-wide">
@@ -142,9 +132,10 @@ const BuilderAiWorkflowModal: React.FC<BuilderAiWorkflowModalProps> = ({
               <div className="flex justify-end">
                 <button
                   onClick={onRunAtsAudit}
-                  className="h-9 px-4 rounded-lg bg-black text-white text-xs font-semibold hover:bg-gray-800"
+                  disabled={isGenerating}
+                  className="h-9 px-4 rounded-lg bg-black text-white text-xs font-semibold hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  Run Audit
+                  {isGenerating ? 'Scanning...' : 'Run Audit'}
                 </button>
               </div>
 
@@ -204,17 +195,13 @@ const BuilderAiWorkflowModal: React.FC<BuilderAiWorkflowModalProps> = ({
                       </p>
                     </div>
                   </div>
-
                   <div>
                     <p className="text-[11px] font-bold uppercase tracking-wide text-gray-500 mb-1.5">
                       Score Breakdown
                     </p>
                     <div className="space-y-2">
                       {atsResult.breakdown.map((item) => (
-                        <div
-                          key={item.label}
-                          className="flex items-center justify-between text-xs"
-                        >
+                        <div key={item.label} className="flex items-center justify-between text-xs">
                           <span className="font-medium text-gray-600">{item.label}</span>
                           <span className="font-bold text-gray-800">
                             {item.score}/{item.max}
@@ -223,7 +210,6 @@ const BuilderAiWorkflowModal: React.FC<BuilderAiWorkflowModalProps> = ({
                       ))}
                     </div>
                   </div>
-
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                     <div>
                       <p className="text-[11px] font-bold uppercase tracking-wide text-gray-500 mb-1.5">
@@ -264,7 +250,6 @@ const BuilderAiWorkflowModal: React.FC<BuilderAiWorkflowModalProps> = ({
                       </div>
                     </div>
                   </div>
-
                   <div>
                     <p className="text-[11px] font-bold uppercase tracking-wide text-gray-500 mb-1.5">
                       Suggestions
@@ -280,23 +265,7 @@ const BuilderAiWorkflowModal: React.FC<BuilderAiWorkflowModalProps> = ({
                 </div>
               )}
             </div>
-            <div className="px-6 py-4 bg-gray-50 border-t border-gray-100 flex items-center gap-3 justify-end">
-              <button
-                onClick={onClose}
-                className="h-10 px-4 rounded-xl border border-gray-200 bg-white text-sm font-semibold text-gray-600 hover:text-gray-900"
-              >
-                Close
-              </button>
-              <button
-                onClick={onApplyAtsKeywordHints}
-                className="h-10 px-5 rounded-xl bg-black text-white text-sm font-semibold hover:bg-gray-800"
-              >
-                Apply Keyword Hints
-              </button>
-            </div>
-          </>
-        ) : (
-          <>
+          ) : (
             <div className="px-6 py-5 space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <label className="text-xs font-bold text-gray-600 uppercase tracking-wide">
@@ -354,9 +323,10 @@ const BuilderAiWorkflowModal: React.FC<BuilderAiWorkflowModalProps> = ({
                 </p>
                 <button
                   onClick={onGenerateCoverLetter}
-                  className="h-9 px-4 rounded-lg bg-black text-white text-xs font-semibold hover:bg-gray-800"
+                  disabled={isGenerating}
+                  className="h-9 px-4 rounded-lg bg-black text-white text-xs font-semibold hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  Generate Draft
+                  {isGenerating ? 'Drafting...' : 'Generate Draft'}
                 </button>
               </div>
               {coverLetterDraft && (
@@ -372,23 +342,44 @@ const BuilderAiWorkflowModal: React.FC<BuilderAiWorkflowModalProps> = ({
                 </div>
               )}
             </div>
-            <div className="px-6 py-4 bg-gray-50 border-t border-gray-100 flex items-center gap-3 justify-end">
-              <button
-                onClick={onClose}
-                className="h-10 px-4 rounded-xl border border-gray-200 bg-white text-sm font-semibold text-gray-600 hover:text-gray-900"
-              >
-                Close
-              </button>
-              <button
-                onClick={onCopyCoverLetter}
-                className="h-10 px-5 rounded-xl bg-black text-white text-sm font-semibold hover:bg-gray-800 inline-flex items-center gap-2"
-              >
-                <FiCopy size={14} />
-                Copy Draft
-              </button>
-            </div>
-          </>
-        )}
+          )}
+        </div>
+
+        {/* Footer - flex-shrink-0 keeps it always visible at the bottom */}
+        <div className="px-6 py-4 bg-gray-50 border-t border-gray-100 flex items-center gap-3 justify-end shrink-0">
+          <button
+            onClick={onClose}
+            className="h-10 px-4 rounded-xl border border-gray-200 bg-white text-sm font-semibold text-gray-600 hover:text-gray-900"
+          >
+            {activeAiFlow === 'ats_audit' ? 'Close' : 'Cancel'}
+          </button>
+          {activeAiFlow === 'ai_tailor' && (
+            <button
+              onClick={onApplyTailor}
+              disabled={isGenerating}
+              className="h-10 px-5 rounded-xl bg-black text-white text-sm font-semibold hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isGenerating ? 'Tailoring...' : 'Apply Tailoring'}
+            </button>
+          )}
+          {activeAiFlow === 'ats_audit' && (
+            <button
+              onClick={onApplyAtsKeywordHints}
+              className="h-10 px-5 rounded-xl bg-black text-white text-sm font-semibold hover:bg-gray-800"
+            >
+              Apply Keyword Hints
+            </button>
+          )}
+          {activeAiFlow === 'cover_letter' && (
+            <button
+              onClick={onCopyCoverLetter}
+              className="h-10 px-5 rounded-xl bg-black text-white text-sm font-semibold hover:bg-gray-800 inline-flex items-center gap-2"
+            >
+              <FiCopy size={14} />
+              Copy Draft
+            </button>
+          )}
+        </div>
       </div>
     </div>
   );
