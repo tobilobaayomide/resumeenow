@@ -1,23 +1,12 @@
 import { clampSummary } from '../../lib/builder/page';
-import type { Dispatch, SetStateAction } from 'react';
-import type {
-  BuilderPagePersonalInfoField,
-  UseBuilderDraftMutationsResult,
-} from '../../types/builder';
-import type {
-  ResumeData,
-  ResumeEducationItem,
-  ResumeExperienceItem,
-  ResumeProjectItem,
-} from '../../types/resume';
+import type { BuilderPagePersonalInfoField, UseBuilderDraftMutationsResult } from '../../types/builder';
+import type { ResumeData, ResumeEducationItem, ResumeExperienceItem, ResumeProjectItem } from '../../types/resume';
+import { useBuilderStore } from '../../store/builderStore';
 
-interface UseBuilderDraftMutationsArgs {
-  setResumeData: Dispatch<SetStateAction<ResumeData>>;
-}
+export const useBuilderDraftMutations = (
+): UseBuilderDraftMutationsResult => {
+  const setResumeData = useBuilderStore((store) => store.setResumeData);
 
-export const useBuilderDraftMutations = ({
-  setResumeData,
-}: UseBuilderDraftMutationsArgs): UseBuilderDraftMutationsResult => {
   const onPersonalInfoChange = (
     field: BuilderPagePersonalInfoField,
     value: string,
@@ -65,7 +54,7 @@ export const useBuilderDraftMutations = ({
     setResumeData((prev) => ({ ...prev, certifications }));
   };
 
-  const onSkillsChange = (skills: string[]) => {
+  const onSkillsChange = (skills: ResumeData['skills']) => {
     setResumeData((prev) => ({ ...prev, skills }));
   };
 
