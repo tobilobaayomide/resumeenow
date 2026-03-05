@@ -68,14 +68,18 @@ export const PREVIEW_RESUME_DATA: ResumeData = {
     },
   ],
   certifications: ["Google UX Design Certificate", "NN/g UX Management"],
-  skills: [
-    "Product Design",
-    "Design Systems",
-    "Figma",
-    "Prototyping",
-    "User Research",
-    "Information Architecture",
-  ],
+  skills: {
+    mode: "list",
+    list: [
+      "Product Design",
+      "Design Systems",
+      "Figma",
+      "Prototyping",
+      "User Research",
+      "Information Architecture",
+    ],
+    groups: [],
+  },
   languages: ["English (Native)", "Spanish (Professional)"],
   achievements: [
     "Led onboarding redesign that improved activation by 31%",
