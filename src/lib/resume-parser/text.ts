@@ -62,21 +62,82 @@ const normalizeLineFingerprint = (line: string): string =>
 export const dedupeRepeatedHalves = (lines: string[]): string[] => {
   if (lines.length < 80) return lines;
 
-  const maxHalf = Math.floor(lines.length / 2);
-  for (let size = maxHalf; size >= 40; size -= 1) {
-    if (size * 2 > lines.length) continue;
+  const removeOneDuplicateChunk = (value: string[]): string[] => {
+    const maxHalf = Math.floor(value.length / 2);
+    for (let size = maxHalf; size >= 40; size -= 1) {
+      if (size * 2 > value.length) continue;
 
-    let matches = 0;
-    for (let index = 0; index < size; index += 1) {
-      if (normalizeLineFingerprint(lines[index]) === normalizeLineFingerprint(lines[index + size])) {
-        matches += 1;
+      let matches = 0;
+      for (let index = 0; index < size; index += 1) {
+        if (normalizeLineFingerprint(value[index]) === normalizeLineFingerprint(value[index + size])) {
+          matches += 1;
+        }
+      }
+
+      if (matches / size >= 0.9) {
+        return [...value.slice(0, size), ...value.slice(size * 2)];
       }
     }
 
-    if (matches / size >= 0.9) {
-      return [...lines.slice(0, size), ...lines.slice(size * 2)];
+    // Fallback: some PDFs append a near-duplicate copy of the whole resume
+    // with slight punctuation differences, so exact half-splitting misses it.
+    for (let offset = 40; offset <= value.length - 40; offset += 1) {
+      const maxSize = Math.min(offset, value.length - offset);
+      if (maxSize < 60) continue;
+      if (maxSize / value.length < 0.4) continue;
+
+      let matches = 0;
+      for (let index = 0; index < maxSize; index += 1) {
+        if (
+          normalizeLineFingerprint(value[index])
+          === normalizeLineFingerprint(value[offset + index])
+        ) {
+          matches += 1;
+        }
+      }
+
+      if (matches / maxSize >= 0.88) {
+        return [...value.slice(0, offset), ...value.slice(offset + maxSize)];
+      }
+    }
+
+    return value;
+  };
+
+  let deduped = lines;
+  while (true) {
+    const next = removeOneDuplicateChunk(deduped);
+    if (next.length === deduped.length) break;
+    deduped = next;
+    if (deduped.length < 80) break;
+  }
+
+  // Last-resort fallback for resumes where the full document is re-rendered
+  // multiple times with different clipping/page artifacts.
+  const firstFingerprint = normalizeLineFingerprint(deduped[0] ?? '');
+  if (firstFingerprint) {
+    for (let offset = 40; offset <= deduped.length - 40; offset += 1) {
+      if (normalizeLineFingerprint(deduped[offset] ?? '') !== firstFingerprint) continue;
+
+      const compareSize = Math.min(140, deduped.length - offset);
+      if (compareSize < 80) continue;
+
+      let matches = 0;
+      for (let index = 0; index < compareSize; index += 1) {
+        if (
+          normalizeLineFingerprint(deduped[index] ?? '')
+          === normalizeLineFingerprint(deduped[offset + index] ?? '')
+        ) {
+          matches += 1;
+        }
+      }
+
+      if (matches / compareSize >= 0.75) {
+        deduped = deduped.slice(0, offset);
+        break;
+      }
     }
   }
 
-  return lines;
+  return deduped;
 };
