@@ -8,9 +8,15 @@ const FREE_MONTHLY_CREDITS = 20;
 
 const resolveStorageKey = (userId: string): string => `${STORAGE_KEY_PREFIX}:${userId}`;
 const showToast = (type: 'success' | 'error', message: string): void => {
-  void import('sonner').then(({ toast }) => {
-    toast[type](message);
-  });
+    void import('sonner')
+    .then(({ toast }) => {
+      toast[type](message);
+    })
+    .catch((error) => {
+      if (typeof console !== 'undefined' && typeof console.error === 'function') {
+        console.error('Failed to load toast library for showToast:', error);
+      }
+    });
 };
 
 const getStoredTier = (userId: string | null): PlanTier => {
