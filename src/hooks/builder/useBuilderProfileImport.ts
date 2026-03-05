@@ -11,6 +11,7 @@ import {
   normalizeExperienceList,
   normalizeLinkList,
   normalizeProjectList,
+  normalizeSkillsSection,
   type ResumeData,
 } from '../../types/resume';
 
@@ -78,7 +79,7 @@ export const useBuilderProfileImport = ({
         projects: normalizeProjectList(data.projects),
         education: normalizeEducationList(data.education),
         certifications: toStringArray(data.certifications),
-        skills: toStringArray(data.skills),
+        skills: normalizeSkillsSection(data.skills),
         languages: toStringArray(data.languages),
         achievements: toStringArray(data.achievements ?? data.awards),
       };
