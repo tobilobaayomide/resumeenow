@@ -1,10 +1,12 @@
 import React from "react";
 import type { BuilderTemplateComponentProps } from "../../../types/builder";
 import {
+  getActiveSkillItems,
   getPersonalLinkDisplayLabel,
   getVisiblePersonalLinks,
   toExternalLinkHref,
 } from "../../../domain/resume";
+import { toDescriptionBullets } from "./utils";
 
 const MonoTemplate: React.FC<BuilderTemplateComponentProps> = ({
   data,
@@ -23,6 +25,9 @@ const MonoTemplate: React.FC<BuilderTemplateComponentProps> = ({
     achievements,
   } = data;
   const linkItems = getVisiblePersonalLinks(personalInfo);
+  const activeSkills = getActiveSkillItems(skills);
+  const groupedSkills = skills.groups.filter((group) => group.items.length > 0);
+  const shouldRenderGroupedSkills = skills.mode === "grouped" && groupedSkills.length > 0;
 
   return (
     <div ref={contentRef} className="font-sans text-black p-4 space-y-8">
@@ -119,11 +124,24 @@ const MonoTemplate: React.FC<BuilderTemplateComponentProps> = ({
                     {project.link}
                   </p>
                 )}
-                {project.description && (
-                  <p className="text-[11px] text-gray-500 mt-1 leading-relaxed">
-                    {project.description}
-                  </p>
-                )}
+                {project.description && (() => {
+                  const bullets = toDescriptionBullets(project.description);
+                  if (bullets.length > 0) {
+                    return (
+                      <ul className="list-disc pl-4 text-[11px] text-gray-500 mt-1 leading-relaxed space-y-0.5">
+                        {bullets.map((line, index) => (
+                          <li key={`${project.id}-desc-${index}`}>{line}</li>
+                        ))}
+                      </ul>
+                    );
+                  }
+
+                  return (
+                    <p className="text-[11px] text-gray-500 mt-1 leading-relaxed">
+                      {project.description}
+                    </p>
+                  );
+                })()}
               </div>
             </div>
           ))}
@@ -190,14 +208,25 @@ const MonoTemplate: React.FC<BuilderTemplateComponentProps> = ({
       )}
 
       {/* Skills */}
-      {skills.length > 0 && (
+      {activeSkills.length > 0 && (
         <section className="space-y-2">
           <h2 className="text-[11px] font-black uppercase tracking-[0.3em] text-black">
             Skills
           </h2>
-          <p className="text-[12px] text-black leading-relaxed text-justify ">
-            {skills.join(", ")}
-          </p>
+          {shouldRenderGroupedSkills ? (
+            <div className="space-y-1 text-[12px] text-black leading-relaxed text-justify">
+              {groupedSkills.map((group) => (
+                <p key={group.id}>
+                  <span className="font-bold">{group.label || "Skills"}:</span>{" "}
+                  {group.items.join(", ")}
+                </p>
+              ))}
+            </div>
+          ) : (
+            <p className="text-[12px] text-black leading-relaxed text-justify ">
+              {activeSkills.join(", ")}
+            </p>
+          )}
         </section>
       )}
 

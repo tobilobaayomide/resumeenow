@@ -1,10 +1,12 @@
 import React from 'react';
 import type { BuilderTemplateComponentProps } from '../../../types/builder';
 import {
+  getActiveSkillItems,
   getPersonalLinkDisplayLabel,
   getVisiblePersonalLinks,
   toExternalLinkHref,
 } from '../../../domain/resume';
+import { toDescriptionBullets } from './utils';
 
 const SiliconTemplate: React.FC<BuilderTemplateComponentProps> = ({ data, contentRef }) => {
   const {
@@ -20,6 +22,7 @@ const SiliconTemplate: React.FC<BuilderTemplateComponentProps> = ({ data, conten
     achievements,
   } = data;
   const linkItems = getVisiblePersonalLinks(personalInfo);
+  const activeSkills = getActiveSkillItems(skills);
 
   return (
     <div ref={contentRef} style={{ fontFamily: "'Courier New', Courier, monospace" }} className="text-black p-2">
@@ -77,13 +80,13 @@ const SiliconTemplate: React.FC<BuilderTemplateComponentProps> = ({ data, conten
       )}
 
       {/* Skills — tag cloud style */}
-      {skills.length > 0 && (
+      {activeSkills.length > 0 && (
         <section className="mb-6">
           <div className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mb-2">
             ## Stack
           </div>
           <div className="flex flex-wrap gap-1.5">
-            {skills.map((skill: string, i: number) => (
+            {activeSkills.map((skill, i) => (
               <span key={i} className="border border-gray-300 px-2 py-0.5 text-[10px] text-gray-600 bg-gray-50">
                 {skill}
               </span>
@@ -137,7 +140,22 @@ const SiliconTemplate: React.FC<BuilderTemplateComponentProps> = ({ data, conten
                   </span>
                 </div>
                 {project.link && <p className="text-[10px] text-gray-400 mt-1 break-all">{project.link}</p>}
-                {project.description && <p className="text-[11px] text-gray-500 mt-1.5 leading-relaxed">{project.description}</p>}
+                {project.description && (() => {
+                  const bullets = toDescriptionBullets(project.description);
+                  if (bullets.length > 0) {
+                    return (
+                      <ul className="list-disc pl-4 text-[11px] text-gray-500 mt-1.5 leading-relaxed space-y-0.5">
+                        {bullets.map((line, index) => (
+                          <li key={`${project.id}-desc-${index}`}>{line}</li>
+                        ))}
+                      </ul>
+                    );
+                  }
+
+                  return (
+                    <p className="text-[11px] text-gray-500 mt-1.5 leading-relaxed">{project.description}</p>
+                  );
+                })()}
               </div>
             ))}
           </div>
