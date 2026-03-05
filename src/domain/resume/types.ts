@@ -43,6 +43,20 @@ export interface ResumeProjectItem {
   description: string;
 }
 
+export type ResumeSkillsMode = "list" | "grouped";
+
+export interface ResumeSkillGroup {
+  id: string;
+  label: string;
+  items: string[];
+}
+
+export interface ResumeSkillsSection {
+  mode: ResumeSkillsMode;
+  list: string[];
+  groups: ResumeSkillGroup[];
+}
+
 export interface ResumeData {
   personalInfo: ResumePersonalInfo;
   summary: string;
@@ -51,7 +65,7 @@ export interface ResumeData {
   projects: ResumeProjectItem[];
   education: ResumeEducationItem[];
   certifications: string[];
-  skills: string[];
+  skills: ResumeSkillsSection;
   languages: string[];
   achievements: string[];
 }
