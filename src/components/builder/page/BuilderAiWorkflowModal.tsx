@@ -45,7 +45,7 @@ const BuilderAiWorkflowModal: React.FC<BuilderAiWorkflowModalProps> = ({
       <div className="w-full max-w-2xl rounded-2xl bg-white border border-gray-200 shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
         
         {/* Header - flex-shrink-0 keeps it always visible */}
-        <div className="px-6 py-5 border-b border-gray-100 flex items-start justify-between flex-shrink-0">
+        <div className="px-6 py-5 border-b border-gray-100 flex items-start justify-between shrink-0">
           <div>
             <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-gray-400">
               AI Workflow
@@ -346,7 +346,7 @@ const BuilderAiWorkflowModal: React.FC<BuilderAiWorkflowModalProps> = ({
         </div>
 
         {/* Footer - flex-shrink-0 keeps it always visible at the bottom */}
-        <div className="px-6 py-4 bg-gray-50 border-t border-gray-100 flex items-center gap-3 justify-end flex-shrink-0">
+        <div className="px-6 py-4 bg-gray-50 border-t border-gray-100 flex items-center gap-3 justify-end shrink-0">
           <button
             onClick={onClose}
             className="h-10 px-4 rounded-xl border border-gray-200 bg-white text-sm font-semibold text-gray-600 hover:text-gray-900"
