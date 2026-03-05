@@ -1,14 +1,13 @@
 import React from 'react';
 import { FiLink, FiPlus, FiUser, FiX } from 'react-icons/fi';
-import type { EditorPanelProps } from '../../../../types/builder';
 import type { EditorPanelState } from '../useEditorPanelState';
+import type { ResumeData } from '../../../../types/resume';
 import { Input, Section } from '../common';
 
 interface EditorPersonalSectionProps {
-  data: EditorPanelProps['data'];
+  data: ResumeData;
   openSection: EditorPanelState['openSection'];
   toggle: EditorPanelState['toggle'];
-  onPersonalInfoChange: EditorPanelProps['onPersonalInfoChange'];
   state: EditorPanelState;
 }
 
@@ -16,7 +15,6 @@ const EditorPersonalSection: React.FC<EditorPersonalSectionProps> = ({
   data,
   openSection,
   toggle,
-  onPersonalInfoChange,
   state,
 }) => (
   <Section
@@ -33,7 +31,7 @@ const EditorPersonalSection: React.FC<EditorPersonalSectionProps> = ({
             label="Full Name"
             placeholder="e.g. Alex Morgan"
             value={data.personalInfo.fullName}
-            onChange={(value) => onPersonalInfoChange('fullName', value)}
+            onChange={(value) => state.onPersonalInfoChange('fullName', value)}
           />
         </div>
         <div className="sm:col-span-2">
@@ -41,27 +39,27 @@ const EditorPersonalSection: React.FC<EditorPersonalSectionProps> = ({
             label="Job Title"
             placeholder="e.g. Senior Product Designer"
             value={data.personalInfo.jobTitle}
-            onChange={(value) => onPersonalInfoChange('jobTitle', value)}
+            onChange={(value) => state.onPersonalInfoChange('jobTitle', value)}
           />
         </div>
         <Input
           label="Email"
-          placeholder="you@email.com"
-          value={data.personalInfo.email}
-          onChange={(value) => onPersonalInfoChange('email', value)}
+            placeholder="you@email.com"
+            value={data.personalInfo.email}
+            onChange={(value) => state.onPersonalInfoChange('email', value)}
         />
         <Input
           label="Phone"
-          placeholder="+1 000 000"
-          value={data.personalInfo.phone}
-          onChange={(value) => onPersonalInfoChange('phone', value)}
+            placeholder="+1 000 000"
+            value={data.personalInfo.phone}
+            onChange={(value) => state.onPersonalInfoChange('phone', value)}
         />
         <div className="sm:col-span-2">
           <Input
             label="Location"
             placeholder="e.g. San Francisco, CA"
             value={data.personalInfo.location}
-            onChange={(value) => onPersonalInfoChange('location', value)}
+            onChange={(value) => state.onPersonalInfoChange('location', value)}
           />
         </div>
         <div className="sm:col-span-2">
@@ -69,7 +67,7 @@ const EditorPersonalSection: React.FC<EditorPersonalSectionProps> = ({
             label="Portfolio"
             placeholder="yoursite.com"
             value={data.personalInfo.website}
-            onChange={(value) => onPersonalInfoChange('website', value)}
+            onChange={(value) => state.onPersonalInfoChange('website', value)}
           />
         </div>
 

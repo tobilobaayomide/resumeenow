@@ -1,11 +1,11 @@
 import React from 'react';
 import { FiCode } from 'react-icons/fi';
-import type { EditorPanelProps } from '../../../../types/builder';
 import type { EditorPanelState } from '../useEditorPanelState';
+import type { ResumeData } from '../../../../types/resume';
 import { AddButton, Card, DateRow, Input, ItemSwitcher, Section, Textarea } from '../common';
 
 interface EditorProjectsSectionProps {
-  data: EditorPanelProps['data'];
+  data: ResumeData;
   openSection: EditorPanelState['openSection'];
   toggle: EditorPanelState['toggle'];
   state: EditorPanelState;
