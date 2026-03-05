@@ -76,7 +76,7 @@ export const Textarea: React.FC<EditorTextareaProps> = ({
         onChange={(event) => onChange(event.target.value)}
         placeholder={placeholder}
         maxLength={maxLength}
-        className="w-full px-3 py-2.5 bg-white border border-[#E4E8F0] rounded-xl text-[12px] text-gray-800 placeholder:text-gray-300 focus:outline-none focus:border-[#0F172A]/40 focus:ring-2 focus:ring-[#0F172A]/10 transition-all resize-y min-h-24 leading-relaxed"
+        className="w-full px-3 py-2.5 bg-white border border-[#E4E8F0] rounded-xl text-[12px] text-gray-800 placeholder:text-gray-300 focus:outline-none focus:border-[#0F172A]/40 focus:ring-2 focus:ring-[#0F172A]/10 transition-all resize-y min-h-60 leading-relaxed"
       />
     </div>
   );
