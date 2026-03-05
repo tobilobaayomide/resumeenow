@@ -1,22 +1,22 @@
 import React from 'react';
 import { FiList } from 'react-icons/fi';
-import type { EditorPanelProps } from '../../../../types/builder';
 import { SUMMARY_MAX_LENGTH } from '../../../../lib/builder/page';
 import type { EditorPanelState } from '../useEditorPanelState';
+import type { ResumeData } from '../../../../types/resume';
 import { Section, Textarea } from '../common';
 
 interface EditorSummarySectionProps {
-  data: EditorPanelProps['data'];
+  data: ResumeData;
   openSection: EditorPanelState['openSection'];
   toggle: EditorPanelState['toggle'];
-  onSummaryChange: EditorPanelProps['onSummaryChange'];
+  state: EditorPanelState;
 }
 
 const EditorSummarySection: React.FC<EditorSummarySectionProps> = ({
   data,
   openSection,
   toggle,
-  onSummaryChange,
+  state,
 }) => (
   <Section
     sectionId="summary"
@@ -29,7 +29,7 @@ const EditorSummarySection: React.FC<EditorSummarySectionProps> = ({
       <Textarea
         placeholder="Briefly describe your background, strengths and key achievements..."
         value={data.summary}
-        onChange={onSummaryChange}
+        onChange={state.onSummaryChange}
         maxLength={SUMMARY_MAX_LENGTH}
       />
       <p className="text-[10px] text-gray-300 text-right mt-1.5">
