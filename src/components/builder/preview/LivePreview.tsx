@@ -11,6 +11,7 @@ const PAGE_MARGIN_BOTTOM_PX = 57;
 const PAGE_MARGIN_SIDE_PX = 57;
 
 const CONTENT_HEIGHT_PER_PAGE = A4_HEIGHT_PX - PAGE_MARGIN_TOP_PX - PAGE_MARGIN_BOTTOM_PX;
+const MAX_BREAK_PULL_UP_PX = 28;
 
 const LivePreview: React.FC<LivePreviewProps> = ({ data, zoom = 0.8, templateId = 'executive' }) => {
   const measureRef = useRef<HTMLDivElement>(null);
@@ -52,15 +53,20 @@ const LivePreview: React.FC<LivePreviewProps> = ({ data, zoom = 0.8, templateId 
         const elTop = rect.top - containerTop;
         const elBottom = rect.bottom - containerTop;
 
-        // How far is the bottom of this element from the start of the current page?
-        const relativeBottom = elBottom - currentPageStart;
+        const pageBoundary = currentPageStart + CONTENT_HEIGHT_PER_PAGE;
+        if (elBottom > pageBoundary) {
+          // Keep page breaks close to the natural boundary so we avoid
+          // pulling entire blocks to the next page.
+          const minBreak = pageBoundary - MAX_BREAK_PULL_UP_PX;
+          const candidateBreak = Math.min(elTop, pageBoundary);
+          const newPageStart = Math.max(candidateBreak, minBreak);
 
-        if (relativeBottom > CONTENT_HEIGHT_PER_PAGE) {
-          const newPageStart = elTop;
-
-          if (newPageStart > currentPageStart) {
+          if (newPageStart > currentPageStart + 0.5) {
             breaks.push(newPageStart);
             currentPageStart = newPageStart;
+          } else {
+            breaks.push(pageBoundary);
+            currentPageStart = pageBoundary;
           }
         }
       });
@@ -83,6 +89,14 @@ const LivePreview: React.FC<LivePreviewProps> = ({ data, zoom = 0.8, templateId 
   const renderPages = (isForPrint = false) => {
     return Array.from({ length: totalPages }).map((_, pageIndex) => {
       const pageStart = pageBreaks[pageIndex];
+      const nextPageStart = pageBreaks[pageIndex + 1];
+      const visibleContentHeight =
+        typeof nextPageStart === 'number'
+          ? Math.min(
+              CONTENT_HEIGHT_PER_PAGE,
+              Math.max(0, nextPageStart - pageStart),
+            )
+          : CONTENT_HEIGHT_PER_PAGE;
 
       return (
         <div
@@ -123,9 +137,14 @@ const LivePreview: React.FC<LivePreviewProps> = ({ data, zoom = 0.8, templateId 
               paddingRight: PAGE_MARGIN_SIDE_PX,
             }}
           >
-            <div style={{ marginTop: `-${pageStart}px` }}>
-              <TemplateRenderer templateId={templateId} data={data} />
+            <div style={{ height: visibleContentHeight, overflow: 'hidden' }}>
+              <div style={{ marginTop: `-${pageStart}px` }}>
+                <TemplateRenderer templateId={templateId} data={data} />
+              </div>
             </div>
+            {visibleContentHeight < CONTENT_HEIGHT_PER_PAGE && (
+              <div style={{ height: CONTENT_HEIGHT_PER_PAGE - visibleContentHeight }} />
+            )}
           </div>
 
           {/* BOTTOM MARGIN */}
