@@ -38,7 +38,17 @@ export const RESUME_PARSER_NOISE_PATTERNS = [
 ] as const;
 
 export const RESUME_PARSER_SECTION_LABELS: Record<ResumeParserSectionKey, string[]> = {
-  summary: ['summary', 'professional summary', 'profile', 'objective'],
+  summary: [
+    'summary',
+    'career summary',
+    'professional summary',
+    'professional profile',
+    'profile',
+    'personal profile',
+    'objective',
+    'career objective',
+    'about me',
+  ],
   experience: [
     'experience',
     'work experience',
@@ -47,11 +57,26 @@ export const RESUME_PARSER_SECTION_LABELS: Record<ResumeParserSectionKey, string
     'industrial experience',
   ],
   education: ['education', 'academic background', 'academic history'],
-  skills: ['skills', 'technical skills', 'core skills', 'competencies'],
+  skills: [
+    'skills',
+    'technical skills',
+    'core skills',
+    'competencies',
+    'skills and technologies',
+    'skills & technologies',
+    'technology stack',
+  ],
   languages: ['languages', 'language proficiency'],
   projects: ['projects', 'project experience', 'selected projects', 'personal projects'],
-  certifications: ['certifications', 'licenses', 'licenses and certifications'],
-  volunteering: ['volunteering', 'volunteer experience', 'activities', 'leadership'],
+  certifications: [
+    'certification',
+    'certifications',
+    'licenses',
+    'licenses and certifications',
+    'certification/volunteer experience',
+    'certification / volunteer experience',
+  ],
+  volunteering: ['volunteering', 'volunteer', 'volunteer experience', 'activities', 'leadership'],
   awards: ['awards', 'awards and honours', 'awards & honours', 'honours', 'achievements'],
 };
 
