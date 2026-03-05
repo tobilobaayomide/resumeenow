@@ -65,22 +65,9 @@ export interface BuilderHeaderProps {
 export interface BuilderWorkspaceProps {
   mobileView: BuilderPageMobileView;
   isEditorCollapsed: boolean;
-  resumeData: ResumeData;
-  templateId: TemplateId;
   zoom: number;
   onZoomOut: () => void;
   onZoomIn: () => void;
-  onPersonalInfoChange: (field: BuilderPagePersonalInfoField, value: string) => void;
-  onLinksChange: (links: ResumeLinkItem[]) => void;
-  onSummaryChange: (summary: string) => void;
-  onExperienceChange: (experience: ResumeExperienceItem[]) => void;
-  onEducationChange: (education: ResumeEducationItem[]) => void;
-  onVolunteeringChange: (volunteering: ResumeExperienceItem[]) => void;
-  onProjectsChange: (projects: ResumeProjectItem[]) => void;
-  onCertificationsChange: (certifications: string[]) => void;
-  onSkillsChange: (skills: string[]) => void;
-  onLanguagesChange: (languages: string[]) => void;
-  onAchievementsChange: (achievements: string[]) => void;
 }
 
 export interface UseBuilderDraftMutationsResult {
@@ -92,12 +79,13 @@ export interface UseBuilderDraftMutationsResult {
   onVolunteeringChange: (volunteering: ResumeExperienceItem[]) => void;
   onProjectsChange: (projects: ResumeProjectItem[]) => void;
   onCertificationsChange: (certifications: string[]) => void;
-  onSkillsChange: (skills: string[]) => void;
+  onSkillsChange: (skills: ResumeData['skills']) => void;
   onLanguagesChange: (languages: string[]) => void;
   onAchievementsChange: (achievements: string[]) => void;
 }
 
 export interface BuilderAiWorkflowModalProps {
+  isGenerating: boolean;
   activeAiFlow: AiFlowFeature | null;
   tailorRole: string;
   tailorCompany: string;
