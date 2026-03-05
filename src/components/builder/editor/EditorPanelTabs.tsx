@@ -1,11 +1,12 @@
 import React from 'react';
 import { BUILDER_EDITOR_SECTION_TABS } from '../../../data/builder';
-import type { EditorPanelProps } from '../../../types/builder';
+import { getActiveSkillItems } from '../../../types/resume';
 import type { EditorPanelState } from './useEditorPanelState';
+import type { ResumeData } from '../../../types/resume';
 import { handleHorizontalWheelScroll } from './utils';
 
 interface EditorPanelTabsProps {
-  data: EditorPanelProps['data'];
+  data: ResumeData;
   openSection: EditorPanelState['openSection'];
   toggle: EditorPanelState['toggle'];
 }
@@ -22,7 +23,11 @@ const EditorPanelTabs: React.FC<EditorPanelTabsProps> = ({
     <div className="flex items-center gap-1.5 min-w-max">
       {BUILDER_EDITOR_SECTION_TABS.map((tab) => {
         const Icon = tab.icon;
-        const itemCount = tab.countField ? data[tab.countField].length : undefined;
+        const itemCount = tab.countField
+          ? tab.countField === 'skills'
+            ? getActiveSkillItems(data.skills).length
+            : data[tab.countField].length
+          : undefined;
         return (
           <button
             key={tab.id}
