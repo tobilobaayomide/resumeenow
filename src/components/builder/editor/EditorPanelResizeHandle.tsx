@@ -11,10 +11,8 @@ const EditorPanelResizeHandle: React.FC<EditorPanelResizeHandleProps> = ({
     onMouseDown={onMouseDown}
     className="hidden lg:flex absolute top-0 bottom-0 right-0 w-3 items-center justify-center cursor-col-resize group z-30"
   >
-    {/* Track line — thickens subtly on hover */}
     <div className="absolute top-0 bottom-0 right-0 w-0.75 bg-transparent group-hover:bg-gray-200 group-active:bg-gray-400 transition-all duration-150" />
 
-    {/* Grab pill — centred on the handle, appears on hover */}
     <div
       className="
       relative z-10 flex flex-col items-center justify-center gap-0.75
