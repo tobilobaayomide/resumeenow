@@ -95,7 +95,8 @@ const parseCompanyAndLocationFromLine = (
   if (ROLE_HINT_REGEX.test(company) && !COMPANY_HINT_REGEX.test(company)) return null;
 
   const locationLooksValid =
-    /,/.test(location) || /(state|nigeria|india|usa|uk|canada|remote|lagos|abuja|ilorin|oyo)/i.test(location);
+    /,/.test(location) ||
+    /(state|nigeria|india|usa|uk|canada|remote|lagos|abuja|ilorin|oyo)/i.test(location);
   if (!locationLooksValid) return null;
 
   return { company, location };
@@ -175,9 +176,7 @@ const isDateOnlyLine = (line: string): boolean => {
   const dates = parseLooseDateRange(text);
   if (!dates.startDate) return false;
   const withoutDates = cleanLine(
-    text
-      .replace(LOOSE_DATE_RANGE_REGEX, '')
-      .replace(/[()|,–—-]/g, ' '),
+    text.replace(LOOSE_DATE_RANGE_REGEX, '').replace(/[()|,–—-]/g, ' '),
   );
   return !withoutDates;
 };
@@ -223,8 +222,10 @@ export const parseExperienceSection = (sectionText: string): ResumeExperienceIte
         roleLine.replace(LOOSE_DATE_RANGE_REGEX, '').replace(/\s{2,}/g, ' '),
       );
 
-      const previousLine = currentAnchor.index > 0 ? cleanLine(lines[currentAnchor.index - 1]) : '';
-      const twoLinesBack = currentAnchor.index > 1 ? cleanLine(lines[currentAnchor.index - 2]) : '';
+      const previousLine =
+        currentAnchor.index > 0 ? cleanLine(lines[currentAnchor.index - 1]) : '';
+      const twoLinesBack =
+        currentAnchor.index > 1 ? cleanLine(lines[currentAnchor.index - 2]) : '';
       const previousLineIsCompany = previousLine ? isLikelyCompanyLine(previousLine) : false;
       const twoLinesBackIsCompany = twoLinesBack ? isLikelyCompanyLine(twoLinesBack) : false;
 
@@ -234,7 +235,10 @@ export const parseExperienceSection = (sectionText: string): ResumeExperienceIte
           ? twoLinesBack
           : '';
       let companyLocation =
-        !previousLineIsCompany && twoLinesBackIsCompany && previousLine && isLikelyLocationLine(previousLine)
+        !previousLineIsCompany &&
+        twoLinesBackIsCompany &&
+        previousLine &&
+        isLikelyLocationLine(previousLine)
           ? previousLine
           : '';
 
@@ -250,15 +254,13 @@ export const parseExperienceSection = (sectionText: string): ResumeExperienceIte
       const nextLineCompanyLocation = parseCompanyAndLocationFromLine(nextLine);
       const nextLineIsCompany = nextLine ? isLikelyCompanyLine(nextLine) : false;
 
-      // Date-only anchors are common in exported resumes. Prefer nearby role/company lines
-      // over treating the first description line as a role.
       if (isDateOnlyLine(roleLine)) {
         const roleFromTwoLinesBack = cleanLine(twoLinesBack.replace(/^[•●*-]\s*/, ''));
         if (
-          !role
-          && roleFromTwoLinesBack
-          && !twoLinesBackIsCompany
-          && isLikelyRoleLine(roleFromTwoLinesBack)
+          !role &&
+          roleFromTwoLinesBack &&
+          !twoLinesBackIsCompany &&
+          isLikelyRoleLine(roleFromTwoLinesBack)
         ) {
           role = roleFromTwoLinesBack;
         }
@@ -271,20 +273,15 @@ export const parseExperienceSection = (sectionText: string): ResumeExperienceIte
           }
         }
 
-        if (
-          !role
-          && previousLine
-          && !previousLineIsCompany
-          && isLikelyRoleLine(previousLine)
-        ) {
+        if (!role && previousLine && !previousLineIsCompany && isLikelyRoleLine(previousLine)) {
           role = previousLine;
         }
 
         if (
-          !role
-          && twoLinesBack
-          && !twoLinesBackIsCompany
-          && isLikelyRoleLine(twoLinesBack)
+          !role &&
+          twoLinesBack &&
+          !twoLinesBackIsCompany &&
+          isLikelyRoleLine(twoLinesBack)
         ) {
           role = twoLinesBack;
         }
@@ -299,13 +296,13 @@ export const parseExperienceSection = (sectionText: string): ResumeExperienceIte
       }
 
       if (
-        (isDateOnlyLine(roleLine) || !role)
-        && nextLine
-        && !detectSectionHeading(nextLine)
-        && !nextLineIsCompany
-        && !nextLineCompanyLocation
-        && !isLikelyLocationLine(nextLine)
-        && isLikelyRoleLine(nextLine)
+        (isDateOnlyLine(roleLine) || !role) &&
+        nextLine &&
+        !detectSectionHeading(nextLine) &&
+        !nextLineIsCompany &&
+        !nextLineCompanyLocation &&
+        !isLikelyLocationLine(nextLine) &&
+        isLikelyRoleLine(nextLine)
       ) {
         role = nextLine;
         descriptionStart = currentAnchor.index + 2;
@@ -333,28 +330,41 @@ export const parseExperienceSection = (sectionText: string): ResumeExperienceIte
       }
 
       if (
-        companyLocation
-        && company
-        && !normalizeCompanyTextForCompare(company).includes(normalizeCompanyTextForCompare(companyLocation))
+        companyLocation &&
+        company &&
+        !normalizeCompanyTextForCompare(company).includes(
+          normalizeCompanyTextForCompare(companyLocation),
+        )
       ) {
         company = `${company}, ${companyLocation}`;
       }
 
       if (company) {
-        company = cleanLine(company.replace(COMPANY_LOCATION_NORMALIZE_REGEX, ', ').replace(/\s*,\s*/g, ', '));
+        company = cleanLine(
+          company
+            .replace(COMPANY_LOCATION_NORMALIZE_REGEX, ', ')
+            .replace(/\s*,\s*/g, ', '),
+        );
       }
 
       let descriptionEnd = nextAnchor ? nextAnchor.index - 1 : lines.length - 1;
 
-      if (nextAnchor && descriptionEnd >= descriptionStart && isLikelyCompanyLine(lines[descriptionEnd])) {
+      if (
+        nextAnchor &&
+        descriptionEnd >= descriptionStart &&
+        isLikelyCompanyLine(lines[descriptionEnd])
+      ) {
         descriptionEnd -= 1;
       }
 
+      // FIX: join with \n not space — preserves bullet structure for splitBullets in gemini.ts
+      // joining with space collapses "Led team\nBuilt API" into "Led team Built API"
+      // which sentence-boundary splitting cannot reliably recover
       const description = lines
         .slice(descriptionStart, descriptionEnd + 1)
         .map((line) => cleanLine(line.replace(/^[o•●*-]\s*/, '')))
         .filter(Boolean)
-        .join(' ');
+        .join('\n');
 
       entries.push({
         id: `exp-${anchorIndex + 1}`,
@@ -375,11 +385,9 @@ export const parseExperienceSection = (sectionText: string): ResumeExperienceIte
 
   const commitCurrent = () => {
     if (!current) return;
-
     if (current.role || current.company || current.description) {
       entries.push(current);
     }
-
     current = null;
   };
 
@@ -390,9 +398,7 @@ export const parseExperienceSection = (sectionText: string): ResumeExperienceIte
       const header = cleanLine(line.replace(/^[•●*-]\s*/, ''));
       const { startDate, endDate } = parseLooseDateRange(header);
       const headerWithoutDates = cleanLine(
-        header
-          .replace(LOOSE_DATE_RANGE_REGEX, '')
-          .replace(/\s{2,}/g, ' '),
+        header.replace(LOOSE_DATE_RANGE_REGEX, '').replace(/\s{2,}/g, ' '),
       );
 
       let role = '';
@@ -435,8 +441,9 @@ export const parseExperienceSection = (sectionText: string): ResumeExperienceIte
       continue;
     }
 
+    // FIX: join with \n not space — preserves bullet structure
     current.description = current.description
-      ? `${current.description} ${detail}`
+      ? `${current.description}\n${detail}`
       : detail;
   }
 
@@ -550,7 +557,6 @@ export const parseSkillsSection = (sectionText: string): ResumeSkillsSection => 
       return;
     }
 
-    // Continuation lines for grouped formats where items wrap to the next line.
     if (activeGroup) {
       const continuationItems = toSkillItems(bulletStripped);
       if (continuationItems.length > 0) {
@@ -559,16 +565,13 @@ export const parseSkillsSection = (sectionText: string): ResumeSkillsSection => 
       }
     }
 
-    // Reset continuation when hitting unrelated content.
     if (index > 0 && detectSectionHeading(normalizedLine)) {
       activeGroup = null;
     }
   });
 
   if (groups.length > 0 && groupedLineCount > 0) {
-    const list = Array.from(
-      new Set(groups.flatMap((group) => group.items)),
-    );
+    const list = Array.from(new Set(groups.flatMap((group) => group.items)));
     return {
       mode: 'grouped',
       list,
@@ -618,11 +621,10 @@ export const parseProjectSection = (sectionText: string): ResumeProjectItem[] =>
       return true;
     }
 
-    // Fallback for plain project-name headers (no bullets, no date/link)
     const titleLikeWordCount = wordCount > 0 && wordCount <= 8;
     const titleLikeRatio =
-      words.filter((word) => /^[A-Z0-9][A-Za-z0-9+/#&().-]*$/.test(word)).length
-      / Math.max(wordCount, 1);
+      words.filter((word) => /^[A-Z0-9][A-Za-z0-9+/#&().-]*$/.test(word)).length /
+      Math.max(wordCount, 1);
     return titleLikeWordCount && titleLikeRatio >= 0.7 && !endsLikeSentence;
   };
 
@@ -645,7 +647,8 @@ export const parseProjectSection = (sectionText: string): ResumeProjectItem[] =>
     );
     const isBulletEntry = projectBulletPattern.test(line);
     const headerCandidate = isLikelyProjectHeader(line);
-    const isNewEntry = isBulletEntry || (!isBulletEntry && headerCandidate && (!current || currentHasBody));
+    const isNewEntry =
+      isBulletEntry || (!isBulletEntry && headerCandidate && (!current || currentHasBody));
 
     if (isNewEntry) {
       commitCurrent();
@@ -653,12 +656,12 @@ export const parseProjectSection = (sectionText: string): ResumeProjectItem[] =>
       const header = cleanLine(line.replace(projectBulletPattern, ''));
       const { startDate, endDate } = parseLooseDateRange(header);
       const headerWithoutDates = cleanLine(
-        header
-          .replace(LOOSE_DATE_RANGE_REGEX, '')
-          .replace(/\s{2,}/g, ' '),
+        header.replace(LOOSE_DATE_RANGE_REGEX, '').replace(/\s{2,}/g, ' '),
       );
       const link = headerWithoutDates.match(URL_REGEX)?.[0] ?? '';
-      const name = cleanLine(headerWithoutDates.replace(link, '').replace(/^project\s*[:-]\s*/i, ''));
+      const name = cleanLine(
+        headerWithoutDates.replace(link, '').replace(/^project\s*[:-]\s*/i, ''),
+      );
 
       current = {
         id: `proj-${index++}`,
@@ -674,7 +677,6 @@ export const parseProjectSection = (sectionText: string): ResumeProjectItem[] =>
     const detail = cleanLine(line.replace(/^[o•●*-]\s*/, ''));
     if (!detail) continue;
 
-    // Merge split TLD fragments like ".app" that often follow a broken URL line.
     if (current?.link && /^\.?app$/i.test(detail)) {
       current.link = `${current.link}.app`;
       continue;
@@ -693,7 +695,6 @@ export const parseProjectSection = (sectionText: string): ResumeProjectItem[] =>
       continue;
     }
 
-    // Date-only lines that follow a project header should populate start/end, not description.
     if (!current.startDate && parseLooseDateRange(detail).startDate) {
       const { startDate, endDate } = parseLooseDateRange(detail);
       current.startDate = startDate;
@@ -712,11 +713,9 @@ export const parseProjectSection = (sectionText: string): ResumeProjectItem[] =>
           ? `${current.description} ${descRemainder}`
           : descRemainder;
       } else if (isUrlOnly) {
-        // Pure URL line consumed as link; skip adding to description.
         continue;
       }
     } else if (isUrlOnly) {
-      // Already have a link, skip standalone URL lines to avoid clutter.
       continue;
     }
 
@@ -734,16 +733,16 @@ export const parseListAsExperience = (
   categoryLabel: string,
   prefix: string,
 ): ResumeExperienceItem[] => {
-  const lines = splitLines(sectionText).map((line) => cleanLine(line.replace(/^[•●*-]\s*/, '')));
+  const lines = splitLines(sectionText).map((line) =>
+    cleanLine(line.replace(/^[•●*-]\s*/, '')),
+  );
 
   return lines
     .filter(Boolean)
     .map((line, index) => {
       const { startDate, endDate } = parseLooseDateRange(line);
       const role = cleanLine(
-        line
-          .replace(LOOSE_DATE_RANGE_REGEX, '')
-          .replace(/\s{2,}/g, ' '),
+        line.replace(LOOSE_DATE_RANGE_REGEX, '').replace(/\s{2,}/g, ' '),
       );
 
       return {
@@ -757,17 +756,33 @@ export const parseListAsExperience = (
     });
 };
 
+// FIX: normalise to mixed case before pattern match
+// so "JOHN SMITH", "Dr. Jane Doe", "John B. Smith" all parse correctly
 const guessName = (lines: string[]): string => {
   for (const line of lines.slice(0, 12)) {
     if (isNoiseLine(line)) continue;
 
-    const words = line.split(' ').filter(Boolean);
+    // Normalise ALL CAPS lines to mixed case so "JOHN SMITH" → "John Smith"
+    const normalized = line
+      .split(/\s+/)
+      .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+      .join(' ');
+
+    const words = normalized.split(' ').filter(Boolean);
     const looksLikeName =
       words.length >= 2 &&
-      words.length <= 4 &&
-      words.every((word) => /^[A-Z][a-zA-Z'-]+$/.test(word));
+      words.length <= 5 &&
+      words.every(
+        (word) =>
+          // standard name word: "John", "Smith", "Mary-Jane"
+          /^[A-Z][a-zA-Z'-]+$/.test(word) ||
+          // single initial with dot: "B."
+          /^[A-Z]\.$/.test(word) ||
+          // honorific: "Dr.", "Mr.", "Ms.", "Prof."
+          /^(?:Dr|Mr|Mrs|Ms|Prof|Rev|Sir)\.$/.test(word),
+      );
 
-    if (looksLikeName) return line;
+    if (looksLikeName) return normalized;
   }
 
   return '';
@@ -782,8 +797,10 @@ export const inferNameAndJobTitle = (lines: string[]): { fullName: string; jobTi
   if (firstLineMatch) {
     const candidateTitle = cleanLine(firstLineMatch[2]);
     const titleLooksLikeHeading =
-      Boolean(detectSectionHeading(candidateTitle))
-      || /^(career\s+summary|professional\s+summary|summary|profile|objective)$/i.test(candidateTitle);
+      Boolean(detectSectionHeading(candidateTitle)) ||
+      /^(career\s+summary|professional\s+summary|summary|profile|objective)$/i.test(
+        candidateTitle,
+      );
 
     return {
       fullName: cleanLine(firstLineMatch[1]),
@@ -794,13 +811,15 @@ export const inferNameAndJobTitle = (lines: string[]): { fullName: string; jobTi
   const fullName = guessName(lines);
   if (!fullName) return { fullName: '', jobTitle: '' };
 
-  const jobTitle = lines.find((line) => (
-    line !== fullName
-    && !EMAIL_REGEX.test(line)
-    && !URL_REGEX.test(line)
-    && !line.includes('|')
-    && !detectSectionHeading(line)
-  )) ?? '';
+  const jobTitle =
+    lines.find(
+      (line) =>
+        line !== fullName &&
+        !EMAIL_REGEX.test(line) &&
+        !URL_REGEX.test(line) &&
+        !line.includes('|') &&
+        !detectSectionHeading(line),
+    ) ?? '';
 
   return { fullName, jobTitle: cleanLine(jobTitle) };
 };
@@ -821,14 +840,14 @@ const isLikelyWebLink = (value: string): boolean => {
   if (EMAIL_REGEX.test(lower)) return false;
 
   if (
-    lower.startsWith('http://')
-    || lower.startsWith('https://')
-    || lower.startsWith('www.')
-    || lower.includes('linkedin.com')
-    || lower.includes('github.com')
-    || lower.includes('gitlab.com')
-    || lower.includes('behance.net')
-    || lower.includes('dribbble.com')
+    lower.startsWith('http://') ||
+    lower.startsWith('https://') ||
+    lower.startsWith('www.') ||
+    lower.includes('linkedin.com') ||
+    lower.includes('github.com') ||
+    lower.includes('gitlab.com') ||
+    lower.includes('behance.net') ||
+    lower.includes('dribbble.com')
   ) {
     return true;
   }
@@ -868,9 +887,12 @@ export const extractLinks = (lines: string[], email: string): ResumeLinkItem[] =
     }
   }
 
-  const topRawMatches = preSectionLines
-    .join(' ')
-    .match(/(?:https?:\/\/)?(?:www\.)?[a-zA-Z0-9-]+\.[a-zA-Z]{2,}(?:\/[\w./?%&=-]*)?/g) ?? [];
+  const topRawMatches =
+    preSectionLines
+      .join(' ')
+      .match(
+        /(?:https?:\/\/)?(?:www\.)?[a-zA-Z0-9-]+\.[a-zA-Z]{2,}(?:\/[\w./?%&=-]*)?/g,
+      ) ?? [];
   candidates.push(...topRawMatches);
 
   const links: ResumeLinkItem[] = [];
@@ -896,7 +918,12 @@ export const extractLinks = (lines: string[], email: string): ResumeLinkItem[] =
   return links;
 };
 
-export const extractLocation = (lines: string[], email: string, phone: string, links: ResumeLinkItem[]): string => {
+export const extractLocation = (
+  lines: string[],
+  email: string,
+  phone: string,
+  links: ResumeLinkItem[],
+): string => {
   const preSectionLines: string[] = [];
   for (const line of lines.slice(0, 40)) {
     if (detectSectionHeading(line)) break;
@@ -926,7 +953,9 @@ export const extractLocation = (lines: string[], email: string, phone: string, l
     const text = cleanLine(value);
     if (!text) return false;
     if (EMAIL_REGEX.test(text) || parseLooseDateRange(text).startDate) return false;
-    if (/\b(frontend|developer|engineer|manager|intern|writer|specialist|analyst)\b/i.test(text)) {
+    if (
+      /\b(frontend|developer|engineer|manager|intern|writer|specialist|analyst)\b/i.test(text)
+    ) {
       return false;
     }
     if (/,/.test(text) && text.length <= 80) return true;
