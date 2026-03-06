@@ -42,7 +42,7 @@ export const TEMPLATE_GALLERY_ITEMS: TemplateGalleryItem[] = [
     name: "Studio",
     category: "Creative",
     description: "Bold typography for designers and artists.",
-    layout: "Sidebar",
+    layout: "Single Column",
     color: "bg-stone-50",
     popular: false,
     available: true,
