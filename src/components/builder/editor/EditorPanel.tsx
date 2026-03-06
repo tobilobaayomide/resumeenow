@@ -17,9 +17,9 @@ import {
 } from './sections';
 import { useEditorPanelState } from './useEditorPanelState';
 
-const MIN_WIDTH = 360;
+const MIN_WIDTH = 550;
 const MAX_WIDTH = 700;
-const DEFAULT_WIDTH = 420;
+const DEFAULT_WIDTH = 550;
 
 const EditorPanel: React.FC = () => {
   const [panelWidth, setPanelWidth] = useState(DEFAULT_WIDTH);
@@ -36,19 +36,13 @@ const EditorPanel: React.FC = () => {
   });
 
   const data = state.data;
-
   const { openSection, toggle } = state;
 
   useEffect(() => {
-    const onResize = () => {
-      setIsDesktop(window.innerWidth >= 1024);
-    };
-
+    const onResize = () => setIsDesktop(window.innerWidth >= 1024);
     onResize();
     window.addEventListener('resize', onResize);
-    return () => {
-      window.removeEventListener('resize', onResize);
-    };
+    return () => window.removeEventListener('resize', onResize);
   }, []);
 
   useEffect(() => {
@@ -96,16 +90,19 @@ const EditorPanel: React.FC = () => {
 
   return (
     <div
-      className="relative flex flex-col bg-[#F6F7F9] border-r border-[#E1E6EE] z-20 shrink-0 h-full min-h-0 overflow-hidden"
+      className="relative flex flex-col bg-[#F8F9FB] border-r border-gray-100 z-20 shrink-0 h-full min-h-0 overflow-hidden"
       style={{ width: isDesktop ? `${panelWidth}px` : '100%' }}
     >
+      {/* Header */}
       <EditorPanelHeader activeSectionLabel={activeSectionLabel} />
 
+      {/* Section tabs */}
       <EditorPanelTabs data={data} openSection={openSection} toggle={toggle} />
 
+      {/* Scrollable content */}
       <div
         ref={panelScrollRef}
-        className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden overscroll-contain touch-pan-y flex flex-col bg-transparent px-3 py-3 pr-5 gap-2.5 pb-6"
+        className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden overscroll-contain touch-pan-y flex flex-col bg-transparent px-3 py-3 gap-2 pb-8"
       >
         <EditorPersonalSection
           data={data}
@@ -113,62 +110,53 @@ const EditorPanel: React.FC = () => {
           toggle={toggle}
           state={state}
         />
-
         <EditorSummarySection
           data={data}
           openSection={openSection}
           toggle={toggle}
           state={state}
         />
-
         <EditorExperienceSection
           data={data}
           openSection={openSection}
           toggle={toggle}
           state={state}
         />
-
         <EditorEducationSection
           data={data}
           openSection={openSection}
           toggle={toggle}
           state={state}
         />
-
         <EditorVolunteeringSection
           data={data}
           openSection={openSection}
           toggle={toggle}
           state={state}
         />
-
         <EditorProjectsSection
           data={data}
           openSection={openSection}
           toggle={toggle}
           state={state}
         />
-
         <EditorSkillsSection
           openSection={openSection}
           toggle={toggle}
           state={state}
         />
-
         <EditorLanguagesSection
           data={data}
           openSection={openSection}
           toggle={toggle}
           state={state}
         />
-
         <EditorAchievementsSection
           data={data}
           openSection={openSection}
           toggle={toggle}
           state={state}
         />
-
         <EditorCertificationsSection
           data={data}
           openSection={openSection}
@@ -177,6 +165,7 @@ const EditorPanel: React.FC = () => {
         />
       </div>
 
+      {/* Drag-to-resize handle — desktop only */}
       <EditorPanelResizeHandle onMouseDown={onMouseDown} />
     </div>
   );
