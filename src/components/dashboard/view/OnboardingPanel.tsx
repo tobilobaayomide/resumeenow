@@ -1,4 +1,5 @@
 import React from 'react';
+import { FiCheck, FiInfo } from 'react-icons/fi';
 import type { OnboardingPanelProps } from '../../../types/dashboard';
 
 const OnboardingPanel: React.FC<OnboardingPanelProps> = ({ resumeCount, hasExportedPdf }) => {
@@ -8,26 +9,61 @@ const OnboardingPanel: React.FC<OnboardingPanelProps> = ({ resumeCount, hasExpor
     { label: 'Export PDF', done: hasExportedPdf },
   ];
 
+  const allComplete = hasExportedPdf && resumeCount > 0;
+
   return (
     <div>
-      <h4 className="text-xs font-bold uppercase tracking-widest text-gray-400 mb-6">Onboarding</h4>
-      <div className="relative pl-4 border-l border-gray-200 space-y-8">
+      {/* ── Header ──────────────────────────────────────────────────────── */}
+      <h4 className="text-[11.5px] font-black uppercase tracking-[0.2em] text-gray-400 mb-6">
+        Getting Started
+      </h4>
+
+      {/* ── Timeline ────────────────────────────────────────────────────── */}
+      <div className="relative border-l-2 border-gray-100 ml-2 space-y-7">
         {steps.map((step) => (
-          <div key={step.label} className="relative">
+          <div key={step.label} className="relative pl-6 group">
+            {/* Timeline Dot / Check */}
             <span
-              className={`absolute -left-5.25 top-0.5 w-2.5 h-2.5 rounded-full border-2 ${step.done ? 'bg-black border-black' : 'bg-white border-gray-300'}`}
-            ></span>
-            <p className={`text-sm font-medium ${step.done ? 'text-gray-400 line-through' : 'text-black'}`}>
+              className={`absolute -left-2.25 top-0 w-4 h-4 rounded-full flex items-center justify-center transition-all duration-300 ring-4 ring-white
+                ${step.done 
+                  ? 'bg-gray-900 border-none' 
+                  : 'bg-white border-2 border-gray-200 group-hover:border-gray-300'
+                }
+              `}
+            >
+              {step.done && <FiCheck size={10} className="text-white" />}
+            </span>
+            
+            {/* Step Content */}
+            <p className={`text-[13px] tracking-tight transition-colors duration-200 -mt-0.5
+                ${step.done 
+                  ? 'font-bold text-gray-800' 
+                  : 'font-medium text-gray-400'
+                }
+            `}>
               {step.label}
             </p>
           </div>
         ))}
       </div>
-      {!hasExportedPdf && (
-        <p className="text-xs text-gray-500 mt-5">
-          Use <span className="font-semibold text-gray-700">Export Latest</span> or download from Builder to
-          complete this step.
-        </p>
+
+      {/* ── Helper Callout ──────────────────────────────────────────────── */}
+      {!allComplete ? (
+        <div className="mt-8 flex items-start gap-2.5 bg-gray-50 border border-gray-100 rounded-xl p-3.5">
+          <div className="bg-white p-1 rounded-md shadow-sm border border-gray-100 shrink-0 mt-0.5">
+            <FiInfo className="text-gray-400" size={12} />
+          </div>
+          <p className="text-[11.5px] text-gray-500 leading-relaxed pr-2">
+            {!resumeCount 
+              ? 'Create your first resume to unlock more features.'
+              : 'Use the Builder or click "Export" on your resume card to complete the final step.'}
+          </p>
+        </div>
+      ) : (
+        <div className="mt-8 flex items-center gap-2 bg-emerald-50 text-emerald-700/80 border border-emerald-100/50 rounded-xl p-3.5 text-[11.5px] font-bold">
+          <FiCheck size={14} className="shrink-0" />
+          <span>You're all set up!</span>
+        </div>
       )}
     </div>
   );
