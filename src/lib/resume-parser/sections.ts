@@ -96,6 +96,9 @@ const extractEmbeddedSectionHeading = (
 export const detectSectionHeading = (line: string): SectionKey | null => {
   const normalized = line
     .toLowerCase()
+    // FIX: strip leading noise FIRST — numbers, bullets, dots
+    // "3. WORK EXPERIENCE" → "work experience" not "3  work experience"
+    .replace(/^[\d.\s•●*\-–—]+/, '')
     .replace(/[^a-z0-9\s&/-]/g, ' ')
     .replace(/\s+/g, ' ')
     .trim();
