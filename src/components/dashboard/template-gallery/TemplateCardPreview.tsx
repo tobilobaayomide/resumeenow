@@ -31,7 +31,7 @@ const TemplateCardPreview: React.FC<TemplateCardPreviewProps> = ({ template }) =
           </div>
         </div>
       }
-      scaleWrapperClassName="absolute left-1/2 top-2 md:top-3 -translate-x-1/2 origin-top scale-[0.40] sm:scale-[0.34] lg:scale-[0.30] xl:scale-[0.28] pointer-events-none"
+      scaleWrapperClassName="absolute left-1/2 top-2 md:top-3 -translate-x-1/2 origin-top scale-[0.5] sm:scale-[0.43] pointer-events-none"
       paperClassName="w-198.5 h-280.75 bg-white border border-gray-200 shadow-sm p-14.25 overflow-hidden"
     />
   );
