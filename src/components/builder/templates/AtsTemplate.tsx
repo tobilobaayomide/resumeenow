@@ -8,9 +8,9 @@ import {
 } from "../../../domain/resume";
 import { toDescriptionBullets } from "./utils";
 
-const INK = "#111110";
-const BODY = "#3a3835";
-const MUTED = "#6b6b68";
+const INK = "#black";
+const BODY = "black";
+const MUTED = "#828282";
 const RULE = "#d8d6d3";
 const SECTION_ACCENT = "#1f3a5f";
 
