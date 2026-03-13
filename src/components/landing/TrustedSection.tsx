@@ -4,7 +4,7 @@ import { LANDING_TRUSTED_LOGOS } from "../../data/landing";
 const TrustedSection: React.FC = () => {
   return (
     <section className="py-16 bg-white border-t border-gray-100">
-      <div className="max-w-7xl mx-auto px-6">
+      <div className="max-w-360 mx-auto px-6">
         
         {/* Premium Editorial Header */}
         <p className="text-center text-xs md:text-sm font-bold tracking-[0.2em] text-black uppercase mb-10">

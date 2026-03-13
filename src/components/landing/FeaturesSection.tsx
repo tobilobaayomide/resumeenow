@@ -36,7 +36,7 @@ const FeaturesSection: React.FC = () => {
       
   
 
-      <div className="max-w-7xl mx-auto px-6 relative z-10">
+      <div className="max-w-360 mx-auto px-6 relative z-10">
         
         {/* Interactive Showcase Layout */}
         <div className="grid lg:grid-cols-12 gap-12 lg:gap-20 items-center">

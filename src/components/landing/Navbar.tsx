@@ -38,7 +38,7 @@ const Navbar: React.FC<NavbarProps> = ({ onLogin, onSignup }) => {
             : "bg-transparent border-b border-transparent"
         }`}
       >
-        <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
+        <div className="max-w-360 mx-auto md:py-15 h-20 flex items-center justify-between">
           {/* Logo */}
          <div className="h-24 flex items-center px-8">
                     <div 
@@ -106,7 +106,7 @@ const Navbar: React.FC<NavbarProps> = ({ onLogin, onSignup }) => {
 
           {/* Mobile Menu Button */}
           <button
-            className="md:hidden text-gray-700 focus:outline-none p-2"
+            className="md:hidden text-gray-700 focus:outline-none p-2 mr-5"
             onClick={() => setMenuOpen(!menuOpen)}
             aria-label="Toggle menu"
           >

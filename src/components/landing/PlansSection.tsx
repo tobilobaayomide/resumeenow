@@ -13,7 +13,7 @@ const PlansSection: React.FC = () => {
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_right,rgba(115,115,115,0.08),transparent_62%)]" />
       </div>
 
-      <div className="max-w-7xl mx-auto px-6 relative z-10">
+      <div className="max-w-360 mx-auto px-6 relative z-10">
         <div className="max-w-3xl mb-12">
           <p className="text-[11px] uppercase tracking-[0.22em] text-black/45 font-medium mb-3">Plans</p>
           <h2 className="text-4xl md:text-5xl text-gray-900 mb-4 tracking-[-0.02em] leading-[1.05]">

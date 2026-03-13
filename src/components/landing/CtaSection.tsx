@@ -5,7 +5,7 @@ import type { CtaSectionProps } from '../../types/landing';
 const CTASection: React.FC<CtaSectionProps> = ({ onPrimaryClick }) => {
   return (
     <section id="get-started" className="py-20 md:py-28 bg-white">
-      <div className="max-w-7xl mx-auto px-4 md:px-6">
+      <div className="max-w-360 mx-auto px-4 md:px-6">
         <div className="relative overflow-hidden rounded-[28px] md:rounded-[44px] border border-black/5 bg-[#F5F6F8] shadow-[0_18px_60px_rgba(15,17,21,0.10)] transition-[transform,box-shadow] duration-300 ease-out md:hover:-translate-y-0.5 md:hover:shadow-[0_24px_70px_rgba(15,17,21,0.14)] motion-reduce:transition-none motion-reduce:transform-none">
           <div
             className="absolute inset-0 opacity-[0.02]"

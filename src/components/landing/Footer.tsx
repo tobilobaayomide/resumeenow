@@ -19,7 +19,7 @@ const Footer: React.FC = () => {
 
   return (
     <footer className="relative overflow-hidden bg-[#0D1015] opacity-90 text-white pt-18 md:pt-24 pb-8 md:pb-10 border-t border-white/5">
-      <div className="max-w-7xl mx-auto px-6 relative z-10">
+      <div className="max-w-360 mx-auto px-6 relative z-10">
         <div className="hidden md:block rounded-[28px] border border-white/10 bg-white/3 backdrop-blur-md p-6 md:p-8 mb-12 md:mb-16">
           <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6 md:gap-10">
             <div className="max-w-2xl">

@@ -39,7 +39,7 @@ const TemplatesSection: React.FC<TemplatesSectionProps> = ({ onSelectTemplate })
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,rgba(0,0,0,0.06),transparent_58%)]" />
       </div>
 
-      <div className="max-w-7xl mx-auto px-6 relative z-10">
+      <div className="max-w-360 mx-auto px-6 relative z-10">
         <div className="flex flex-col md:flex-row md:items-end justify-between mb-12 gap-6">
           <div className="max-w-2xl">
             <p className="text-[11px] uppercase tracking-[0.22em] text-black/45 font-medium mb-3">Templates</p>
