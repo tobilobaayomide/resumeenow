@@ -98,7 +98,7 @@ const DashboardView: React.FC<DashboardViewProps> = ({
         />
 
         <main className="flex-1 px-4 md:px-8 lg:px-12 pb-24 md:pb-12 overflow-y-auto">
-          <div className="max-w-6xl mx-auto pt-3 md:pt-4">
+          <div className="w-full mx-auto pt-3 md:pt-4">
             <WorkspaceSnapshot
               greeting={greeting}
               username={username}
