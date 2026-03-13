@@ -80,7 +80,7 @@ const Sidebar: React.FC = () => {
     return (
         <>
             {/* ================= DESKTOP SIDEBAR ================= */}
-            <aside className="hidden md:flex w-65 bg-[#0C0C0C] flex-col h-screen sticky top-0 z-50 font-sans border-r border-[#1a1a1a]">
+            <aside className="hidden md:flex w-80 bg-[#0C0C0C] flex-col h-screen sticky top-0 z-50 font-sans border-r border-[#1a1a1a]">
                 
                 {/* 1. Brand Section - Clean & Minimal */}
                 <div className="h-24 flex items-center px-8">
