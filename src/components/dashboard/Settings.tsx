@@ -52,7 +52,7 @@ const Settings: React.FC = () => {
         <SettingsHeader />
 
         <main className="flex-1 px-4 md:px-8 lg:px-12 py-8 md:py-10 overflow-y-auto pb-32">
-          <div className="max-w-6xl mx-auto w-full">
+          <div className=" mx-auto w-full">
             <div className="flex flex-col lg:flex-row gap-8 lg:gap-16">
               <SettingsTabNavigation activeTab={activeTab} onTabChange={setActiveTab} />
 

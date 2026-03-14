@@ -76,7 +76,7 @@ const CareerProfile: React.FC = () => {
             onHeadlineChange={(value) => changeField('headline', value)}
           />
 
-          <main className="px-4 md:px-8 lg:px-12 pt-24 md:pt-28 pb-12 max-w-6xl mx-auto w-full grid grid-cols-1 md:grid-cols-12 gap-8 md:gap-10">
+          <main className="px-4 md:px-8 lg:px-12 pt-24 md:pt-28 pb-12 mx-auto w-full grid grid-cols-1 md:grid-cols-12 gap-8 md:gap-10">
             <CareerProfileSidebar
               isEditing={isEditing}
               email={user?.email || ''}

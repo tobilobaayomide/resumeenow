@@ -10,6 +10,7 @@ import {
   FiLayout,
   FiLock,
   FiStar,
+  FiZap,
 } from 'react-icons/fi';
 import { MdFileDownloadDone } from 'react-icons/md';
 import { BUILDER_TEMPLATE_OPTIONS } from '../../../domain/templates';
@@ -36,179 +37,213 @@ const BuilderHeader: React.FC<BuilderHeaderProps> = ({
   onImportProfile,
   onDownload,
   onSave,
-}) => (
-  <header className="min-h-16 xl:h-20 bg-white border-b border-gray-200 flex flex-wrap xl:flex-nowrap items-center justify-between gap-2 xl:gap-0 px-3 md:px-4 lg:px-6 py-2 xl:py-0 z-30 shrink-0 shadow-sm transition-all print:hidden">
-    <div className="order-1 flex items-center gap-2 md:gap-4 flex-1 min-w-0">
-      <button
-        onClick={onBackToDashboard}
-        className="w-8 h-8 flex items-center justify-center rounded-full bg-gray-50 border border-gray-200 text-gray-500 hover:text-black transition-all shadow-sm shrink-0"
-      >
-        <FiChevronLeft size={16} />
-      </button>
+}) => {
+  const isBusy = isSaving || isAutosaving;
 
-      <div className="h-6 w-px bg-gray-200 hidden md:block" />
+  return (
+    <header className="h-16 bg-white border-b border-gray-100 flex items-center px-4 md:px-6 gap-3 z-30 shrink-0 shadow-[0_4px_20px_-10px_rgba(0,0,0,0.05)] print:hidden">
 
-      <div className="flex flex-col relative group sm:flex">
-        <label className="text-[10px] uppercase font-normal text-gray-400 hidden lg:block">
-          Project Title
-        </label>
-        <input
-          type="text"
-          value={title}
-          onChange={(event) => onTitleChange(event.target.value)}
-          className="font-bold text-gray-900 text-sm md:text-base focus:outline-none bg-transparent placeholder-gray-300 w-20 sm:w-32 md:w-44 lg:w-56 xl:w-64 truncate"
-        />
-        <FiEdit3
-          className="absolute right-0 top-1/2 -translate-y-1/2 text-gray-300 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none hidden lg:block"
-          size={12}
-        />
-        <span className="hidden lg:block text-[10px] text-gray-400 font-normal mt-0.5">
-          {saveStatusLabel}
-        </span>
+      <div className="flex items-center gap-3 flex-1 min-w-0">
+
+        {/* Back Button */}
+        <button
+          onClick={onBackToDashboard}
+          className="w-8 h-8 hidden md:flex items-center justify-center rounded-full bg-gray-50 text-gray-500 hover:text-black hover:bg-gray-100 transition-colors shrink-0"
+          title="Back to Dashboard"
+        >
+          <FiChevronLeft size={16} />
+        </button>
+
+        <div className="w-px h-6 bg-gray-200 shrink-0 hidden sm:block mx-1" />
+
+        {/* Title + Save Status */}
+        <div className="relative group flex flex-col justify-center min-w-0 flex-1 max-w-35 sm:max-w-50 md:max-w-60 lg:max-w-70 p-1.5 -ml-1.5 rounded-lg hover:bg-gray-50 transition-colors">
+          <div className="flex items-center gap-2">
+            <input
+              type="text"
+              value={title}
+              onChange={(e) => onTitleChange(e.target.value)}
+              className="font-bold text-[13.5px] text-gray-900 bg-transparent focus:outline-none placeholder-gray-300 w-full truncate leading-none relative z-10"
+              placeholder="Untitled Resume"
+            />
+            <FiEdit3
+              size={11}
+              className="text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity absolute right-2 pointer-events-none"
+            />
+          </div>
+          <div className="hidden md:flex items-center gap-1.5 mt-0.5">
+            <div className={`w-1.5 h-1.5 rounded-full ${isSaving ? 'bg-amber-400 animate-pulse' : isAutosaving ? 'bg-blue-400 animate-pulse' : 'bg-green-400'}`} />
+            <span className="text-[9.5px] text-gray-400 font-medium truncate hidden sm:block uppercase tracking-wide">
+              {saveStatusLabel}
+            </span>
+          </div>
+        </div>
+
+        {/* Template Selector (Desktop) */}
+        <div className="hidden lg:flex items-center gap-2.5 shrink-0 ml-4 relative">
+          <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400">
+            Template
+          </span>
+          <div className="relative border border-gray-200 rounded-lg hover:border-gray-300 transition-colors bg-gray-50 overflow-hidden">
+            <select
+              value={templateId}
+              onChange={(e) => onTemplateChange(normalizeTemplateId(e.target.value))}
+              className="h-8 pl-3 pr-8 w-32 text-[11.5px] font-semibold text-gray-800 outline-none cursor-pointer bg-transparent appearance-none"
+            >
+              {BUILDER_TEMPLATE_OPTIONS.map((opt) => (
+                <option key={opt.id} value={opt.id}>{opt.label}</option>
+              ))}
+            </select>
+            <div className="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400">
+              <FiLayout size={12} />
+            </div>
+          </div>
+        </div>
       </div>
 
-      <div className="hidden xl:flex items-center gap-2 rounded-full border border-gray-200 bg-gray-50 px-2 py-1">
-        <span className="text-[10px] font-normal uppercase tracking-wide text-gray-400">
-          Template
-        </span>
+      {/* ── CENTRE: Edit/Preview toggle (Mobile Only) ──────────────────── */}
+      <div className="flex md:hidden items-center bg-gray-100/80 p-1 rounded-xl shrink-0 border border-gray-200/50">
+        <button
+          onClick={() => onMobileViewChange('editor')}
+          className={`px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all flex items-center gap-1.5 ${
+            mobileView === 'editor'
+              ? 'bg-white shadow-[0_1px_3px_rgba(0,0,0,0.1)] text-gray-900'
+              : 'text-gray-500 hover:text-gray-700'
+          }`}
+        >
+          <FiEdit3 size={12} />
+          <span>Edit</span>
+        </button>
+        <button
+          onClick={() => onMobileViewChange('preview')}
+          className={`px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all flex items-center gap-1.5 ${
+            mobileView === 'preview'
+              ? 'bg-white shadow-[0_1px_3px_rgba(0,0,0,0.1)] text-gray-900'
+              : 'text-gray-500 hover:text-gray-700'
+          }`}
+        >
+          <FiEye size={12} />
+          <span>View</span>
+        </button>
+      </div>
+
+      {/* ── RIGHT: Actions ───────────────────────────────────────────────── */}
+      <div className="flex items-center gap-2.5 shrink-0">
+
+        {/* Template Selector (Tablet Only) */}
         <select
           value={templateId}
-          onChange={(event) =>
-            onTemplateChange(normalizeTemplateId(event.target.value))
-          }
-          className="h-7 rounded-full border border-gray-200 bg-white px-2 text-xs font-normal text-gray-700 outline-none"
+          onChange={(e) => onTemplateChange(normalizeTemplateId(e.target.value))}
+          className="hidden md:block lg:hidden h-9 rounded-lg border border-gray-200 bg-gray-50 px-3 text-[11.5px] font-semibold text-gray-800 outline-none hover:border-gray-300 cursor-pointer transition-colors"
+          aria-label="Select template"
         >
-          {BUILDER_TEMPLATE_OPTIONS.map((option) => (
-            <option key={option.id} value={option.id}>
-              {option.label}
-            </option>
+          {BUILDER_TEMPLATE_OPTIONS.map((opt) => (
+            <option key={opt.id} value={opt.id}>{opt.label}</option>
           ))}
         </select>
-      </div>
-    </div>
 
-    <div className="order-3 w-full flex lg:hidden bg-gray-100 rounded-lg p-0.5 mx-1 shrink-0">
-      <button
-        onClick={() => onMobileViewChange('editor')}
-        className={`p-1.5 rounded-md transition-all flex items-center gap-1 text-xs font-bold ${
-          mobileView === 'editor' ? 'bg-white shadow text-black' : 'text-gray-400'
-        }`}
-      >
-        <FiLayout size={14} /> Edit
-      </button>
-      <button
-        onClick={() => onMobileViewChange('preview')}
-        className={`p-1.5 rounded-md transition-all flex items-center gap-1 text-xs font-bold ${
-          mobileView === 'preview' ? 'bg-white shadow text-black' : 'text-gray-400'
-        }`}
-      >
-        <FiEye size={14} /> View
-      </button>
-    </div>
+        {/* AI Features Group (Modern Segmented Pill) */}
+        <div className="hidden md:flex items-center bg-indigo-50/50 p-1 rounded-xl border border-indigo-100/50">
+          <button
+            onClick={() => onProAction('ai_tailor', 'AI Tailor')}
+            className="flex items-center gap-1.5 px-3 h-7 rounded-lg text-[11px] font-bold text-indigo-600 hover:bg-white hover:shadow-sm transition-all"
+            title="AI Tailor"
+          >
+            <FiZap size={12} />
+            <span className="hidden lg:inline">Tailor</span>
+            {!isPro && <FiLock size={10} className="text-indigo-300 opacity-60 hidden lg:block" />}
+          </button>
 
-    <div className="order-2 flex items-center gap-1.5 sm:gap-2 lg:gap-2.5 shrink-0 max-w-[58vw] sm:max-w-[62vw] lg:max-w-[68vw] xl:max-w-none overflow-x-auto xl:overflow-visible no-scrollbar">
-      <select
-        value={templateId}
-        onChange={(event) =>
-          onTemplateChange(normalizeTemplateId(event.target.value))
-        }
-        className="h-8 shrink-0 rounded-2xl border border-gray-200 bg-white px-2 text-[11px] font-normal text-gray-700 outline-none xl:hidden"
-        aria-label="Select template"
-      >
-        {BUILDER_TEMPLATE_OPTIONS.map((option) => (
-          <option key={option.id} value={option.id}>
-            {option.label}
-          </option>
-        ))}
-      </select>
+          <div className="w-px h-4 bg-indigo-200/50 mx-0.5" />
 
-      <button
-        onClick={() => onProAction('ai_tailor', 'AI Tailor')}
-        className="hidden xl:flex px-3 py-2 rounded-full text-xs font-normal border border-gray-200 text-gray-700 hover:bg-gray-50 items-center gap-2 transition-colors"
-        title="AI Tailor"
-      >
-        <FiStar size={14} />
-        <span>AI Tailor</span>
-        {!isPro && <FiLock size={12} className="text-gray-400" />}
-      </button>
+          <button
+            onClick={() => onProAction('cover_letter', 'Cover Letter')}
+            className="flex items-center gap-1.5 px-3 h-7 rounded-lg text-[11px] font-bold text-indigo-600 hover:bg-white hover:shadow-sm transition-all"
+            title="Cover Letter"
+          >
+            <FiFileText size={12} />
+            <span className="hidden lg:inline">Cover Letter</span>
+            {!isPro && <FiLock size={10} className="text-indigo-300 opacity-60 hidden lg:block" />}
+          </button>
 
-      <button
-        onClick={() => onProAction('cover_letter', 'Cover Letter')}
-        className="hidden xl:flex px-3 py-2 rounded-full text-xs font-normal border border-gray-200 text-gray-700 hover:bg-gray-50 items-center gap-2 transition-colors"
-        title="Cover Letter"
-      >
-        <FiFileText size={14} />
-        <span>Cover Letter</span>
-        {!isPro && <FiLock size={12} className="text-gray-400" />}
-      </button>
+          <div className="w-px h-4 bg-indigo-200/50 mx-0.5" />
 
-      <button
-        onClick={() => onProAction('ats_audit', 'ATS Audit')}
-        className="hidden xl:flex px-3 py-2 rounded-full text-xs font-normal border border-gray-200 text-gray-700 hover:bg-gray-50 items-center gap-2 transition-colors"
-        title="ATS Audit"
-      >
-        <FiCheck size={14} />
-        <span>ATS Audit</span>
-        {!isPro && <FiLock size={12} className="text-gray-400" />}
-      </button>
+          <button
+            onClick={() => onProAction('ats_audit', 'ATS Audit')}
+            className="flex items-center gap-1.5 px-3 h-7 rounded-lg text-[11px] font-bold text-indigo-600 hover:bg-white hover:shadow-sm transition-all"
+            title="ATS Audit"
+          >
+            <FiCheck size={12} />
+            <span className="hidden lg:inline">Audit</span>
+            {!isPro && <FiLock size={10} className="text-indigo-300 opacity-60 hidden lg:block" />}
+          </button>
+        </div>
 
-      <button
-        onClick={onToggleEditorCollapse}
-        className="hidden xl:flex px-3 py-2 rounded-full text-xs font-normal border border-gray-200 text-gray-700 hover:bg-gray-50 items-center gap-2 transition-colors"
-        title={isEditorCollapsed ? 'Show editor panel' : 'Focus preview'}
-      >
-        {isEditorCollapsed ? <FiLayout size={14} /> : <FiEye size={14} />}
-        <span>{isEditorCollapsed ? 'Show Editor' : 'Focus Preview'}</span>
-      </button>
+        {/* Utilities Group */}
+        <div className="hidden lg:flex items-center gap-1.5 ml-1">
+          <button
+            onClick={onImportProfile}
+            disabled={isImporting}
+            className="flex items-center justify-center gap-1.5 px-3 h-9 rounded-xl text-[11.5px] font-bold text-gray-600 bg-gray-50 border border-gray-100 hover:bg-white hover:shadow-sm hover:border-gray-200 transition-all disabled:opacity-50"
+            title="Import Profile"
+          >
+            <FiDownloadCloud size={14} />
+            <span>{isImporting ? 'Importing…' : 'Import'}</span>
+          </button>
 
-      {!isPro && (
+          <button
+            onClick={onToggleEditorCollapse}
+            className="flex items-center justify-center gap-1.5 w-9 h-9 rounded-xl text-gray-500 bg-gray-50 border border-gray-100 hover:bg-white hover:shadow-sm hover:text-gray-900 transition-all"
+            title={isEditorCollapsed ? 'Show Editor' : 'Focus Preview'}
+          >
+            {isEditorCollapsed ? <FiLayout size={14} /> : <FiEye size={14} />}
+          </button>
+        </div>
+
+        <div className="w-px h-6 bg-gray-200 mx-1 hidden sm:block" />
+
+        {/* Go Pro Badge */}
+        {!isPro && (
+          <button
+            onClick={onUpgrade}
+            className="hidden sm:flex items-center gap-1.5 px-3.5 h-9 rounded-xl text-[11px] font-black uppercase tracking-wider bg-linear-to-r from-amber-200 to-yellow-400 text-yellow-900 hover:from-amber-300 hover:to-yellow-500 hover:shadow-md transition-all border border-amber-300/50"
+          >
+            <FiStar size={12} className="fill-yellow-600" />
+            <span>Pro</span>
+          </button>
+        )}
+
+        {/* Primary Actions */}
         <button
-          onClick={onUpgrade}
-          className="hidden xl:flex px-3 py-2 rounded-full text-xs font-normal border border-gray-900 bg-gray-900 text-white hover:bg-black items-center gap-2 transition-colors"
+          onClick={onDownload}
+          className="flex items-center justify-center w-9 h-9 sm:w-auto sm:px-4 rounded-xl text-[11.5px] font-bold text-gray-700 border border-gray-200 bg-white hover:bg-gray-50 hover:border-gray-300 shadow-sm transition-all"
+          title="Download PDF"
         >
-          <FiStar size={14} />
-          Go Pro
+          <FiDownload size={14} />
+          <span className="hidden sm:inline sm:ml-2">Download</span>
         </button>
-      )}
 
-      <button
-        onClick={onImportProfile}
-        disabled={isImporting}
-        className="flex shrink-0 items-center justify-center w-9 h-9 lg:w-auto lg:h-9 px-0 lg:px-3 xl:px-4 py-2 rounded-2xl md:rounded-full text-xs lg:text-sm font-normal border border-gray-200 text-gray-700 hover:bg-black hover:text-white gap-2 transition-colors"
-      >
-        <FiDownloadCloud className="block md:hidden" size={16} />
-        <span className="hidden lg:inline">
-          {isImporting ? 'Importing...' : 'Import Profile'}
-        </span>
-      </button>
+        <button
+          onClick={onSave}
+          disabled={isBusy}
+          className={`
+            flex items-center justify-center gap-2 h-9 px-4 lg:px-5
+            rounded-xl text-[11.5px] font-bold transition-all shrink-0 shadow-sm
+            ${isBusy
+              ? 'bg-gray-100 text-gray-400 border-transparent cursor-not-allowed'
+              : 'bg-gray-900 text-white hover:bg-black hover:shadow-md'
+            }
+          `}
+        >
+          <MdFileDownloadDone size={15} />
+          <span className="hidden sm:inline tracking-wide">
+            {isSaving ? 'Saving…' : isAutosaving ? 'Autosaving…' : 'Save'}
+          </span>
+        </button>
 
-      <button
-        onClick={onDownload}
-        className="flex shrink-0 items-center justify-center w-9 h-9 lg:w-auto lg:h-9 px-0 lg:px-3 xl:px-4 py-2 md:rounded-full rounded-2xl text-xs lg:text-sm font-normal border border-gray-200 text-gray-700 hover:bg-black hover:text-white gap-2 transition-colors group"
-      >
-        <FiDownload
-          size={16}
-          className="flex md:hidden group-hover:translate-y-0.5 transition-transform"
-        />
-        <span className="hidden lg:inline">Download</span>
-      </button>
-
-      <button
-        onClick={onSave}
-        disabled={isSaving || isAutosaving}
-        className={`w-9 h-9 lg:w-auto lg:h-9 px-0 lg:px-4 xl:px-5 py-2 md:rounded-full rounded-2xl text-xs lg:text-sm font-normal flex shrink-0 items-center justify-center gap-2 transition-all shadow-md ${
-          isSaving || isAutosaving
-            ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-            : 'bg-black text-white hover:bg-gray-800 hover:shadow-lg'
-        }`}
-      >
-        <MdFileDownloadDone className="flex md:hidden" size={16} />
-        <span className="hidden lg:inline">
-          {isSaving ? 'Saving' : isAutosaving ? 'Autosaving' : 'Save'}
-        </span>
-      </button>
-    </div>
-  </header>
-);
+      </div>
+    </header>
+  );
+};
 
 export default BuilderHeader;

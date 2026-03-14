@@ -1,5 +1,5 @@
 import React from 'react';
-import { FiCheck, FiFileText, FiLock, FiStar, FiZap } from 'react-icons/fi';
+import { FiCheck, FiLock, FiStar, FiZap } from 'react-icons/fi';
 import { toast } from 'sonner';
 import Sidebar from './Sidebar';
 import { usePlan } from '../../context/usePlan';
@@ -25,153 +25,173 @@ const ProFeatures: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#F6F7F9] flex font-sans text-gray-900 selection:bg-black selection:text-white">
+    <div className="min-h-screen bg-[#F6F7F9] flex font-sans text-gray-900 selection:bg-gray-900 selection:text-white">
       <Sidebar />
 
       <div className="flex-1 flex flex-col min-h-screen relative overflow-hidden w-full">
-        <div className="fixed inset-0 pointer-events-none opacity-[0.02] z-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')]"></div>
-
         <main className="flex-1 px-4 md:px-8 lg:px-12 py-8 md:py-10 overflow-y-auto pb-28 md:pb-10 relative z-10">
-          <div className="max-w-6xl mx-auto w-full space-y-8">
-            <section className="rounded-3xl bg-linear-to-br from-[#0B0B0C] via-[#161719] to-[#202225] text-white border border-white/10 shadow-2xl shadow-black/25 overflow-hidden relative">
-              <div className="absolute -top-24 -right-10 w-64 h-64 rounded-full bg-white/10 blur-3xl" />
-              <div className="absolute -bottom-20 -left-14 w-56 h-56 rounded-full bg-indigo-400/20 blur-3xl" />
-
-              <div className="relative px-6 md:px-8 py-8 md:py-9">
-                <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/60 mb-2">
-                  Pro Workspace
-                </p>
-                <h1 className="text-2xl md:text-3xl font-semibold tracking-tight">
-                  Premium Optimization Suite
-                </h1>
-                <p className="text-sm md:text-base text-white/75 mt-2 max-w-2xl">
-                  Centralized AI workflows for tailoring, ATS checks, and faster finalization from draft to
-                  application-ready output.
-                </p>
-
-                <div className="mt-6 grid grid-cols-1 md:grid-cols-[auto_1fr_auto] items-center gap-4">
-                  <div
-                    className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-bold uppercase tracking-[0.12em] border ${
-                      isPro
-                        ? 'bg-emerald-500/20 border-emerald-400/30 text-emerald-200'
-                        : 'bg-white/10 border-white/20 text-white/80'
-                    }`}
-                  >
-                    <FiStar size={12} />
-                    {tier}
-                  </div>
-
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between text-[11px] text-white/70 font-medium">
-                      <span>AI credits</span>
-                      <span>{usedCredits}/{monthlyCredits}</span>
-                    </div>
-                    <div className="h-2 rounded-full bg-white/10 overflow-hidden">
-                      <div
-                        className="h-full bg-white/70 transition-all duration-500"
-                        style={{ width: `${creditPercent}%` }}
-                      />
-                    </div>
-                  </div>
-
-                  {!isPro && (
-                    <button
-                      onClick={() => openUpgrade()}
-                      className="h-11 px-5 w-full md:w-auto rounded-xl bg-white text-gray-900 text-sm font-semibold hover:bg-gray-200 transition-colors inline-flex items-center justify-center gap-2"
-                    >
-                      Unlock Pro
-                    </button>
-                  )}
+          <div className="max-w-8xl mx-auto w-full space-y-8 animate-in fade-in duration-500">
+            
+            <section className="rounded-3xl bg-black text-white shadow-2xl shadow-gray-900/20 overflow-hidden relative border border-gray-800">
+             
+              <div className="relative px-8 md:px-10 py-10 md:py-12 flex flex-col md:flex-row md:items-center justify-between gap-8 md:gap-12">
+                <div className="flex-1">
+                  <p className="text-[10.5px] font-bold uppercase tracking-[0.2em] text-gray-400 mb-3 flex items-center gap-2">
+                    <FiStar className={isPro ? "text-amber-400" : "text-gray-400"} size={12} />
+                    Pro Workspace
+                  </p>
+                  <h1 className="text-[28px] md:text-[34px] font-bold tracking-tight text-white mb-2 leading-tight">
+                    Premium Optimization Suite
+                  </h1>
+                  <p className="text-[14px] md:text-[15px] text-gray-400 max-w-xl leading-relaxed">
+                    Centralized AI workflows for tailoring, ATS checks, and faster finalization from draft to application-ready output.
+                  </p>
                 </div>
 
-                <div className="mt-4">
-                  <button
-                    onClick={handleResetToFree}
-                    className="text-[11px] font-semibold uppercase tracking-[0.12em] text-white/70 hover:text-white transition-colors"
-                  >
-                    Reset to Free (Dev)
-                  </button>
+                <div className="w-full md:w-72 bg-white/5 border border-white/10 rounded-2xl p-5 backdrop-blur-md shrink-0">
+                  <div className="flex flex-col gap-4">
+                    <div className="flex items-center justify-between">
+                      <span className={`inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-[10px] font-bold uppercase tracking-widest border ${
+                        isPro ? 'bg-amber-500/20 border-amber-400/30 text-amber-300' : 'bg-white/10 border-white/10 text-gray-300'
+                      }`}>
+                        {tier} Plan
+                      </span>
+                      <button
+                        onClick={handleResetToFree}
+                        className="text-[10px] font-semibold text-gray-500 hover:text-gray-300 transition-colors"
+                        title="Developer Action"
+                      >
+                        Reset
+                      </button>
+                    </div>
+
+                    <div className="space-y-2.5">
+                      <div className="flex items-center justify-between text-[11px] text-gray-300 font-bold uppercase tracking-wider">
+                        <span>AI Credits</span>
+                        <span className="text-white">{usedCredits} / {monthlyCredits}</span>
+                      </div>
+                      <div className="h-1.5 rounded-full bg-gray-800 overflow-hidden">
+                        <div
+                          className="h-full rounded-full transition-all duration-1000 ease-out bg-linear-to-r from-indigo-500 to-amber-400"
+                          style={{ width: `${creditPercent}%` }}
+                        />
+                      </div>
+                    </div>
+
+                    {!isPro && (
+                      <button
+                        onClick={() => openUpgrade()}
+                        className="w-full h-10 mt-1 rounded-xl bg-white text-gray-900 text-[13px] font-bold hover:bg-gray-100 transition-all active:scale-[0.98] shadow-sm flex items-center justify-center gap-1.5"
+                      >
+                        Unlock Pro
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
             </section>
 
-            <section className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <section className="grid grid-cols-1 md:grid-cols-2 gap-5 sm:gap-6">
               {DASHBOARD_PRO_FEATURE_CARDS.map((feature) => (
                 <article
                   key={feature.title}
-                  className="bg-white border border-gray-200 rounded-2xl p-5 shadow-sm hover:shadow-xl hover:shadow-black/5 transition-all"
+                  className="group relative bg-white border border-gray-200 rounded-2xl p-6 transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_12px_30px_-10px_rgba(0,0,0,0.08)] hover:border-gray-300"
                 >
-                  <div className="flex items-start justify-between gap-3">
-                    <span className="text-[10px] font-bold uppercase tracking-[0.15em] text-gray-400">
-                      {feature.tag}
+                  <div className="flex items-start justify-between gap-3 mb-4">
+                    <span className="w-10 h-10 rounded-xl flex items-center justify-center border border-gray-100 bg-gray-50 text-gray-500 group-hover:bg-gray-900 group-hover:text-white transition-all duration-300">
+                      <FiZap size={18} />
                     </span>
                     <span
-                      className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.12em] ${
-                        isPro ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-500'
+                      className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[9.5px] font-bold uppercase tracking-widest border ${
+                        isPro ? 'bg-emerald-50 border-emerald-100 text-emerald-600' : 'bg-gray-50 border-gray-200 text-gray-500'
                       }`}
                     >
-                      {isPro ? <FiCheck size={11} /> : <FiLock size={11} />}
+                      {isPro ? <FiCheck size={10} /> : <FiLock size={10} />}
                       {isPro ? 'Enabled' : 'Locked'}
                     </span>
                   </div>
-                  <h3 className="text-lg font-semibold text-gray-900 mt-2">{feature.title}</h3>
-                  <p className="text-sm text-gray-500 mt-1.5 leading-relaxed">{feature.description}</p>
+                  <h3 className="text-[15px] font-bold text-gray-900 tracking-tight transition-colors group-hover:text-black">
+                    {feature.title}
+                  </h3>
+                  <p className="text-[13px] text-gray-500 mt-2 leading-relaxed">
+                    {feature.description}
+                  </p>
                 </article>
               ))}
             </section>
 
             <section className="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm">
-              <div className="p-6 border-b border-gray-100 bg-gray-50/80 flex items-center justify-between gap-3">
+              <div className="p-6 border-b border-gray-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div>
-                  <h2 className="text-lg font-semibold text-gray-900">Free vs Pro</h2>
-                  <p className="text-sm text-gray-500 mt-0.5">
-                    Core capabilities available now and what unlocks with Pro.
+                  <h2 className="text-[16px] font-bold text-gray-900 tracking-tight">Capabilities Overview</h2>
+                  <p className="text-[13px] text-gray-500 mt-0.5">
+                    See exactly what unlocks when you join Pro.
                   </p>
                 </div>
-                <FiZap className="text-gray-300" size={18} />
               </div>
-              <div className="p-6 grid grid-cols-1 lg:grid-cols-2 gap-4">
-                <div className="rounded-xl border border-gray-200 p-4">
-                  <p className="text-xs font-bold uppercase tracking-[0.12em] text-gray-500 mb-3">Free Plan</p>
-                  <ul className="space-y-2 text-sm text-gray-600">
+              <div className="p-6 md:p-8 grid grid-cols-1 lg:grid-cols-2 gap-6 md:gap-8">
+                
+                {/* Free Column */}
+                <div className="rounded-xl border border-gray-100 bg-gray-50/50 p-6 flex flex-col">
+                  <p className="text-[11px] font-black uppercase tracking-widest text-gray-400 mb-5">
+                    Free Plan
+                  </p>
+                  <ul className="space-y-3.5 text-[13.5px] font-medium text-gray-600 flex-1">
                     {DASHBOARD_FREE_PLAN_ITEMS.map((item, index) => (
-                      <li key={item} className="flex items-center gap-2">
-                        {index === DASHBOARD_FREE_PLAN_ITEMS.length - 1 ? <FiLock size={14} /> : <FiCheck size={14} />}
-                        {item}
+                      <li key={item} className="flex items-start gap-3">
+                        <span className="mt-0.5 shrink-0 text-gray-400">
+                          {index === DASHBOARD_FREE_PLAN_ITEMS.length - 1 ? <FiLock size={14} /> : <FiCheck size={14} />}
+                        </span>
+                        <span className="leading-tight">{item}</span>
                       </li>
                     ))}
                   </ul>
                 </div>
-                <div className="rounded-xl border border-black p-4 bg-black text-white">
-                  <p className="text-xs font-bold uppercase tracking-[0.12em] text-white/65 mb-3">Pro Plan</p>
-                  <ul className="space-y-2 text-sm text-white/90">
+
+                {/* Pro Column */}
+                <div className="rounded-xl border-2 border-gray-900 bg-black p-6 flex flex-col shadow-xl relative overflow-hidden">
+                  <div className="absolute top-0 right-0 w-32 h-32 bg-amber-500/10 rounded-full blur-2xl pointer-events-none" />
+                  
+                  <p className="text-[11px] font-black uppercase tracking-widest text-amber-500 mb-5 flex items-center gap-2 relative z-10">
+                    <FiStar size={12} className="fill-amber-500" />
+                    Pro Plan
+                  </p>
+                  <ul className="space-y-3.5 text-[13.5px] font-medium text-white flex-1 relative z-10">
                     {DASHBOARD_PRO_PLAN_ITEMS.map((item) => (
-                      <li key={item} className="flex items-center gap-2"><FiCheck size={14} /> {item}</li>
+                      <li key={item} className="flex items-start gap-3">
+                        <span className="mt-0.5 shrink-0 text-emerald-400">
+                          <FiCheck size={14} />
+                        </span>
+                        <span className="leading-tight">{item}</span>
+                      </li>
                     ))}
                   </ul>
                 </div>
+
               </div>
             </section>
 
             {!isPro && (
-              <section className="bg-white border border-dashed border-gray-300 rounded-2xl p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                <div>
-                  <h3 className="text-base font-semibold text-gray-900 flex items-center gap-2">
-                    <FiFileText size={16} />
-                    Locked Until Upgrade
+              <section className="bg-amber-50/50 border border-amber-200/60 rounded-2xl p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-5 relative overflow-hidden">
+                <div className="absolute top-0 left-0 w-2 h-full bg-amber-400" />
+                <div className="pl-2">
+                  <h3 className="text-[15px] font-bold text-gray-900 flex items-center gap-2 tracking-tight">
+                    <FiLock className="text-amber-500" size={16} />
+                    Ready to supercharge your workflow?
                   </h3>
-                  <p className="text-sm text-gray-500 mt-1">
-                    You can explore this workspace, but running Pro workflows requires an active Pro plan.
+                  <p className="text-[13px] text-gray-600 mt-1 max-w-lg leading-relaxed">
+                    You can explore this workspace for free, but generating custom AI content, Tailoring, and ATS Audits requires an active Pro plan.
                   </p>
                 </div>
                 <button
                   onClick={() => openUpgrade()}
-                  className="h-11 px-5 w-full sm:w-auto rounded-xl bg-black text-white text-sm font-semibold hover:bg-gray-800 transition-colors"
+                  className="h-10 px-6 w-full sm:w-auto rounded-xl bg-gray-900 text-white text-[13px] font-bold hover:bg-black transition-all hover:-translate-y-px shadow-sm shrink-0"
                 >
-                  Unlock Pro
+                  Unlock Pro Now
                 </button>
               </section>
             )}
+
           </div>
         </main>
       </div>

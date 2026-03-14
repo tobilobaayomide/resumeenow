@@ -27,7 +27,7 @@ export const useEditorPanelState = (onSectionToggle?: (section: EditorSectionTab
     onSkillsChange,
     onLanguagesChange,
     onAchievementsChange,
-  } = useBuilderDraftMutations();
+  }: ReturnType<typeof useBuilderDraftMutations> = useBuilderDraftMutations();
   const [openSection, setOpenSection] = useState<EditorSectionTabId>('personal');
   const [newSkill, setNewSkill] = useState('');
   const [newSkillGroupLabel, setNewSkillGroupLabel] = useState('');

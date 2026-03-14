@@ -14,7 +14,7 @@ const HeroSection: React.FC = () => (
       <div className="absolute inset-0 opacity-[0.04] bg-[linear-gradient(rgba(15,23,42,0.4)_1px,transparent_1px),linear-gradient(90deg,rgba(15,23,42,0.4)_1px,transparent_1px)] bg-size-[44px_44px]" />
     </div>
 
-    <div className="max-w-7xl mx-auto top-12 md:top-0 px-6 relative z-10 grid lg:grid-cols-12 gap-12 lg:gap-10 items-center">
+    <div className="max-w-360 mx-auto top-12 md:top-0 px-6 relative z-10 grid lg:grid-cols-12 gap-12 lg:gap-10 items-center">
       <div className="lg:col-span-5">
         <div className="inline-flex items-center rounded-full border border-black/10 bg-white px-4 py-1.5 text-sm text-black/70 shadow-sm animate-in fade-in slide-in-from-bottom-3 duration-500">
           AI workflows + live resume controls
@@ -91,8 +91,8 @@ const HeroSection: React.FC = () => (
       </div>
     </div>
 
-    <div className="relative z-10 max-w-7xl mx-auto px-6 mt-25">
-      <div className="grid sm:grid-cols-3 gap-3 md:gap-4">
+    <div className="relative z-10 max-w-360 mx-auto px-6 mt-25">
+      <div className="grid sm:grid-cols-3 gap-3 md:gap-10">
         {HERO_PROOF_CARDS.map((card, index) => (
           <div
             key={card.title}

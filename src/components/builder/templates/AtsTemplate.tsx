@@ -1,10 +1,5 @@
 import React from "react";
-import type {
-  AtsDateRangeProps,
-  AtsExperienceBlockProps,
-  BuilderTemplateComponentProps,
-  TemplateSectionTitleProps,
-} from "../../../types/builder";
+import type { BuilderTemplateComponentProps } from "../../../types/builder";
 import {
   getActiveSkillItems,
   getPersonalLinkDisplayLabel,
@@ -13,51 +8,100 @@ import {
 } from "../../../domain/resume";
 import { toDescriptionBullets } from "./utils";
 
-const SectionTitle: React.FC<TemplateSectionTitleProps> = ({ children }) => (
-  <h2 className="text-[11px] font-bold tracking-[0.16em] text-black uppercase border-b border-black pb-1 mb-2">
-    {children}
-  </h2>
+const INK = "black";
+const BODY = "black";
+const MUTED = "#6b6b68";
+const RULE = "#d8d6d3";
+const SECTION_ACCENT = "#1f3a5f";
+
+const SectionTitle: React.FC<{ children: React.ReactNode }> = ({
+  children,
+}) => (
+  <div className="mb-2.5 flex items-stretch gap-2.5">
+    <div
+      className="w-0.75 shrink-0 rounded-full"
+      style={{ background: SECTION_ACCENT }}
+    />
+    <h2
+      className="text-[10.5px] font-bold uppercase tracking-[0.14em] leading-none self-center"
+      style={{ color: SECTION_ACCENT }}
+    >
+      {children}
+    </h2>
+  </div>
 );
 
-const toBullets = (value: string): string[] =>
-  value
-    .split(/(?<=[.!?])\s+(?=[A-Z])/)
-    .map((line) => line.trim())
-    .filter(Boolean);
-
-const DateRange: React.FC<AtsDateRangeProps> = ({ startDate, endDate }) => {
+const DateRange: React.FC<{ startDate?: string; endDate?: string }> = ({
+  startDate = "",
+  endDate = "",
+}) => {
   const left = startDate.trim();
   const right = endDate.trim();
   if (!left && !right) return null;
-
   return (
-    <span className="text-[11px] font-semibold uppercase tracking-wide text-gray-600">
+    <span
+      className="text-[10px] font-medium tabular-nums whitespace-nowrap shrink-0"
+      style={{ color: MUTED }}
+    >
       {left}
-      {right ? ` - ${right}` : ""}
+      {right ? ` – ${right}` : ""}
     </span>
   );
 };
 
-const ExperienceBlock: React.FC<AtsExperienceBlockProps> = ({ item }) => {
-  const bullets = toBullets(item.description);
+const ExperienceBlock: React.FC<{
+  item: {
+    id: string;
+    role?: string;
+    company?: string;
+    startDate?: string;
+    endDate?: string;
+    description?: string;
+  };
+}> = ({ item }) => {
+  const bullets = toDescriptionBullets(item.description || "");
 
   return (
-    <div className="space-y-1.5">
-      {/* CHANGED: Role/title first, then company below it */}
+    <div data-no-split="true" className="space-y-0.75">
       <div className="flex items-baseline justify-between gap-3">
-        <p className="text-[12px] font-semibold text-gray-800">{item.role}</p>
+        <p
+          className="text-[12px] font-bold leading-snug"
+          style={{ color: INK }}
+        >
+          {item.role}
+        </p>
         <DateRange startDate={item.startDate} endDate={item.endDate} />
       </div>
       {item.company && (
-        <p className="text-[12px] font-bold text-black">{item.company}</p>
+        <p
+          className="text-[10.5px] font-semibold"
+          style={{ color: SECTION_ACCENT }}
+        >
+          {item.company}
+        </p>
       )}
-      {bullets.length > 0 && (
-        <ul className="space-y-1 pl-4 list-disc text-[11px] text-gray-700 leading-relaxed text-justify">
-          {bullets.map((line, index) => (
-            <li key={`${item.id}-${index}`}>{line}</li>
+      {bullets.length > 0 ? (
+        <ul className="list-disc pl-4 space-y-0.75 mt-1.5">
+          {bullets.map((line, i) => (
+            <li
+              key={`${item.id}-b-${i}`}
+              data-break-point="true"
+              className="text-[11px] leading-[1.6] text-justify"
+              style={{ color: BODY }}
+            >
+              {line}
+            </li>
           ))}
         </ul>
-      )}
+      ) : item.description ? (
+        <p
+          data-break-point="true"
+          className="text-[11px] leading-[1.6] text-justify mt-1.5"
+          style={{ color: BODY }}
+        >
+          {item.description}
+        </p>
+      ) : null}
     </div>
   );
 };
@@ -78,73 +122,75 @@ const AtsTemplate: React.FC<BuilderTemplateComponentProps> = ({
     languages,
     achievements,
   } = data;
+
   const visibleLinks = getVisiblePersonalLinks(personalInfo);
   const activeSkills = getActiveSkillItems(skills);
-  const groupedSkills = skills.groups.filter((group) => group.items.length > 0);
+  const groupedSkills = skills.groups.filter((g) => g.items.length > 0);
   const shouldRenderGroupedSkills =
     skills.mode === "grouped" && groupedSkills.length > 0;
-  const contactDetails = [
-    personalInfo.email,
-    personalInfo.phone,
-    personalInfo.location,
-  ].filter(Boolean);
 
   const contactItems = [
+    personalInfo.email
+      ? { id: "email", type: "email" as const, value: personalInfo.email }
+      : null,
+    personalInfo.phone
+      ? { id: "phone", type: "text" as const, value: personalInfo.phone }
+      : null,
+    personalInfo.location
+      ? { id: "location", type: "text" as const, value: personalInfo.location }
+      : null,
     ...visibleLinks.map((link) => ({
       id: link.id,
       type: "link" as const,
       label: getPersonalLinkDisplayLabel(link),
       href: toExternalLinkHref(link.url),
     })),
-    ...(personalInfo.email
-      ? [
-          {
-            id: "contact-email",
-            type: "email" as const,
-            value: personalInfo.email,
-          },
-        ]
-      : []),
-    ...contactDetails
-      .filter((item) => item !== personalInfo.email)
-      .map((item, index) => ({
-        id: `contact-${index}`,
-        type: "text" as const,
-        value: item,
-      })),
-  ];
+  ].filter(Boolean) as Array<
+    | { id: string; type: "email"; value: string }
+    | { id: string; type: "text"; value: string }
+    | { id: string; type: "link"; label: string; href: string }
+  >;
 
   return (
     <div ref={contentRef} className="font-sans text-black space-y-5">
-      <header className="space-y-1">
-        <h1 className="text-[26px] font-bold tracking-tight text-black">
+      <header data-no-split="true" className="space-y-1.5">
+        <h1
+          className="text-[33px] font-bold tracking-[-0.02em] leading-none"
+          style={{ color: INK }}
+        >
           {personalInfo.fullName || (
-            <span className="text-gray-300">Your Name</span>
+            <span style={{ color: RULE }}>Your Name</span>
           )}
-          {personalInfo.jobTitle ? (
-            <span className="font-medium text-gray-700">
-              , {personalInfo.jobTitle}
+          {personalInfo.jobTitle && (
+            <span
+              className="font-normal text-[33px] tracking-[-0.01em]"
+              style={{ color: MUTED }}
+            >
+              {""}, {personalInfo.jobTitle}
             </span>
-          ) : null}
+          )}
         </h1>
+
         {contactItems.length > 0 && (
-          <p className="text-[11px] text-gray-600">
-            {contactItems.map((item, index) => (
+          <p className="text-[10px] leading-relaxed" style={{ color: MUTED }}>
+            {contactItems.map((item, i) => (
               <React.Fragment key={item.id}>
-                {index > 0 && <span> ╴ </span>}
+                {i > 0 && <span style={{ color: RULE }}> · </span>}
                 {item.type === "link" ? (
                   <a
                     href={item.href}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="hover:underline break-all text-blue-600"
+                    className="hover:underline break-all"
+                    style={{ color: MUTED }}
                   >
                     {item.label}
                   </a>
                 ) : item.type === "email" ? (
                   <a
                     href={`mailto:${item.value}`}
-                    className="hover:underline break-all text-blue-600"
+                    className="hover:underline break-all"
+                    style={{ color: MUTED }}
                   >
                     {item.value}
                   </a>
@@ -155,12 +201,18 @@ const AtsTemplate: React.FC<BuilderTemplateComponentProps> = ({
             ))}
           </p>
         )}
+
+        <div className="pt-1" style={{ borderBottom: `1.5px solid ${INK}` }} />
       </header>
 
       {summary && (
         <section>
           <SectionTitle>Summary</SectionTitle>
-          <p className="text-[12px] leading-relaxed text-gray-700 text-justify">
+          <p
+            data-break-point="true"
+            className="text-[11.5px] leading-relaxed text-justify"
+            style={{ color: BODY }}
+          >
             {summary}
           </p>
         </section>
@@ -170,10 +222,15 @@ const AtsTemplate: React.FC<BuilderTemplateComponentProps> = ({
         <section>
           <SectionTitle>Technical Skills</SectionTitle>
           {shouldRenderGroupedSkills ? (
-            <div className="space-y-1 text-[11px] leading-relaxed text-gray-700 text-justify">
+            <div className="space-y-1">
               {groupedSkills.map((group) => (
-                <p key={group.id}>
-                  <span className="font-bold text-black">
+                <p
+                  key={group.id}
+                  data-break-point="true"
+                  className="text-[11px] leading-relaxed text-justify"
+                  style={{ color: BODY }}
+                >
+                  <span className="font-bold" style={{ color: INK }}>
                     {group.label || "Skills"}:
                   </span>{" "}
                   {group.items.join(", ")}
@@ -181,7 +238,11 @@ const AtsTemplate: React.FC<BuilderTemplateComponentProps> = ({
               ))}
             </div>
           ) : (
-            <p className="text-[11px] leading-relaxed text-gray-700 text-justify">
+            <p
+              data-break-point="true"
+              className="text-[11px] leading-relaxed text-justify"
+              style={{ color: BODY }}
+            >
               {activeSkills.join(", ")}
             </p>
           )}
@@ -189,99 +250,144 @@ const AtsTemplate: React.FC<BuilderTemplateComponentProps> = ({
       )}
 
       {experience.length > 0 && (
-        <section className="space-y-3">
+        <section>
           <SectionTitle>Professional Experience</SectionTitle>
-          {experience.map((item) => (
-            <ExperienceBlock key={item.id} item={item} />
-          ))}
+          <div className="space-y-3.5">
+            {experience.map((item) => (
+              <ExperienceBlock key={item.id} item={item} />
+            ))}
+          </div>
         </section>
       )}
 
       {projects.length > 0 && (
-        <section className="space-y-2.5">
+        <section>
           <SectionTitle>Projects</SectionTitle>
-          {projects.map((project) => (
-            <div key={project.id}>
-              <div className="flex items-baseline justify-between gap-3">
-                <p className="text-[12px] font-semibold text-black">
-                  {project.name}
-                </p>
-                <DateRange
-                  startDate={project.startDate}
-                  endDate={project.endDate}
-                />
-              </div>
-              {project.link && (
-                <a
-                  href={toExternalLinkHref(project.link)}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-[11px] text-blue-600 hover:underline break-all"
-                >
-                  {project.link}
-                </a>
-              )}
-              {project.description &&
-                (() => {
-                  const bullets = toDescriptionBullets(project.description);
-                  if (bullets.length > 0) {
+          <div className="space-y-3.5">
+            {projects.map((project) => (
+              <div
+                key={project.id}
+                data-no-split="true"
+                className="space-y-0.75"
+              >
+                <div className="flex items-baseline justify-between gap-3">
+                  <p
+                    className="text-[12px] font-bold leading-snug"
+                    style={{ color: INK }}
+                  >
+                    {project.name}
+                  </p>
+                  <DateRange
+                    startDate={project.startDate}
+                    endDate={project.endDate}
+                  />
+                </div>
+                   {project.link && (
+                  <a
+                    href={toExternalLinkHref(project.link)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-[10px] break-all hover:underline"
+                    style={{ color: MUTED }}
+                  >
+                    {project.link}
+                  </a>
+                )}
+                {project.description &&
+                  (() => {
+                    const bullets = toDescriptionBullets(project.description);
+                    if (bullets.length > 0) {
+                      return (
+                        <ul className="list-disc pl-4 space-y-0.75 mt-1.5">
+                          {bullets.map((line, i) => (
+                            <li
+                              key={`${project.id}-b-${i}`}
+                              data-break-point="true"
+                              className="text-[11px] leading-[1.6] text-justify"
+                              style={{ color: BODY }}
+                            >
+                              {line}
+                            </li>
+                          ))}
+                        </ul>
+                      );
+                    }
                     return (
-                      <ul className="list-disc pl-4 text-[11px] text-gray-700 leading-relaxed text-justify space-y-1">
-                        {bullets.map((line, index) => (
-                          <li key={`${project.id}-desc-${index}`}>{line}</li>
-                        ))}
-                      </ul>
+                      <p
+                        data-break-point="true"
+                        className="text-[11px] leading-[1.6] text-justify whitespace-pre-line mt-1.5"
+                        style={{ color: BODY }}
+                      >
+                        {project.description}
+                      </p>
                     );
-                  }
-
-                  return (
-                    <p className="text-[11px] text-gray-700 leading-relaxed text-justify whitespace-pre-line">
-                      {project.description}
-                    </p>
-                  );
-                })()}
-            </div>
-          ))}
+                  })()}
+              </div>
+            ))}
+          </div>
         </section>
       )}
 
       {volunteering.length > 0 && (
-        <section className="space-y-2.5">
+        <section>
           <SectionTitle>Volunteering</SectionTitle>
-          {volunteering.map((item) => (
-            <ExperienceBlock key={item.id} item={item} />
-          ))}
+          <div className="space-y-3.5">
+            {volunteering.map((item) => (
+              <ExperienceBlock key={item.id} item={item} />
+            ))}
+          </div>
         </section>
       )}
 
       {education.length > 0 && (
-        <section className="space-y-2.5">
+        <section>
           <SectionTitle>Education</SectionTitle>
-          {education.map((edu) => (
-            <div key={edu.id}>
-              <div className="flex items-baseline justify-between gap-3">
-                <p className="text-[12px] font-semibold text-black">
-                  {edu.degree}
+          <div className="space-y-3">
+            {education.map((edu) => (
+              <div key={edu.id} data-no-split="true" className="space-y-0.75">
+                <div className="flex items-baseline justify-between gap-3">
+                  <p
+                    className="text-[12px] font-bold leading-snug"
+                    style={{ color: INK }}
+                  >
+                    {edu.degree}
+                  </p>
+                  <DateRange startDate={edu.startDate} endDate={edu.endDate} />
+                </div>
+                <p
+                  className="text-[10.5px] font-semibold"
+                  style={{ color: SECTION_ACCENT }}
+                >
+                  {edu.school}
                 </p>
-                <DateRange startDate={edu.startDate} endDate={edu.endDate} />
+                {edu.description && (
+                  <p
+                    data-break-point="true"
+                    className="text-[11px] leading-[1.6] text-justify whitespace-pre-line"
+                    style={{ color: BODY }}
+                  >
+                    {edu.description}
+                  </p>
+                )}
               </div>
-              <p className="text-[11px] text-gray-700">{edu.school}</p>
-              {edu.description && (
-                <p className="text-[11px] text-gray-700 leading-relaxed text-justify whitespace-pre-line">
-                  {edu.description}
-                </p>
-              )}
-            </div>
-          ))}
+            ))}
+          </div>
         </section>
       )}
 
       {certifications.length > 0 && (
         <section>
           <SectionTitle>Certifications</SectionTitle>
-          <ul className="list-disc pl-4 text-[11px] text-gray-700 space-y-1">
-            {certifications.map((item, index) => (
-              <li key={`${item}-${index}`}>{item}</li>
+          <ul className="list-disc pl-4 space-y-0.75">
+            {certifications.map((cert, i) => (
+              <li
+                key={`${cert}-${i}`}
+                data-break-point="true"
+                className="text-[11px] leading-relaxed"
+                style={{ color: BODY }}
+              >
+                {cert}
+              </li>
             ))}
           </ul>
         </section>
@@ -290,7 +396,11 @@ const AtsTemplate: React.FC<BuilderTemplateComponentProps> = ({
       {languages.length > 0 && (
         <section>
           <SectionTitle>Languages</SectionTitle>
-          <p className="text-[11px] leading-relaxed text-gray-700">
+          <p
+            data-break-point="true"
+            className="text-[11px] leading-relaxed"
+            style={{ color: BODY }}
+          >
             {languages.join(", ")}
           </p>
         </section>
@@ -299,9 +409,16 @@ const AtsTemplate: React.FC<BuilderTemplateComponentProps> = ({
       {achievements.length > 0 && (
         <section>
           <SectionTitle>Achievements</SectionTitle>
-          <ul className="list-disc pl-4 text-[11px] text-gray-700 space-y-1">
-            {achievements.map((item, index) => (
-              <li key={`${item}-${index}`}>{item}</li>
+          <ul className="list-disc pl-4 space-y-0.75">
+            {achievements.map((ach, i) => (
+              <li
+                key={`${ach}-${i}`}
+                data-break-point="true"
+                className="text-[11px] leading-relaxed"
+                style={{ color: BODY }}
+              >
+                {ach}
+              </li>
             ))}
           </ul>
         </section>

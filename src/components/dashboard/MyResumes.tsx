@@ -92,7 +92,7 @@ const MyResumes: React.FC = () => {
         />
 
         <main className="flex-1 px-4 md:px-8 lg:px-12 py-6 md:py-10 overflow-y-auto pb-24 md:pb-10">
-          <div className="max-w-6xl mx-auto">
+          <div className="w-full mx-auto">
             <MyResumesToolbar
               viewMode={viewMode}
               sortBy={sortBy}

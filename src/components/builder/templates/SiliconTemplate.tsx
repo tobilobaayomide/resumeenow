@@ -1,14 +1,77 @@
-import React from 'react';
-import type { BuilderTemplateComponentProps } from '../../../types/builder';
+import React from "react";
+import type { BuilderTemplateComponentProps } from "../../../types/builder";
 import {
   getActiveSkillItems,
   getPersonalLinkDisplayLabel,
   getVisiblePersonalLinks,
   toExternalLinkHref,
-} from '../../../domain/resume';
-import { toDescriptionBullets } from './utils';
+} from "../../../domain/resume";
+import { toDescriptionBullets } from "./utils";
 
-const SiliconTemplate: React.FC<BuilderTemplateComponentProps> = ({ data, contentRef }) => {
+const INK = "#0f1117";
+const BODY = "#2d2f36";
+const DIM = "#6b7280";
+const PROMPT = "#16a34a";
+const BORDER = "#e2e4e9";
+const MONO =
+  "'JetBrains Mono', 'Fira Code', 'Fira Mono', 'Courier New', monospace";
+
+const SectionHeading: React.FC<{ label: string }> = ({ label }) => (
+  <div className="flex items-center gap-2.5 mb-3">
+    <span
+      className="text-[11px] font-bold select-none shrink-0"
+      style={{ color: PROMPT, fontFamily: MONO }}
+    >
+      ##
+    </span>
+    <span
+      className="text-[10px] font-bold uppercase tracking-[0.18em] shrink-0"
+      style={{ color: INK, fontFamily: MONO }}
+    >
+      {label}
+    </span>
+    <div className="flex-1 h-px" style={{ backgroundColor: BORDER }} />
+  </div>
+);
+
+const BulletList: React.FC<{ id: string; bullets: string[] }> = ({
+  id,
+  bullets,
+}) => (
+  <ul className="mt-1.5 space-y-0.75 list-disc list-outside pl-4">
+    {bullets.map((line, i) => (
+      <li
+        key={`${id}-b-${i}`}
+        data-break-point="true"
+        className="text-[11px] leading-[1.65] text-justify"
+        style={{ color: BODY, fontFamily: MONO }}
+      >
+        {line}
+      </li>
+    ))}
+  </ul>
+);
+
+const DateBracket: React.FC<{ start?: string; end?: string }> = ({
+  start,
+  end,
+}) => {
+  if (!start && !end) return null;
+  return (
+    <span
+      className="text-[9.5px] whitespace-nowrap shrink-0 tabular-nums"
+      style={{ color: DIM, fontFamily: MONO }}
+    >
+      [{start}
+      {end ? ` → ${end}` : " → now"}]
+    </span>
+  );
+};
+
+const SiliconTemplate: React.FC<BuilderTemplateComponentProps> = ({
+  data,
+  contentRef,
+}) => {
   const {
     personalInfo,
     summary,
@@ -21,235 +84,387 @@ const SiliconTemplate: React.FC<BuilderTemplateComponentProps> = ({ data, conten
     languages,
     achievements,
   } = data;
+
   const linkItems = getVisiblePersonalLinks(personalInfo);
   const activeSkills = getActiveSkillItems(skills);
+  const groupedSkills = skills.groups.filter((g) => g.items.length > 0);
+  const shouldRenderGroupedSkills =
+    skills.mode === "grouped" && groupedSkills.length > 0;
 
   return (
-    <div ref={contentRef} style={{ fontFamily: "'Courier New', Courier, monospace" }} className="text-black p-2">
-
-      {/* Header — terminal style */}
-      <div className="border border-gray-800 p-5 mb-6">
-        <div className="flex items-start justify-between">
-          <div>
-            <h1 className="text-[22px] font-bold tracking-tight text-black">
-              {personalInfo.fullName || <span className="text-gray-300">Your Name</span>}
-            </h1>
-            <p className="text-[12px] text-gray-800 mt-1">
-              {personalInfo.jobTitle || <span className="text-gray-300">Job Title</span>}
-            </p>
-          </div>
-          {/* Version badge */}
-          <div className="border border-gray-300 px-2 py-1 text-[9px] text-gray-400 font-bold uppercase tracking-widest">
-            v1.0.0
-          </div>
+    <div
+      ref={contentRef}
+      className="text-black bg-white"
+      style={{ fontFamily: MONO }}
+      data-self-padded="true"
+    >
+      <header
+        data-no-split="true"
+        className="px-7 pt-0 pb-5"
+        style={{
+          borderBottom: `2px solid ${INK}`,
+          borderLeft: `4px solid ${PROMPT}`,
+        }}
+      >
+        <div className="flex items-baseline gap-2">
+          <span
+            className="text-[16px] font-bold select-none leading-none"
+            style={{ color: PROMPT }}
+          >
+            ❯
+          </span>
+          <h1
+            className="text-[30px] font-bold tracking-tight leading-none"
+            style={{ color: INK }}
+          >
+            {personalInfo.fullName || (
+              <span style={{ color: BORDER }}>Your Name</span>
+            )}
+          </h1>
         </div>
 
-        {/* Contact row */}
-        <div className="flex flex-wrap gap-4 mt-4 pt-4 border-t border-gray-200 text-[10px] text-gray-800">
+        {personalInfo.jobTitle && (
+          <p className="text-[11.5px] mt-2 ml-6.5" style={{ color: DIM }}>
+            // {personalInfo.jobTitle}
+          </p>
+        )}
+
+        <div
+          className="flex flex-wrap gap-x-5 gap-y-1 mt-3 pt-3 ml-6.5 text-[10px]"
+          style={{ borderTop: `1px solid ${BORDER}`, color: DIM }}
+        >
           {personalInfo.email && (
-            <a href={`mailto:${personalInfo.email}`} className="hover:underline break-all">
-              📧 {personalInfo.email}
+            <a
+              href={`mailto:${personalInfo.email}`}
+              className="hover:text-black transition-colors break-all"
+              style={{ color: DIM }}
+            >
+              @ {personalInfo.email}
             </a>
           )}
-          {personalInfo.phone && <span>📱 {personalInfo.phone}</span>}
-          {personalInfo.location && <span>📍 {personalInfo.location}</span>}
+          {personalInfo.phone && <span>$ {personalInfo.phone}</span>}
+          {personalInfo.location && <span>~ {personalInfo.location}</span>}
           {linkItems.map((link) => (
             <a
               key={link.id}
               href={toExternalLinkHref(link.url)}
               target="_blank"
               rel="noopener noreferrer"
-              className="hover:underline break-all"
+              className="hover:text-black transition-colors break-all"
+              style={{ color: DIM }}
             >
-              🔗 {getPersonalLinkDisplayLabel(link)}
+              &gt; {getPersonalLinkDisplayLabel(link)}
             </a>
           ))}
         </div>
-      </div>
+      </header>
 
-      {/* About */}
-      {summary && (
-        <section className="mb-6">
-          <div className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mb-2">
-            ## About
-          </div>
-          <p className="text-[12px] text-gray-700 leading-relaxed border-l-2 border-gray-200 pl-4">
-            {summary}
-          </p>
-        </section>
-      )}
+      <div className="px-7 py-6 space-y-6">
+        {summary && (
+          <section>
+            <SectionHeading label="About" />
+            <p
+              data-break-point="true"
+              className="text-[11px] leading-[1.75] text-justify pl-4 border-l-2"
+              style={{ color: BODY, borderColor: PROMPT }}
+            >
+              {summary}
+            </p>
+          </section>
+        )}
 
-      {/* Skills — tag cloud style */}
-      {activeSkills.length > 0 && (
-        <section className="mb-6">
-          <div className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mb-2">
-            ## Stack
-          </div>
-          <div className="flex flex-wrap gap-1.5">
-            {activeSkills.map((skill, i) => (
-              <span key={i} className="border border-gray-300 px-2 py-0.5 text-[10px] text-gray-600 bg-gray-50">
-                {skill}
-              </span>
-            ))}
-          </div>
-        </section>
-      )}
-
-      {/* Experience */}
-      {experience.length > 0 && (
-        <section className="mb-6">
-          <div className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mb-3">
-            ## Experience
-          </div>
-          <div className="space-y-5">
-            {experience.map((exp) => (
-              <div key={exp.id}>
-                <div className="flex items-baseline justify-between">
-                  <div>
-                    <span className="text-[13px] font-bold text-black">{exp.role}</span>
-                    <span className="text-[11px] text-gray-400 mx-2">@</span>
-                    <span className="text-[12px] text-gray-600">{exp.company}</span>
-                  </div>
-                  <span className="text-[10px] text-gray-400">
-                    [{exp.startDate} → {exp.endDate || 'now'}]
-                  </span>
-                </div>
-                {exp.description && (
-                  <p className="text-[11px] text-gray-500 mt-1.5 leading-relaxed pl-2 border-l border-gray-200 text-justify whitespace-pre-line">
-                    {exp.description}
+        {activeSkills.length > 0 && (
+          <section>
+            <SectionHeading label="Stack" />
+            {shouldRenderGroupedSkills ? (
+              <div className="space-y-1.5 pl-4">
+                {groupedSkills.map((group) => (
+                  <p
+                    key={group.id}
+                    data-break-point="true"
+                    className="text-[11px] leading-relaxed"
+                    style={{ color: BODY }}
+                  >
+                    <span className="font-bold" style={{ color: INK }}>
+                      {group.label}:
+                    </span>{" "}
+                    {group.items.join(", ")}
                   </p>
-                )}
+                ))}
               </div>
-            ))}
-          </div>
-        </section>
-      )}
-
-      {projects.length > 0 && (
-        <section className="mb-6">
-          <div className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mb-3">
-            ## Projects
-          </div>
-          <div className="space-y-4">
-            {projects.map((project) => (
-              <div key={project.id}>
-                <div className="flex items-baseline justify-between gap-2">
-                  <span className="text-[12px] font-bold text-black">{project.name}</span>
-                  <span className="text-[10px] text-gray-400">
-                    [{project.startDate} → {project.endDate || 'now'}]
+            ) : (
+              <div className="flex flex-wrap gap-1.5 pl-4">
+                {activeSkills.map((skill) => (
+                  <span
+                    key={skill}
+                    className="text-[10px] px-2 py-0.75 font-medium"
+                    style={{
+                      color: PROMPT,
+                      border: `1px solid ${PROMPT}`,
+                      background: "rgba(22,163,74,0.05)",
+                    }}
+                  >
+                    {skill}
                   </span>
-                </div>
-                {project.link && <p className="text-[10px] text-gray-400 mt-1 break-all">{project.link}</p>}
-                {project.description && (() => {
-                  const bullets = toDescriptionBullets(project.description);
-                  if (bullets.length > 0) {
-                    return (
-                      <ul className="list-disc pl-4 text-[11px] text-gray-500 mt-1.5 leading-relaxed space-y-0.5">
-                        {bullets.map((line, index) => (
-                          <li key={`${project.id}-desc-${index}`}>{line}</li>
-                        ))}
-                      </ul>
-                    );
-                  }
-
-                  return (
-                    <p className="text-[11px] text-gray-500 mt-1.5 leading-relaxed">{project.description}</p>
-                  );
-                })()}
+                ))}
               </div>
-            ))}
-          </div>
-        </section>
-      )}
+            )}
+          </section>
+        )}
 
-      {volunteering.length > 0 && (
-        <section className="mb-6">
-          <div className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mb-3">
-            ## Volunteering
-          </div>
-          <div className="space-y-3">
-            {volunteering.map((item) => (
-              <div key={item.id}>
-                <div className="flex items-baseline justify-between gap-2">
-                  <span className="text-[12px] font-bold text-black">{item.role}</span>
-                  <span className="text-[10px] text-gray-400">
-                    [{item.startDate} → {item.endDate || 'now'}]
+        {experience.length > 0 && (
+          <section>
+            <SectionHeading label="Experience" />
+            <div className="space-y-5 pl-4">
+              {experience.map((exp) => (
+                <div key={exp.id} data-no-split="true">
+                  <div className="flex items-baseline justify-between gap-2">
+                    <div className="flex items-baseline gap-0 flex-wrap">
+                      <span
+                        className="text-[12.5px] font-bold"
+                        style={{ color: INK }}
+                      >
+                        {exp.role}
+                      </span>
+                      <span
+                        className="text-[11px] mx-1.5 font-bold"
+                        style={{ color: PROMPT }}
+                      >
+                        @
+                      </span>
+                      <span
+                        className="text-[11px] font-medium"
+                        style={{ color: DIM }}
+                      >
+                        {exp.company}
+                      </span>
+                    </div>
+                    <DateBracket start={exp.startDate} end={exp.endDate} />
+                  </div>
+                  {exp.description &&
+                    (() => {
+                      const bullets = toDescriptionBullets(exp.description);
+                      return bullets.length > 0 ? (
+                        <BulletList id={exp.id} bullets={bullets} />
+                      ) : (
+                        <p
+                          data-break-point="true"
+                          className="text-[11px] mt-1.5 leading-relaxed text-justify whitespace-pre-line"
+                          style={{ color: BODY }}
+                        >
+                          {exp.description}
+                        </p>
+                      );
+                    })()}
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {projects.length > 0 && (
+          <section>
+            <SectionHeading label="Projects" />
+            <div className="space-y-4 pl-4">
+              {projects.map((project) => (
+                <div key={project.id} data-no-split="true">
+                  <div className="flex items-baseline justify-between gap-2">
+                    <span
+                      className="text-[12px] font-bold"
+                      style={{ color: INK }}
+                    >
+                      {project.name}
+                    </span>
+                    <DateBracket
+                      start={project.startDate}
+                      end={project.endDate}
+                    />
+                  </div>
+                  {project.link && (
+                    <a
+                      href={toExternalLinkHref(project.link)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-[10px] break-all hover:underline"
+                      style={{ color: PROMPT }}
+                    >
+                      {project.link}
+                    </a>
+                  )}
+                  {project.description &&
+                    (() => {
+                      const bullets = toDescriptionBullets(project.description);
+                      return bullets.length > 0 ? (
+                        <BulletList id={project.id} bullets={bullets} />
+                      ) : (
+                        <p
+                          data-break-point="true"
+                          className="text-[11px] mt-1.5 leading-relaxed text-justify"
+                          style={{ color: BODY }}
+                        >
+                          {project.description}
+                        </p>
+                      );
+                    })()}
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {volunteering.length > 0 && (
+          <section>
+            <SectionHeading label="Volunteering" />
+            <div className="space-y-4 pl-4">
+              {volunteering.map((item) => (
+                <div key={item.id} data-no-split="true">
+                  <div className="flex items-baseline justify-between gap-2">
+                    <div className="flex items-baseline gap-0 flex-wrap">
+                      <span
+                        className="text-[12px] font-bold"
+                        style={{ color: INK }}
+                      >
+                        {item.role}
+                      </span>
+                      <span
+                        className="text-[11px] mx-1.5 font-bold"
+                        style={{ color: PROMPT }}
+                      >
+                        @
+                      </span>
+                      <span
+                        className="text-[11px] font-medium"
+                        style={{ color: DIM }}
+                      >
+                        {item.company}
+                      </span>
+                    </div>
+                    <DateBracket start={item.startDate} end={item.endDate} />
+                  </div>
+                  {item.description &&
+                    (() => {
+                      const bullets = toDescriptionBullets(item.description);
+                      return bullets.length > 0 ? (
+                        <BulletList id={item.id} bullets={bullets} />
+                      ) : (
+                        <p
+                          data-break-point="true"
+                          className="text-[11px] mt-1.5 leading-relaxed text-justify whitespace-pre-line"
+                          style={{ color: BODY }}
+                        >
+                          {item.description}
+                        </p>
+                      );
+                    })()}
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {education.length > 0 && (
+          <section>
+            <SectionHeading label="Education" />
+            <div className="space-y-3 pl-4">
+              {education.map((edu) => (
+                <div key={edu.id} data-no-split="true">
+                  <div className="flex items-baseline justify-between gap-2">
+                    <div>
+                      <span
+                        className="text-[12px] font-bold"
+                        style={{ color: INK }}
+                      >
+                        {edu.school}
+                      </span>
+                      {edu.degree && (
+                        <span
+                          className="text-[11px] ml-2"
+                          style={{ color: DIM }}
+                        >
+                          — {edu.degree}
+                        </span>
+                      )}
+                    </div>
+                    <DateBracket start={edu.startDate} end={edu.endDate} />
+                  </div>
+                  {edu.description && (
+                    <p
+                      data-break-point="true"
+                      className="text-[10.5px] mt-1 leading-relaxed"
+                      style={{ color: BODY }}
+                    >
+                      {edu.description}
+                    </p>
+                  )}
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {certifications.length > 0 && (
+          <section>
+            <SectionHeading label="Certifications" />
+            <ul className="space-y-1 pl-4">
+              {certifications.map((cert, i) => (
+                <li
+                  key={`${cert}-${i}`}
+                  data-break-point="true"
+                  className="flex items-start gap-2 text-[11px] font-semibold"
+                  style={{ color: BODY }}
+                >
+                  <span className="shrink-0" style={{ color: PROMPT }}>
+                    ›
                   </span>
-                </div>
-                <p className="text-[11px] text-gray-500">{item.company}</p>
-                {item.description && <p className="text-[11px] text-gray-500 mt-1">{item.description}</p>}
-              </div>
-            ))}
-          </div>
-        </section>
-      )}
+                  {cert}
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
 
-      {certifications.length > 0 && (
-        <section className="mb-6">
-          <div className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mb-3">
-            ## Certifications
-          </div>
-          <ul className="space-y-1">
-            {certifications.map((certification, index) => (
-              <li key={`${certification}-${index}`} className="text-[11px] text-black font-bold">
-                - {certification}
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
-
-      {languages.length > 0 && (
-        <section className="mb-6">
-          <div className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mb-3">
-            ## Languages
-          </div>
-          <ul className="space-y-1">
-            {languages.map((language, index) => (
-              <li key={`${language}-${index}`} className="text-[11px] text-gray-500">
-                - {language}
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
-
-      {achievements.length > 0 && (
-        <section className="mb-6">
-          <div className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mb-3">
-            ## Achievements
-          </div>
-          <ul className="space-y-1">
-            {achievements.map((achievement, index) => (
-              <li key={`${achievement}-${index}`} className="text-[11px] text-black font-bold text-justify">
-                - {achievement}
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
-
-      {/* Education */}
-      {education.length > 0 && (
-        <section>
-          <div className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mb-3">
-            ## Education
-          </div>
-          <div className="space-y-3">
-            {education.map((edu) => (
-              <div key={edu.id} className="flex items-baseline justify-between">
-                <div>
-                  <span className="text-[12px] font-bold text-black">{edu.school}</span>
-                  {edu.degree && <span className="text-[11px] text-gray-500 ml-2">— {edu.degree}</span>}
-                </div>
-                <span className="text-[10px] text-gray-400">
-                  [{edu.startDate} → {edu.endDate || 'now'}]
+        {languages.length > 0 && (
+          <section>
+            <SectionHeading label="Languages" />
+            <div className="flex flex-wrap gap-1.5 pl-4">
+              {languages.map((lang, i) => (
+                <span
+                  key={`${lang}-${i}`}
+                  className="text-[10px] px-2 py-0.75"
+                  style={{
+                    color: DIM,
+                    border: `1px solid ${BORDER}`,
+                    background: "#f8f9fa",
+                  }}
+                >
+                  {lang}
                 </span>
-              </div>
-            ))}
-          </div>
-        </section>
-      )}
+              ))}
+            </div>
+          </section>
+        )}
+
+        {achievements.length > 0 && (
+          <section>
+            <SectionHeading label="Achievements" />
+            <ul className="space-y-1.5 pl-4">
+              {achievements.map((ach, i) => (
+                <li
+                  key={`${ach}-${i}`}
+                  data-break-point="true"
+                  className="flex items-start gap-2 text-[11px] font-semibold text-justify"
+                  style={{ color: BODY }}
+                >
+                  <span className="shrink-0" style={{ color: PROMPT }}>
+                    ›
+                  </span>
+                  {ach}
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
+      </div>
     </div>
   );
 };
