@@ -16,7 +16,7 @@ import {
 import { useBuilderStore } from '../../store/builderStore';
 
 interface BuilderLocationState {
-  importedResumeData?: unknown;
+  importedResumeData?: ResumeData;
   importedTitle?: string;
 }
 
