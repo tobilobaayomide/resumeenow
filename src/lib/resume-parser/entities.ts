@@ -765,7 +765,7 @@ const guessName = (lines: string[]): string => {
     // Normalise ALL CAPS lines to mixed case so "JOHN SMITH" → "John Smith"
     const normalized = line
       .split(/\s+/)
-      .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+      .map((word) => word.charAt(0).toLocaleUpperCase() + word.slice(1).toLocaleLowerCase())
       .join(' ');
 
     const words = normalized.split(' ').filter(Boolean);
@@ -775,9 +775,9 @@ const guessName = (lines: string[]): string => {
       words.every(
         (word) =>
           // standard name word: "John", "Smith", "Mary-Jane"
-          /^[A-Z][a-zA-Z'-]+$/.test(word) ||
+          /^[\p{L}][\p{L}'-]+$/u.test(word) ||
           // single initial with dot: "B."
-          /^[A-Z]\.$/.test(word) ||
+          /^[\p{L}]\.$/u.test(word) ||
           // honorific: "Dr.", "Mr.", "Ms.", "Prof."
           /^(?:Dr|Mr|Mrs|Ms|Prof|Rev|Sir)\.$/.test(word),
       );
