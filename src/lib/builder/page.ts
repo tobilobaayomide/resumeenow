@@ -111,7 +111,7 @@ export const runLocalAtsAudit = (
       ? Math.round((matchedKeywords.length / keywords.length) * 100)
       : 50;
   const summaryScore =
-    data.summary.trim().length >= 80 ? 100 : data.summary.trim() ? 60 : 0;
+    (data.summary || '').trim().length >= 80 ? 100 : (data.summary || '').trim() ? 60 : 0;
   const skillScore = Math.min(100, activeSkills.length * 10);
   const experienceScore = Math.min(100, data.experience.length * 35);
   const impactScore = Math.min(100, quantifiedBulletCount * 12);

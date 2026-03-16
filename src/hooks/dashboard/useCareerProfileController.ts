@@ -178,7 +178,7 @@ export const useCareerProfileController = ({
 
   const addSkill = (event: KeyboardEvent<HTMLInputElement>) => {
     if (!isEditing || event.key !== 'Enter') return;
-    const normalizedSkill = newSkill.trim();
+    const normalizedSkill = (newSkill || '').trim();
     if (!normalizedSkill) return;
 
     event.preventDefault();
