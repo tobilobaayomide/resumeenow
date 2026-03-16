@@ -128,6 +128,7 @@ const LivePreview: React.FC<LivePreviewProps> = ({ data, zoom = 0.8, templateId 
       return (
         <div
           key={pageIndex}
+          data-export-page="true"
           style={
             isForPrint
               ? {
@@ -223,6 +224,7 @@ const LivePreview: React.FC<LivePreviewProps> = ({ data, zoom = 0.8, templateId 
       </div>
 
       <div
+        id="resume-preview-container"
         className="print:hidden flex flex-col items-center py-8"
         style={{ gap: PAGE_GAP_PX }}
       >
