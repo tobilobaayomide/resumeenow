@@ -7,6 +7,7 @@ import {
 } from '../../lib/gemini';
 import { useBuilderStore } from '../../store/builderStore';
 import { getActiveSkillItems } from '../../types/resume';
+import { usePlan } from '../../context/usePlan';
 
 export function useBuilderAiFlows() {
   const resumeData = useBuilderStore((store) => store.resumeData);
@@ -36,12 +37,20 @@ export function useBuilderAiFlows() {
   const setCoverLetterDraft = useBuilderStore((store) => store.setCoverLetterDraft);
   const setAtsFields = useBuilderStore((store) => store.setAtsFields);
   const setAtsResult = useBuilderStore((store) => store.setAtsResult);
+  const setTailorPreview = useBuilderStore((store) => store.setTailorPreview);
+  const confirmTailoredPreview = useBuilderStore((store) => store.confirmTailoredPreview);
+  const discardTailoredPreview = useBuilderStore((store) => store.discardTailoredPreview);
+  const tailorPreview = useBuilderStore((store) => store.tailorPreview);
 
-  const applyAiTailor = async () => {
+  const { requestAccess, consumeCredit, refreshCredits } = usePlan();
+
+  const generateAiTailorPreview = async () => {
     if (!tailorRole.trim() || !tailorJobDescription.trim()) {
       toast.error('Add target role and job description first.');
       return;
     }
+
+    if (!requestAccess('ai_tailor')) return;
 
     setIsGenerating(true);
     const loadingToast = toast.loading('Tailoring resume with Gemini AI...');
@@ -54,100 +63,78 @@ export function useBuilderAiFlows() {
         tailorJobDescription,
       );
 
-      if (!tailored.summary) {
-        toast.info('AI did not return usable edits. Summary left unchanged.', { id: loadingToast });
+      if (!tailored.jobTitleAfter) {
+        toast.info('AI did not return usable edits. Tailoring skipped.', { id: loadingToast });
         return;
       }
 
-      setResumeData((prev) => {
-        let existingSkills: string[] = [];
-        try {
-          existingSkills = getActiveSkillItems(prev.skills);
-        } catch {
-          existingSkills = [];
-        }
-
-        const existingLower = existingSkills.map((s) => s.toLowerCase());
-
-        // Use keywordAlignment.stillMissing if available, fallback to missingSkills
-        const skillsToAdd = (
-          tailored.keywordAlignment?.stillMissing?.length
-            ? tailored.keywordAlignment.stillMissing
-            : tailored.missingSkills || []
-        )
-          .filter((s) => !existingLower.includes(s.toLowerCase()))
-          .slice(0, 6);
-
-        let updatedSkills = prev.skills;
-        if (skillsToAdd.length > 0) {
-          if (prev.skills.mode === 'grouped') {
-            const groups = prev.skills.groups.length
-              ? prev.skills.groups
-              : [{ id: 'skills-group-1', label: 'Suggested', items: [] }];
-            updatedSkills = {
-              mode: 'grouped',
-              list: [...existingSkills, ...skillsToAdd],
-              groups: groups.map((g, idx) =>
-                idx === 0 ? { ...g, items: [...g.items, ...skillsToAdd] } : g,
-              ),
-            };
-          } else {
-            updatedSkills = {
-              ...prev.skills,
-              mode: 'list',
-              list: [...prev.skills.list, ...skillsToAdd],
-            };
-          }
-        }
-
-        return {
-          ...prev,
-          summary: tailored.summary.trim(),
-          personalInfo: {
-            ...prev.personalInfo,
-            jobTitle:
-              tailored.jobTitle?.trim() || prev.personalInfo.jobTitle || tailorRole.trim(),
-          },
-          // Join bullets with \n to preserve formatting
-          experience: prev.experience.map((exp) => {
-            const match = tailored.experienceBullets?.find((b) => b.id === exp.id);
-            if (!match) return exp;
-
-            const newDescription =
-              Array.isArray(match.bullets) && match.bullets.length > 0
-                ? match.bullets.join('\n')
-                : exp.description;
-
-            return { ...exp, description: newDescription };
-          }),
-          skills: updatedSkills,
-        };
+      setTailorPreview({
+        jobTitleAfter: tailored.jobTitleAfter.trim() || resumeData.personalInfo.jobTitle || tailorRole.trim(),
+        summary: tailored.summary,
+        skills: tailored.skills,
+        experienceImprovements: tailored.experienceImprovements || [],
+        experienceAdditions: tailored.experienceAdditions || [],
+        contactFix: tailored.contactFix,
+        keywordAlignment: tailored.keywordAlignment || { matched: [], injected: [], stillMissing: [] },
       });
-
-      // Log keyword alignment for debugging
-      if (tailored.keywordAlignment) {
-        console.log('[AI Tailor] Keyword Alignment:', {
-          matched: tailored.keywordAlignment.matched,
-          injected: tailored.keywordAlignment.injected,
-          stillMissing: tailored.keywordAlignment.stillMissing,
-        });
-      }
 
       // Show specific change in toast
       toast.success(
-        tailored.changesSummary?.length
-          ? `Resume tailored! ${tailored.changesSummary[0]}`
-          : 'Resume tailored successfully!',
+        'Tailor Strategy generated! Review the board.',
         { id: loadingToast },
       );
 
-      closeAiFlows();
+      await consumeCredit();
+      // Do NOT close flow yet, wait for confirming preview
     } catch (error) {
       console.error(error);
       toast.error(String(error), { id: loadingToast });
     } finally {
       setIsGenerating(false);
+      await refreshCredits();
     }
+  };
+
+  const onApplyTailorFix = (type: 'summary' | 'skills' | 'experience' | 'addition' | 'contact', id?: string, current?: string) => {
+    const p = tailorPreview;
+    if (!p) return;
+
+    setResumeData((prev) => {
+      let next = { ...prev };
+      if (type === 'summary' && p.summary) {
+        next.summary = p.summary.better;
+      } else if (type === 'skills' && p.skills) {
+        // AI re-aligns skills. We replace the current list but keep groups if they exist.
+        // For simplicity, we update the main list.
+        next.skills = { ...next.skills, list: p.skills.better.split(',').map(s => s.trim()) };
+      } else if (type === 'experience' && id && current) {
+        const imp = p.experienceImprovements.find(i => i.id === id && i.current === current);
+        if (imp) {
+          next.experience = next.experience.map(e => 
+            e.id === id ? { ...e, description: e.description.replace(imp.current, imp.better) } : e
+          );
+        }
+      } else if (type === 'addition' && id) {
+        const add = p.experienceAdditions.find(a => a.id === id);
+        if (add) {
+          next.experience = next.experience.map(e => 
+            e.id === id ? { ...e, description: (e.description ? e.description + '\n' : '') + add.better } : e
+          );
+        }
+      }
+      return next;
+    });
+    toast.success('Strategy applied to resume!');
+  };
+  
+  const confirmAiTailorPreview = () => {
+    confirmTailoredPreview();
+    toast.success('Resume updated successfully!');
+    closeAiFlows();
+  };
+
+  const discardAiTailorPreview = () => {
+    discardTailoredPreview();
   };
 
   const generateCoverLetter = async () => {
@@ -155,6 +142,8 @@ export function useBuilderAiFlows() {
       toast.error('Add role and company to generate your draft.');
       return;
     }
+
+    if (!requestAccess('cover_letter')) return;
 
     setIsGenerating(true);
     const loadingToast = toast.loading('Drafting cover letter...');
@@ -171,12 +160,14 @@ export function useBuilderAiFlows() {
       );
 
       setCoverLetterDraft(draft.trim());
+      await consumeCredit();
       toast.success('Cover letter generated.', { id: loadingToast });
     } catch (error) {
       console.error(error);
       toast.error('Failed to draft cover letter.', { id: loadingToast });
     } finally {
       setIsGenerating(false);
+      await refreshCredits();
     }
   };
 
@@ -186,18 +177,22 @@ export function useBuilderAiFlows() {
       return;
     }
 
+    if (!requestAccess('ats_audit')) return;
+
     setIsGenerating(true);
     const loadingToast = toast.loading('Scanning ATS compatibility...');
 
     try {
       const result = await analyzeAtsCompleteness(resumeData, atsRole, atsJobDescription);
       setAtsResult(result);
+      await consumeCredit();
       toast.success('ATS audit complete.', { id: loadingToast });
     } catch (error) {
       console.error(error);
       toast.error('Failed processing audit.', { id: loadingToast });
     } finally {
       setIsGenerating(false);
+      await refreshCredits();
     }
   };
 
@@ -209,7 +204,7 @@ export function useBuilderAiFlows() {
         ? 'cover_letter'
         : null;
 
-  const aiModalProps: any = {
+  const aiModalProps: import('../../types/builder/page').BuilderAiWorkflowModalProps = {
     activeAiFlow,
     isGenerating,
 
@@ -248,16 +243,18 @@ export function useBuilderAiFlows() {
     onCoverToneChange: (value: CoverLetterTone) =>
       setCoverFields(coverRole, coverCompany, coverHiringManager, value),
 
-    onApplyTailor: applyAiTailor,
+    onApplyTailor: generateAiTailorPreview,
+    onConfirmTailor: confirmAiTailorPreview,
+    onDiscardTailor: discardAiTailorPreview,
+    onApplyTailorFix: onApplyTailorFix,
+    tailorPreview,
+    
     onRunAtsAudit: runAtsAudit,
-    onGenerateCoverLetter: generateCoverLetter,
-
     onApplyAtsKeywordHints: () => {
       if (!atsResult || !atsResult.missingKeywords?.length) {
         toast.info('No missing keywords to apply.');
         return;
       }
-
       setResumeData((prev) => {
         const existingSkillNames = getActiveSkillItems(prev.skills).map((skill) =>
           skill.toLowerCase(),
@@ -265,14 +262,11 @@ export function useBuilderAiFlows() {
         const newSkills = atsResult.missingKeywords.filter(
           (kw) => !existingSkillNames.includes(kw.toLowerCase()),
         );
-
         if (newSkills.length === 0) {
           toast.info('All suggested keywords are already in your skills!');
           return prev;
         }
-
         const additions = newSkills.slice(0, 6);
-
         if (prev.skills.mode === 'grouped') {
           const firstGroup = prev.skills.groups[0] || {
             id: 'skills-group-1',
@@ -291,7 +285,6 @@ export function useBuilderAiFlows() {
             },
           };
         }
-
         return {
           ...prev,
           skills: {
@@ -301,11 +294,67 @@ export function useBuilderAiFlows() {
           },
         };
       });
-
       toast.success('Missing keywords added to skills.');
       closeAiFlows();
     },
-
+    onApplyAtsImprovements: () => {
+      if (!atsResult || !atsResult.improvements?.length) {
+        toast.info('No improvements to apply.');
+        return;
+      }
+      setResumeData((prev) => {
+        let nextContext = { ...prev };
+        atsResult.improvements?.forEach((imp) => {
+          if (imp.type === 'bullet' && imp.id) {
+            nextContext.experience = nextContext.experience.map((exp) =>
+              exp.id === imp.id 
+                ? { ...exp, description: exp.description.replace(imp.current, imp.better) } 
+                : exp
+            );
+          } else if (imp.type === 'skill') {
+             if (nextContext.skills.mode === 'list') {
+                nextContext.skills.list = nextContext.skills.list.map((s) => 
+                   s === imp.current ? imp.better : s
+                );
+             } else {
+                nextContext.skills.groups = nextContext.skills.groups.map((g) => ({
+                   ...g,
+                   items: g.items.map((s) => s === imp.current ? imp.better : s)
+                }));
+             }
+          }
+        });
+        return nextContext;
+      });
+      toast.success('Strategic improvements applied!');
+      closeAiFlows();
+    },
+    onApplyAtsImprovement: (imp: any) => {
+      setResumeData((prev) => {
+        let nextContext = { ...prev };
+        if (imp.type === 'bullet' && imp.id) {
+          nextContext.experience = nextContext.experience.map((exp) =>
+            exp.id === imp.id 
+              ? { ...exp, description: exp.description.replace(imp.current, imp.better) } 
+              : exp
+          );
+        } else if (imp.type === 'skill') {
+          if (nextContext.skills.mode === 'list') {
+            nextContext.skills.list = nextContext.skills.list.map((s) => 
+              s === imp.current ? imp.better : s
+            );
+          } else {
+            nextContext.skills.groups = nextContext.skills.groups.map((g) => ({
+              ...g,
+              items: g.items.map((s) => s === imp.current ? imp.better : s)
+            }));
+          }
+        }
+        return nextContext;
+      });
+      toast.success('Improvement applied!');
+    },
+    onGenerateCoverLetter: generateCoverLetter,
     onCopyCoverLetter: () => {
       if (!coverLetterDraft) {
         toast.error('Generate a draft first.');
@@ -316,7 +365,7 @@ export function useBuilderAiFlows() {
     },
   };
 
-  const handleProAction = (feature: any, label: string) => {
+  const handleProAction = (feature: import('../../types/context').ProFeature, label: string) => {
     if (feature === 'ai_tailor') {
       openTailor();
       return;

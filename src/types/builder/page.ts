@@ -32,6 +32,10 @@ export interface AtsAuditResult {
   matchedKeywords: string[];
   missingKeywords: string[];
   suggestions: string[];
+  weakBullets?: { id: string; originalText: string; suggestion: string }[];
+  keywordDensity?: { keyword: string; count: number; importance: number }[];
+  improvements?: { id?: string; type: 'bullet' | 'skill'; current: string; better: string }[];
+  criticalMistake?: { title: string; description: string; fix: string };
 }
 
 export interface BuilderDraftPayload {
@@ -50,6 +54,8 @@ export interface BuilderHeaderProps {
   isImporting: boolean;
   isSaving: boolean;
   isAutosaving: boolean;
+  monthlyCredits: number;
+  usedCredits: number;
   onBackToDashboard: () => void;
   onTitleChange: (value: string) => void;
   onTemplateChange: (templateId: TemplateId) => void;
@@ -109,8 +115,22 @@ export interface BuilderAiWorkflowModalProps {
   onCoverHiringManagerChange: (value: string) => void;
   onCoverToneChange: (value: CoverLetterTone) => void;
   onApplyTailor: () => void;
+  onConfirmTailor: () => void;
+  onDiscardTailor: () => void;
+  onApplyTailorFix: (type: 'summary' | 'skills' | 'experience' | 'addition' | 'contact', id?: string, current?: string) => void;
+  tailorPreview: {
+    jobTitleAfter: string;
+    summary?: { current: string; better: string };
+    skills?: { current: string; better: string };
+    experienceImprovements: { id: string; current: string; better: string }[];
+    experienceAdditions: { id: string; better: string }[];
+    contactFix?: { current: string; better: string };
+    keywordAlignment: { matched: string[]; injected: string[]; stillMissing: string[] };
+  } | null;
   onRunAtsAudit: () => void;
   onApplyAtsKeywordHints: () => void;
+  onApplyAtsImprovements: () => void;
+  onApplyAtsImprovement: (improvement: any) => void;
   onGenerateCoverLetter: () => void;
   onCopyCoverLetter: () => void;
 }
