@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { FiX, FiMail, FiLock, FiUser } from "react-icons/fi";
+import { FiX, FiMail, FiLock, FiUser, FiEye, FiEyeOff } from "react-icons/fi";
 import { AiOutlineApple } from "react-icons/ai";
 import { FcGoogle } from "react-icons/fc";
 import { supabase } from "../lib/supabase";
@@ -14,6 +14,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ open, onClose, mode }) => {
   const [fullName, setFullName] = useState("");
   const [loading, setLoading] = useState(false);
   const [oauthLoading, setOauthLoading] = useState<OAuthProvider | null>(null);
+  const [showPassword, setShowPassword] = useState(false);
 
   const navigate = useNavigate();
 
@@ -22,6 +23,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ open, onClose, mode }) => {
     setEmail("");
     setPassword("");
     setFullName("");
+    setShowPassword(false);
   }, [mode, open]);
 
   useEffect(() => {
@@ -48,6 +50,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ open, onClose, mode }) => {
   const toggleMode = () => {
     setCurrentMode((prev) => (prev === "login" ? "signup" : "login"));
     setPassword("");
+    setShowPassword(false);
   };
 
   const handleAuth = async (e: React.FormEvent) => {
@@ -252,14 +255,23 @@ const AuthModal: React.FC<AuthModalProps> = ({ open, onClose, mode }) => {
               <input
                 id="auth-password"
                 name="password"
-                type="password"
+                type={showPassword ? "text" : "password"}
                 placeholder="Password"
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 minLength={6}
-                className="w-full bg-gray-50 text-gray-900 border border-transparent rounded-xl py-3 pl-10 pr-4 placeholder-gray-400 focus:ring-2 focus:ring-black/5 focus:border-black/10 focus:bg-white transition-all duration-200 font-medium text-sm outline-none"
+                className="w-full bg-gray-50 text-gray-900 border border-transparent rounded-xl py-3 pl-10 pr-10 placeholder-gray-400 focus:ring-2 focus:ring-black/5 focus:border-black/10 focus:bg-white transition-all duration-200 font-medium text-sm outline-none"
               />
+              <button
+                type="button"
+                onClick={() => setShowPassword((prev) => !prev)}
+                className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-700 transition-colors"
+                tabIndex={-1}
+                aria-label={showPassword ? "Hide password" : "Show password"}
+              >
+                {showPassword ? <FiEyeOff size={17} /> : <FiEye size={17} />}
+              </button>
             </div>
 
             {currentMode === "login" && (
