@@ -38,7 +38,7 @@ const Navbar: React.FC<NavbarProps> = ({ onLogin, onSignup }) => {
             : "bg-transparent border-b border-transparent"
         }`}
       >
-        <div className="max-w-360 mx-auto md:py-15 h-20 flex items-center justify-between">
+        <div className="max-w-360 mx-auto md:py-10 h-20 flex items-center justify-between">
           {/* Logo */}
          <div className="h-24 flex items-center px-8">
                     <div 

@@ -14,6 +14,8 @@ export interface PlanContextType {
   usedCredits: number;
   hasAccess: (feature: ProFeature) => boolean;
   requestAccess: (feature: ProFeature) => boolean;
+  consumeCredit: () => Promise<void>;
+  refreshCredits: () => Promise<void>;
   openUpgrade: (feature?: ProFeature) => void;
   closeUpgrade: () => void;
   upgradeToPro: () => void;
