@@ -12,7 +12,6 @@ const WorkspaceSnapshot: React.FC<WorkspaceSnapshotProps> = ({
   resumeCount,
   isPro,
   hasLatestResume,
-  onUpgrade,
   onOpenTemplatePicker,
   onExportLatest,
   onUploadSelection,
@@ -62,11 +61,11 @@ const WorkspaceSnapshot: React.FC<WorkspaceSnapshotProps> = ({
           
           {!isPro && (
             <button
-              onClick={onUpgrade}
-              className="flex items-center gap-1.5 h-10 px-4 rounded-xl text-[12px] font-bold text-amber-700 bg-amber-50/50 border border-amber-200/50 hover:bg-amber-100 hover:border-amber-300 transition-all shadow-sm"
+              disabled
+              className="flex items-center gap-1.5 h-10 px-4 rounded-xl text-[12px] font-bold text-amber-700 bg-amber-50/50 border border-amber-200/50 transition-all shadow-sm opacity-50 cursor-not-allowed"
             >
               <FiStar className="fill-amber-500 text-amber-500" size={13} />
-              Upgrade
+              Coming Soon
             </button>
           )}
 
@@ -81,7 +80,7 @@ const WorkspaceSnapshot: React.FC<WorkspaceSnapshotProps> = ({
 
           <label className="cursor-pointer flex items-center justify-center w-10 h-10 rounded-xl bg-white border border-gray-200 text-gray-500 hover:bg-gray-50 hover:text-gray-900 hover:border-gray-300 transition-all shadow-sm">
             <FiUploadCloud size={16} />
-            <input type="file" className="hidden" accept=".pdf" onChange={onUploadSelection} />
+            <input type="file" className="hidden" accept=".pdf,.docx,.txt,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain" onChange={onUploadSelection} />
           </label>
 
           <button

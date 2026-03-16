@@ -47,8 +47,8 @@ const ResumeGridSection: React.FC<ResumeGridSectionProps> = ({
         <div className="flex flex-col sm:flex-row gap-3 mt-6 w-full sm:w-auto">
           <label className="group flex items-center justify-center gap-2 bg-white border border-gray-200 text-gray-700 px-5 h-10 rounded-xl text-[12.5px] font-bold hover:bg-gray-50 hover:border-gray-300 transition-all shadow-sm cursor-pointer w-full sm:w-auto overflow-hidden">
             <FiUploadCloud size={15} className="text-gray-400 group-hover:text-gray-600 transition-colors" />
-            Import PDF
-            <input type="file" className="hidden" accept=".pdf" onChange={onUploadSelection} />
+            Upload Resume
+            <input type="file" className="hidden" accept=".pdf,.docx,.txt,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain" onChange={onUploadSelection} />
           </label>
           <button
             onClick={onOpenTemplatePicker}
