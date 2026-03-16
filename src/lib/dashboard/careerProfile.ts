@@ -38,6 +38,12 @@ export const getHydratedCareerProfile = (
 ): CareerProfileState => ({
   ...EMPTY_CAREER_PROFILE,
   ...data,
+  full_name: data.full_name || '',
+  headline: data.headline || '',
+  location: data.location || '',
+  phone: data.phone || '',
+  website: data.website || '',
+  bio: data.bio || '',
   email: user.email || '',
   experience: normalizeExperienceList(data.experience),
   education: normalizeEducationList(data.education),
@@ -58,17 +64,17 @@ const isCompletionItemDone = (
 ): boolean => {
   switch (key) {
     case 'full_name':
-      return Boolean(profile.full_name.trim());
+      return Boolean(profile.full_name?.trim());
     case 'headline':
-      return Boolean(profile.headline.trim());
+      return Boolean(profile.headline?.trim());
     case 'location':
-      return Boolean(profile.location.trim());
+      return Boolean(profile.location?.trim());
     case 'phone':
-      return Boolean(profile.phone.trim());
+      return Boolean(profile.phone?.trim());
     case 'website':
-      return Boolean(profile.website.trim());
+      return Boolean(profile.website?.trim());
     case 'bio':
-      return Boolean(profile.bio.trim());
+      return Boolean(profile.bio?.trim());
     case 'experience':
       return profile.experience.length > 0;
     case 'education':
