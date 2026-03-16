@@ -40,6 +40,7 @@ const BulletList: React.FC<{ id: string; bullets: string[] }> = ({
     {bullets.map((line, i) => (
       <li
         key={`${id}-b-${i}`}
+        data-break-point="true"
         className="text-[11px] leading-relaxed text-gray-600 text-justify"
       >
         {line}
@@ -177,7 +178,10 @@ const ExecutiveTemplate: React.FC<BuilderTemplateComponentProps> = ({
             {summary && (
               <section>
                 <SectionTitle>Summary</SectionTitle>
-                <p className="text-[11.5px] leading-relaxed text-gray-600 text-justify">
+                <p 
+                  data-break-point="true"
+                  className="text-[11.5px] leading-relaxed text-gray-600 text-justify"
+                >
                   {summary}
                 </p>
               </section>
@@ -188,7 +192,7 @@ const ExecutiveTemplate: React.FC<BuilderTemplateComponentProps> = ({
                 <SectionTitle>Experience</SectionTitle>
                 <div className="space-y-5">
                   {experience.map((exp) => (
-                    <div key={exp.id}>
+                    <div key={exp.id} data-no-split="true">
                       <div className="flex justify-between items-baseline gap-2">
                         <h4
                           className="font-black text-[12.5px] uppercase tracking-[0.02em]"
@@ -221,7 +225,10 @@ const ExecutiveTemplate: React.FC<BuilderTemplateComponentProps> = ({
                           return bullets.length > 0 ? (
                             <BulletList id={exp.id} bullets={bullets} />
                           ) : (
-                            <p className="text-[11px] leading-relaxed text-gray-600 mt-1.5 text-justify whitespace-pre-line">
+                            <p 
+                              data-break-point="true"
+                              className="text-[11px] leading-relaxed text-gray-600 mt-1.5 text-justify whitespace-pre-line"
+                            >
                               {exp.description}
                             </p>
                           );
@@ -237,7 +244,7 @@ const ExecutiveTemplate: React.FC<BuilderTemplateComponentProps> = ({
                 <SectionTitle>Projects</SectionTitle>
                 <div className="space-y-4">
                   {projects.map((project) => (
-                    <div key={project.id}>
+                    <div key={project.id} data-no-split="true">
                       <div className="flex justify-between items-baseline gap-2">
                         <h4
                           className="font-black text-[12px] uppercase tracking-[0.02em]"
@@ -279,7 +286,10 @@ const ExecutiveTemplate: React.FC<BuilderTemplateComponentProps> = ({
                           return bullets.length > 0 ? (
                             <BulletList id={project.id} bullets={bullets} />
                           ) : (
-                            <p className="text-[11px] leading-relaxed text-gray-600 mt-1.5 text-justify">
+                            <p 
+                              data-break-point="true"
+                              className="text-[11px] leading-relaxed text-gray-600 mt-1.5 text-justify"
+                            >
                               {project.description}
                             </p>
                           );
@@ -295,7 +305,7 @@ const ExecutiveTemplate: React.FC<BuilderTemplateComponentProps> = ({
                 <SectionTitle>Volunteering</SectionTitle>
                 <div className="space-y-4">
                   {volunteering.map((item) => (
-                    <div key={item.id}>
+                    <div key={item.id} data-no-split="true">
                       <div className="flex justify-between items-baseline gap-2">
                         <h4
                           className="font-black text-[12px] uppercase tracking-[0.02em]"
@@ -328,7 +338,10 @@ const ExecutiveTemplate: React.FC<BuilderTemplateComponentProps> = ({
                           return bullets.length > 0 ? (
                             <BulletList id={item.id} bullets={bullets} />
                           ) : (
-                            <p className="text-[11px] leading-relaxed text-gray-600 mt-1.5 text-justify whitespace-pre-line">
+                            <p 
+                              data-break-point="true"
+                              className="text-[11px] leading-relaxed text-gray-600 mt-1.5 text-justify whitespace-pre-line"
+                            >
                               {item.description}
                             </p>
                           );
@@ -352,7 +365,7 @@ const ExecutiveTemplate: React.FC<BuilderTemplateComponentProps> = ({
                 <SectionTitle>Education</SectionTitle>
                 <div className="space-y-4">
                   {education.map((edu) => (
-                    <div key={edu.id}>
+                    <div key={edu.id} data-no-split="true">
                       <h4
                         className="font-black text-[11px] leading-snug uppercase tracking-[0.02em]"
                         style={{ color: ACCENT }}
@@ -372,7 +385,10 @@ const ExecutiveTemplate: React.FC<BuilderTemplateComponentProps> = ({
                         {edu.endDate ? ` — ${edu.endDate}` : ""}
                       </p>
                       {edu.description && (
-                        <p className="text-[10px] text-gray-500 mt-1 leading-snug">
+                        <p 
+                          data-break-point="true"
+                          className="text-[10px] text-gray-500 mt-1 leading-snug"
+                        >
                           {edu.description}
                         </p>
                       )}
@@ -424,11 +440,12 @@ const ExecutiveTemplate: React.FC<BuilderTemplateComponentProps> = ({
                 <SectionTitle>Certifications</SectionTitle>
                 <ul className="space-y-1.5">
                   {certifications.map((cert, i) => (
-                    <li
-                      key={`${cert}-${i}`}
-                      className="text-[10px] text-gray-600 leading-snug pl-2 border-l-2"
-                      style={{ borderColor: GOLD }}
-                    >
+                      <li
+                        key={`${cert}-${i}`}
+                        data-break-point="true"
+                        className="text-[10px] text-gray-600 leading-snug pl-2 border-l-2"
+                        style={{ borderColor: GOLD }}
+                      >
                       {cert}
                     </li>
                   ))}
@@ -441,11 +458,12 @@ const ExecutiveTemplate: React.FC<BuilderTemplateComponentProps> = ({
                 <SectionTitle>Languages</SectionTitle>
                 <ul className="space-y-1">
                   {languages.map((lang, i) => (
-                    <li
-                      key={`${lang}-${i}`}
-                      className="text-[10px] text-gray-600 leading-snug pl-2 border-l-2"
-                      style={{ borderColor: GOLD }}
-                    >
+                      <li
+                        key={`${lang}-${i}`}
+                        data-break-point="true"
+                        className="text-[10px] text-gray-600 leading-snug pl-2 border-l-2"
+                        style={{ borderColor: GOLD }}
+                      >
                       {lang}
                     </li>
                   ))}
@@ -458,11 +476,12 @@ const ExecutiveTemplate: React.FC<BuilderTemplateComponentProps> = ({
                 <SectionTitle>Achievements</SectionTitle>
                 <ul className="space-y-1.5">
                   {achievements.map((ach, i) => (
-                    <li
-                      key={`${ach}-${i}`}
-                      className="text-[10px] text-gray-600 text-justify leading-snug pl-2 border-l-2"
-                      style={{ borderColor: GOLD }}
-                    >
+                      <li
+                        key={`${ach}-${i}`}
+                        data-break-point="true"
+                        className="text-[10px] text-gray-600 text-justify leading-snug pl-2 border-l-2"
+                        style={{ borderColor: GOLD }}
+                      >
                       {ach}
                     </li>
                   ))}

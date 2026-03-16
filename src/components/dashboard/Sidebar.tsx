@@ -16,7 +16,7 @@ import type { DashboardNavItem } from '../../types/dashboard';
 
 const Sidebar: React.FC = () => {
     const { user, signOut } = useAuth();
-    const { isPro, tier, openUpgrade } = usePlan();
+    const { isPro, tier } = usePlan();
     const navigate = useNavigate();
     const location = useLocation();
 
@@ -94,7 +94,7 @@ const Sidebar: React.FC = () => {
                             className="h-6 w-6 object-contain grayscale group-hover:grayscale-0 transition-all duration-500"
                         />
                         <span className="text-lg font-medium tracking-tight text-white/90">
-                           Resume<span className="text-zinc-600">Now.</span>
+                           Resumee<span className="text-zinc-600">Now.</span>
                         </span>
                     </div>
                 </div>
@@ -146,11 +146,11 @@ const Sidebar: React.FC = () => {
                                     </span>
                                     {!isPro && (
                                         <button
-                                            onClick={() => openUpgrade()}
-                                            className="inline-flex items-center gap-1 text-[9px] font-bold uppercase tracking-[0.12em] text-zinc-500 hover:text-white transition-colors"
+                                            disabled
+                                            className="hidden items-center gap-1 text-[9px] font-bold uppercase tracking-[0.12em] text-zinc-500 transition-colors cursor-not-allowed opacity-50"
                                         >
                                             <FiStar size={10} />
-                                            Upgrade
+                                            Coming Soon
                                         </button>
                                     )}
                                 </div>
@@ -169,7 +169,6 @@ const Sidebar: React.FC = () => {
                 </div>
             </aside>
 
-            {/* ================= MOBILE BOTTOM DOCK (Glassmorphism) ================= */}
             <div className="md:hidden fixed left-1/2 -translate-x-1/2 z-50 w-auto bottom-[max(1.5rem,env(safe-area-inset-bottom))]">
                 <div className="flex items-center gap-2 bg-[#121212]/20 backdrop-blur-2xl border border-white/5 p-2 rounded-3xl shadow-[0_10px_40px_-10px_rgba(0,0,0,0.5)] ring-1 ring-white/5">
                     {DASHBOARD_MOBILE_DOCK_ITEMS.map((item) => (

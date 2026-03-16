@@ -34,7 +34,7 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({
             <div>
               <p className="text-[10.5px] font-bold text-amber-500 uppercase tracking-widest mb-1.5 flex items-center gap-1.5">
                 <FiStar className="fill-amber-500" size={11} />
-                Pro Required
+                Pro Feature Preview
               </p>
               <h3 className="text-[22px] font-bold text-white tracking-tight leading-tight">
                 Unlock {featureLabel}
@@ -51,9 +51,9 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({
 
         <div className="p-6 bg-white space-y-6">
           <p className="text-[14px] text-gray-600 leading-relaxed font-medium">
-            You’ve discovered a premium workflow. Upgrade to a Pro plan to
-            instantly unlock this capability alongside a full suite of
-            intelligent tools.
+            This premium capability is currently in development. Join the waitlist for our Pro plan to
+            get early access to {featureLabel} and a full suite of
+            intelligent tools when they launch.
           </p>
 
           <div className="bg-amber-50/50 border border-amber-100/50 rounded-2xl p-5">
@@ -80,18 +80,18 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({
           </div>
         </div>
 
-        <div className="px-6 py-5 bg-gray-50/80 border-t border-gray-100 flex flex-col sm:flex-row-reverse gap-3 items-center">
+        <div className="px-6 py-5 bg-gray-50/80 border-t border-gray-100 flex flex-row-reverse gap-3 items-center">
           <button
             onClick={onUpgrade}
-            className="w-full sm:w-auto flex-1 h-11 rounded-xl bg-gray-900 text-white text-[13.5px] font-bold hover:bg-black transition-all shadow-md hover:shadow-lg hover:-translate-y-px flex items-center justify-center gap-2"
+            className="sm:w-auto flex-1 h-11 rounded-xl bg-gray-900 text-white text-[13.5px] font-bold hover:bg-gray-800 transition-all shadow-md flex items-center justify-center gap-2"
           >
-            Upgrade Now
+            Join Pro Waitlist
           </button>
           <button
             onClick={onClose}
-            className="w-full sm:w-auto h-11 px-5 rounded-xl border border-transparent bg-transparent text-[13px] font-bold text-gray-500 hover:text-gray-800 hover:bg-gray-100/80 transition-all"
+            className="sm:w-auto h-11 px-5 rounded-xl border border-transparent bg-transparent text-[13px] font-bold text-gray-500 hover:text-gray-800 hover:bg-gray-100/80 transition-all"
           >
-            Maybe Later
+            Close
           </button>
         </div>
       </div>

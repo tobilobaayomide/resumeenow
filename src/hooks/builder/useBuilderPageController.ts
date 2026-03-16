@@ -1,16 +1,16 @@
-import { useEffect, useState, type Dispatch, type SetStateAction } from 'react';
+import { useEffect, useState, useMemo, type Dispatch, type SetStateAction } from 'react';
 import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../context/useAuth';
 import { usePlan } from '../../context/usePlan';
 import type { BuilderPageMobileView, UseBuilderPageControllerResult } from '../../types/builder';
-import type { TemplateId } from '../../types/resume';
+import type { ResumeData, TemplateId } from '../../types/resume';
 import { useBuilderAiFlows } from './useBuilderAiFlows';
 import { useBuilderPersistence } from './useBuilderPersistence';
 import { useBuilderProfileImport } from './useBuilderProfileImport';
 import { useBuilderStore } from '../../store/builderStore';
 
 interface BuilderLocationState {
-  importedResumeData?: unknown;
+  importedResumeData?: ResumeData;
   importedTitle?: string;
 }
 
@@ -20,7 +20,7 @@ export const useBuilderPageController = (): UseBuilderPageControllerResult => {
   const location = useLocation();
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { isPro, openUpgrade } = usePlan();
+  const { isPro, openUpgrade, monthlyCredits, usedCredits } = usePlan();
 
   const templateId = useBuilderStore((store) => store.templateId);
   const title = useBuilderStore((store) => store.title);
@@ -28,16 +28,19 @@ export const useBuilderPageController = (): UseBuilderPageControllerResult => {
   const setTemplateId = useBuilderStore((store) => store.setTemplateId);
   const setTitle = useBuilderStore((store) => store.setTitle);
 
-  const setTemplateIdDispatch: Dispatch<SetStateAction<TemplateId>> = (value) => {
-    const next =
-      typeof value === 'function' ? (value as (prev: TemplateId) => TemplateId)(templateId) : value;
-    setTemplateId(next);
-  };
+  const setTemplateIdDispatch: Dispatch<SetStateAction<TemplateId>> = useMemo(
+    () => (value) => {
+      setTemplateId(value);
+    },
+    [setTemplateId],
+  );
 
-  const setTitleDispatch: Dispatch<SetStateAction<string>> = (value) => {
-    const next = typeof value === 'function' ? (value as (prev: string) => string)(title) : value;
-    setTitle(next);
-  };
+  const setTitleDispatch: Dispatch<SetStateAction<string>> = useMemo(
+    () => (value) => {
+      setTitle(value);
+    },
+    [setTitle],
+  );
   const [zoom, setZoom] = useState(1);
   const [mobileView, setMobileView] = useState<BuilderPageMobileView>('editor');
   const [isEditorCollapsed, setIsEditorCollapsed] = useState(false);
@@ -66,6 +69,7 @@ export const useBuilderPageController = (): UseBuilderPageControllerResult => {
     setResumeData,
     setMobileView,
   });
+
   useEffect(() => {
     const handleResize = () => {
       if (window.innerWidth < 1024) {
@@ -81,37 +85,64 @@ export const useBuilderPageController = (): UseBuilderPageControllerResult => {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
+  const headerProps = useMemo(() => ({
+    title,
+    saveStatusLabel,
+    templateId,
+    mobileView,
+    isEditorCollapsed,
+    isPro,
+    isImporting,
+    isSaving,
+    isAutosaving,
+    monthlyCredits,
+    usedCredits,
+    onBackToDashboard: handleBackToDashboard,
+    onTitleChange: setTitleDispatch,
+    onTemplateChange: setTemplateIdDispatch,
+    onMobileViewChange: setMobileView,
+    onProAction: handleProAction,
+    onToggleEditorCollapse: () => setIsEditorCollapsed((prev) => !prev),
+    onUpgrade: openUpgrade,
+    onImportProfile: handleImportProfile,
+    onDownload: handleDownload,
+    onSave: () => {
+      void saveResume();
+    },
+  }), [
+    title,
+    saveStatusLabel,
+    templateId,
+    mobileView,
+    isEditorCollapsed,
+    isPro,
+    isImporting,
+    isSaving,
+    isAutosaving,
+    monthlyCredits,
+    usedCredits,
+    handleBackToDashboard,
+    setTitleDispatch,
+    setTemplateIdDispatch,
+    setMobileView,
+    handleProAction,
+    openUpgrade,
+    handleImportProfile,
+    handleDownload,
+    saveResume
+  ]);
+
+  const workspaceProps = useMemo(() => ({
+    mobileView,
+    isEditorCollapsed,
+    zoom,
+    onZoomOut: () => setZoom((value) => Math.max(0.2, value - 0.1)),
+    onZoomIn: () => setZoom((value) => Math.min(2, value + 0.1)),
+  }), [mobileView, isEditorCollapsed, zoom]);
+
   return {
-    headerProps: {
-      title,
-      saveStatusLabel,
-      templateId,
-      mobileView,
-      isEditorCollapsed,
-      isPro,
-      isImporting,
-      isSaving,
-      isAutosaving,
-      onBackToDashboard: handleBackToDashboard,
-      onTitleChange: setTitleDispatch,
-      onTemplateChange: setTemplateIdDispatch,
-      onMobileViewChange: setMobileView,
-      onProAction: handleProAction,
-      onToggleEditorCollapse: () => setIsEditorCollapsed((prev) => !prev),
-      onUpgrade: openUpgrade,
-      onImportProfile: handleImportProfile,
-      onDownload: handleDownload,
-      onSave: () => {
-        void saveResume();
-      },
-    },
-    workspaceProps: {
-      mobileView,
-      isEditorCollapsed,
-      zoom,
-      onZoomOut: () => setZoom((value) => Math.max(0.2, value - 0.1)),
-      onZoomIn: () => setZoom((value) => Math.min(2, value + 0.1)),
-    },
+    headerProps,
+    workspaceProps,
     aiModalProps,
   };
 };

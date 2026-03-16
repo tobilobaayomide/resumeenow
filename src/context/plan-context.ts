@@ -10,6 +10,8 @@ export const PlanContext = createContext<PlanContextType>({
   usedCredits: 0,
   hasAccess: () => false,
   requestAccess: () => false,
+  consumeCredit: async () => {},
+  refreshCredits: async () => {},
   openUpgrade: () => {},
   closeUpgrade: () => {},
   upgradeToPro: () => {},

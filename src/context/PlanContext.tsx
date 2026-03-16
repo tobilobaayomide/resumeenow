@@ -1,12 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { supabase } from '../lib/supabase';
 import UpgradeModal from '../components/ui/UpgradeModal';
 import { PlanContext, type PlanTier, type ProFeature } from './plan-context';
 import { useAuth } from './useAuth';
 
-const STORAGE_KEY_PREFIX = 'resumeenow_plan_tier';
-const FREE_MONTHLY_CREDITS = 20;
 
-const resolveStorageKey = (userId: string): string => `${STORAGE_KEY_PREFIX}:${userId}`;
 const showToast = (type: 'success' | 'error', message: string): void => {
     void import('sonner')
     .then(({ toast }) => {
@@ -19,39 +17,70 @@ const showToast = (type: 'success' | 'error', message: string): void => {
     });
 };
 
-const getStoredTier = (userId: string | null): PlanTier => {
-  if (!userId) return 'free';
-  try {
-    const stored = window.localStorage.getItem(resolveStorageKey(userId));
-    return stored === 'pro' ? 'pro' : 'free';
-  } catch {
-    return 'free';
-  }
-};
-
 export const PlanProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user } = useAuth();
-  const [tierOverride, setTierOverride] = useState<{
-    userId: string;
-    tier: PlanTier;
-  } | null>(null);
+  
+  const [tier, setTier] = useState<PlanTier>('free');
+  const [usedCredits, setUsedCredits] = useState<number>(0);
+  const [dynamicFreeLimit, setDynamicFreeLimit] = useState<number>(10);
+
   const [upgradeOpen, setUpgradeOpen] = useState(false);
   const [upgradeOwnerId, setUpgradeOwnerId] = useState<string | null>(null);
   const [pendingFeature, setPendingFeature] = useState<ProFeature | null>(null);
 
   const currentUserId = user?.id ?? null;
-  const tier =
-    currentUserId && tierOverride?.userId === currentUserId
-      ? tierOverride.tier
-      : getStoredTier(currentUserId);
+
+  const fetchPlanData = async (isMounted = true) => {
+    if (!currentUserId) {
+      if (isMounted) {
+        setTier('free');
+        setUsedCredits(0);
+      }
+      return;
+    }
+
+    try {
+      const [subRes, usageRes] = await Promise.all([
+        supabase.from('user_subscriptions').select('plan_tier').eq('user_id', currentUserId).maybeSingle(),
+        supabase.from('user_api_usage').select('ai_credits_used, last_reset_at').eq('user_id', currentUserId).maybeSingle()
+      ]);
+
+      if (isMounted) {
+        if (subRes.data) setTier(subRes.data.plan_tier as PlanTier);
+        if (usageRes.data) {
+          const lastResetDateStr = usageRes.data.last_reset_at;
+          const lastResetDate = lastResetDateStr 
+            ? new Date(lastResetDateStr).toISOString().split('T')[0] 
+            : null;
+          const today = new Date().toISOString().split('T')[0];
+          const isNewDay = lastResetDate && lastResetDateStr !== "" && lastResetDate !== today;
+          
+          const hasHadFirstReset = (lastResetDate !== null && lastResetDateStr !== "");
+          const calculatedLimit = hasHadFirstReset ? 5 : 10;
+          setDynamicFreeLimit(calculatedLimit);
+
+          const effectiveCredits = isNewDay ? 0 : usageRes.data.ai_credits_used;
+          setUsedCredits(effectiveCredits);
+        }
+      }
+    } catch (error) {
+      console.error('Failed to fetch plan data:', error);
+    }
+  };
+
+  useEffect(() => {
+    let isMounted = true;
+    void fetchPlanData(isMounted);
+    return () => { isMounted = false; };
+  }, [currentUserId]);
 
   const isPro = tier === 'pro';
-  const usedCredits = 0;
-  const monthlyCredits = isPro ? 100 : FREE_MONTHLY_CREDITS;
+  const monthlyCredits = isPro ? 100 : dynamicFreeLimit;
 
   const hasAccess = (feature: ProFeature): boolean => {
     void feature;
-    return isPro;
+    // Allow access if Pro OR if credits remain
+    return isPro || usedCredits < monthlyCredits;
   };
 
   const openUpgrade = (feature?: ProFeature) => {
@@ -72,19 +101,28 @@ export const PlanProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return false;
   };
 
+  const consumeCredit = async () => {
+    if (isPro || !currentUserId) return;
+    
+    // Optimistic UI update, followed by a true fetch to sync with DB
+    setUsedCredits(prev => prev + 1);
+    await fetchPlanData();
+  };
+
   const upgradeToPro = () => {
     if (!user) {
       showToast('error', 'Login required.');
       return;
     }
 
-    setTierOverride({
-      userId: user.id,
-      tier: 'pro',
-    });
-    window.localStorage.setItem(resolveStorageKey(user.id), 'pro');
+    // Placeholder for actual Stripe integration
+    // We no longer fake-upgrade via localStorage to prevent split-brain issues & false hope.
     closeUpgrade();
-    showToast('success', 'Pro UI unlocked. Billing integration is the next step.');
+    showToast('success', 'Waitlist joined! Pro billing is coming very soon.');
+  };
+
+  const refreshCredits = async () => {
+    await fetchPlanData(true);
   };
 
   const value = {
@@ -94,6 +132,8 @@ export const PlanProvider: React.FC<{ children: React.ReactNode }> = ({ children
     usedCredits,
     hasAccess,
     requestAccess,
+    consumeCredit,
+    refreshCredits,
     openUpgrade,
     closeUpgrade,
     upgradeToPro,

@@ -115,7 +115,7 @@ const extractPageLines = (items: PdfTextItem[]): string[] => {
   return lines;
 };
 
-const extractPdfText = async (file: File): Promise<string> => {
+export const extractPdfText = async (file: File): Promise<string> => {
   await ensurePdfWorker();
   const { getDocument } = await getPdfJsModule();
 
@@ -151,11 +151,3 @@ const extractPdfText = async (file: File): Promise<string> => {
   return joined;
 };
 
-export const extractRawText = async (file: File): Promise<string> => {
-  const lowerName = file.name.toLowerCase();
-  if (lowerName.endsWith('.pdf') || file.type === 'application/pdf') {
-    return extractPdfText(file);
-  }
-
-  return cleanupSectionText(await file.text());
-};

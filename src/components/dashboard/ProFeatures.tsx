@@ -1,6 +1,5 @@
 import React from 'react';
 import { FiCheck, FiLock, FiStar, FiZap } from 'react-icons/fi';
-import { toast } from 'sonner';
 import Sidebar from './Sidebar';
 import { usePlan } from '../../context/usePlan';
 import {
@@ -13,16 +12,6 @@ const ProFeatures: React.FC = () => {
   const { isPro, tier, openUpgrade, monthlyCredits, usedCredits } = usePlan();
   const creditPercent = monthlyCredits > 0 ? Math.min((usedCredits / monthlyCredits) * 100, 100) : 0;
 
-  const handleResetToFree = () => {
-    Object.keys(window.localStorage)
-      .filter((key) => key.startsWith('resumeenow_plan_tier'))
-      .forEach((key) => window.localStorage.removeItem(key));
-
-    toast.success('Plan reset to free. Reloading...');
-    window.setTimeout(() => {
-      window.location.reload();
-    }, 250);
-  };
 
   return (
     <div className="min-h-screen bg-[#F6F7F9] flex font-sans text-gray-900 selection:bg-gray-900 selection:text-white">
@@ -56,13 +45,6 @@ const ProFeatures: React.FC = () => {
                       }`}>
                         {tier} Plan
                       </span>
-                      <button
-                        onClick={handleResetToFree}
-                        className="text-[10px] font-semibold text-gray-500 hover:text-gray-300 transition-colors"
-                        title="Developer Action"
-                      >
-                        Reset
-                      </button>
                     </div>
 
                     <div className="space-y-2.5">

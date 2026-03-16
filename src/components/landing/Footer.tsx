@@ -42,7 +42,7 @@ const Footer: React.FC = () => {
                 />
                 <button
                   type="button"
-                  className="h-10 w-10 rounded-full bg-white/12 text-white/80 hover:text-white hover:bg-white/20 transition-colors duration-300 inline-flex items-center justify-center"
+                  className="h-10 w-12 rounded-full bg-white/12 text-white/80 hover:text-white hover:bg-white/20 transition-colors duration-300 inline-flex items-center justify-center"
                   aria-label="Submit email"
                 >
                   <FiArrowRight size={18} />
