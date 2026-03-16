@@ -162,22 +162,19 @@ export const useBuilderPersistence = ({
     setIsDirty(currentSnapshot !== savedSnapshot);
   }, [currentSnapshot, savedSnapshot]);
 
-  const handleDownload = useCallback(() => {
+  const handleDownload = useCallback(async () => {
     try {
       localStorage.setItem('resumeenow:lastPdfExportAt', new Date().toISOString());
       if (id) {
         localStorage.setItem('resumeenow:lastPdfExportResumeId', id);
       }
     } catch {
-      // Ignore localStorage failures in private mode.
+      // Ignore localStorage failures
     }
 
-    const originalTitle = document.title;
-    document.title = `${resumeData.personalInfo.fullName || 'Resume'} - ${title}`;
-    window.print();
-    setTimeout(() => {
-      document.title = originalTitle;
-    }, 100);
+    const { downloadResumeAsPdf } = await import('../../lib/builder/export');
+    const fileName = `${resumeData.personalInfo.fullName || 'Resume'} - ${title}`;
+    await downloadResumeAsPdf(fileName);
   }, [id, resumeData.personalInfo.fullName, title]);
 
   const handleBackToDashboard = () => {
