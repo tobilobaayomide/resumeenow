@@ -38,13 +38,13 @@ export const getHydratedCareerProfile = (
 ): CareerProfileState => ({
   ...EMPTY_CAREER_PROFILE,
   ...data,
-  full_name: data.full_name || '',
-  headline: data.headline || '',
-  location: data.location || '',
-  phone: data.phone || '',
-  website: data.website || '',
-  bio: data.bio || '',
-  email: user.email || '',
+  full_name: data.full_name ?? '',
+  headline: data.headline ?? '',
+  location: data.location ?? '',
+  phone: data.phone ?? '',
+  website: data.website ?? '',
+  bio: data.bio ?? '',
+  email: user.email ?? '',
   experience: normalizeExperienceList(data.experience),
   education: normalizeEducationList(data.education),
   skills: Array.isArray(data.skills)
@@ -54,8 +54,8 @@ export const getHydratedCareerProfile = (
 
 export const getFallbackCareerProfile = (user: User): CareerProfileState => ({
   ...EMPTY_CAREER_PROFILE,
-  full_name: user.user_metadata?.full_name || '',
-  email: user.email || '',
+  full_name: user.user_metadata?.full_name ?? '',
+  email: user.email ?? '',
 });
 
 const isCompletionItemDone = (
@@ -64,23 +64,23 @@ const isCompletionItemDone = (
 ): boolean => {
   switch (key) {
     case 'full_name':
-      return Boolean(profile.full_name?.trim());
+      return Boolean(profile.full_name != null && profile.full_name.trim());
     case 'headline':
-      return Boolean(profile.headline?.trim());
+      return Boolean(profile.headline != null && profile.headline.trim());
     case 'location':
-      return Boolean(profile.location?.trim());
+      return Boolean(profile.location != null && profile.location.trim());
     case 'phone':
-      return Boolean(profile.phone?.trim());
+      return Boolean(profile.phone != null && profile.phone.trim());
     case 'website':
-      return Boolean(profile.website?.trim());
+      return Boolean(profile.website != null && profile.website.trim());
     case 'bio':
-      return Boolean(profile.bio?.trim());
+      return Boolean(profile.bio != null && profile.bio.trim());
     case 'experience':
-      return profile.experience.length > 0;
+      return Array.isArray(profile.experience) && profile.experience.length > 0;
     case 'education':
-      return profile.education.length > 0;
+      return Array.isArray(profile.education) && profile.education.length > 0;
     case 'skills':
-      return profile.skills.length >= 3;
+      return Array.isArray(profile.skills) && profile.skills.length >= 3;
     default:
       return false;
   }
