@@ -27,13 +27,14 @@ const BuilderHeader: React.FC<BuilderHeaderProps> = ({
   isImporting,
   isSaving,
   isAutosaving,
+  monthlyCredits,
+  usedCredits,
   onBackToDashboard,
   onTitleChange,
   onTemplateChange,
   onMobileViewChange,
   onProAction,
   onToggleEditorCollapse,
-  onUpgrade,
   onImportProfile,
   onDownload,
   onSave,
@@ -201,15 +202,27 @@ const BuilderHeader: React.FC<BuilderHeaderProps> = ({
         </div>
 
         <div className="w-px h-6 bg-gray-200 mx-1 hidden sm:block" />
+        
+        {/* Credits Badge */}
+        {!isPro && (
+          <div className="hidden xl:flex flex-col items-end mr-1">
+            <div className="text-[9px] font-bold text-gray-400 tracking-wider uppercase">
+              Daily AI Trial
+            </div>
+            <div className="text-[11px] font-black text-indigo-600 tabular-nums">
+              {monthlyCredits - usedCredits} / {monthlyCredits} <span className="text-[9px] font-bold opacity-60">Uses</span>
+            </div>
+          </div>
+        )}
 
         {/* Go Pro Badge */}
         {!isPro && (
           <button
-            onClick={onUpgrade}
-            className="hidden sm:flex items-center gap-1.5 px-3.5 h-9 rounded-xl text-[11px] font-black uppercase tracking-wider bg-linear-to-r from-amber-200 to-yellow-400 text-yellow-900 hover:from-amber-300 hover:to-yellow-500 hover:shadow-md transition-all border border-amber-300/50"
+            onClick={() => onProAction('priority_templates', 'Pro Waitlist')}
+            className="hidden sm:flex items-center gap-1.5 px-3.5 h-9 rounded-xl text-[11px] font-black uppercase tracking-wider bg-linear-to-r from-amber-200 to-yellow-400 text-yellow-900 transition-all hover:shadow-sm"
           >
             <FiStar size={12} className="fill-yellow-600" />
-            <span>Pro</span>
+            <span>Join Pro Waitlist</span>
           </button>
         )}
 
