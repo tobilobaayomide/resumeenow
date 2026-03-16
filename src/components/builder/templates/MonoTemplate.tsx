@@ -14,16 +14,13 @@ const BODY_TEXT = "#3d3d3b";
 const MUTED = "#888884";
 const RULE = "#e0dedd";
 
-let sectionIndex = 0;
-const resetSectionIndex = () => {
-  sectionIndex = 0;
-};
 
-const SectionHeading: React.FC<{ children: React.ReactNode }> = ({
+
+const SectionHeading: React.FC<{ children: React.ReactNode; index: number }> = ({
   children,
+  index,
 }) => {
-  sectionIndex += 1;
-  const idx = String(sectionIndex).padStart(2, "0");
+  const idx = String(index).padStart(2, "0");
   return (
     <div className="mb-4 flex items-baseline gap-3">
       <span
@@ -101,7 +98,6 @@ const MonoTemplate: React.FC<BuilderTemplateComponentProps> = ({
   data,
   contentRef,
 }) => {
-  resetSectionIndex();
 
   const {
     personalInfo,
@@ -208,7 +204,7 @@ const MonoTemplate: React.FC<BuilderTemplateComponentProps> = ({
 
         {experience.length > 0 && (
           <section>
-            <SectionHeading>Experience</SectionHeading>
+            <SectionHeading index={1}>Experience</SectionHeading>
             <div>
               {experience.map((exp, i) => (
                 <EntryRow
@@ -249,7 +245,7 @@ const MonoTemplate: React.FC<BuilderTemplateComponentProps> = ({
 
         {projects.length > 0 && (
           <section>
-            <SectionHeading>Projects</SectionHeading>
+            <SectionHeading index={2}>Projects</SectionHeading>
             <div>
               {projects.map((project, i) => (
                 <EntryRow
@@ -295,7 +291,7 @@ const MonoTemplate: React.FC<BuilderTemplateComponentProps> = ({
 
         {volunteering.length > 0 && (
           <section>
-            <SectionHeading>Volunteering</SectionHeading>
+            <SectionHeading index={3}>Volunteering</SectionHeading>
             <div>
               {volunteering.map((item, i) => (
                 <EntryRow
@@ -336,7 +332,7 @@ const MonoTemplate: React.FC<BuilderTemplateComponentProps> = ({
 
         {education.length > 0 && (
           <section>
-            <SectionHeading>Education</SectionHeading>
+            <SectionHeading index={4}>Education</SectionHeading>
             <div>
               {education.map((edu, i) => (
                 <EntryRow
@@ -371,7 +367,7 @@ const MonoTemplate: React.FC<BuilderTemplateComponentProps> = ({
 
         {activeSkills.length > 0 && (
           <section>
-            <SectionHeading>Skills</SectionHeading>
+            <SectionHeading index={5}>Skills</SectionHeading>
             <div className="flex -ml-20 gap-0">
               <div className="w-20.5 shrink-0" />
               <div className="flex-1 pl-0">
@@ -407,7 +403,7 @@ const MonoTemplate: React.FC<BuilderTemplateComponentProps> = ({
 
         {certifications.length > 0 && (
           <section>
-            <SectionHeading>Certifications</SectionHeading>
+            <SectionHeading index={6}>Certifications</SectionHeading>
             <div className="flex -ml-20 gap-0">
               <div className="w-20.5 shrink-0" />
               <ul className="flex-1 space-y-0.75 list-disc list-outside pl-4">
@@ -428,7 +424,7 @@ const MonoTemplate: React.FC<BuilderTemplateComponentProps> = ({
 
         {languages.length > 0 && (
           <section>
-            <SectionHeading>Languages</SectionHeading>
+            <SectionHeading index={7}>Languages</SectionHeading>
             <div className="flex -ml-20 gap-0">
               <div className="w-20.5 shrink-0" />
               <p
@@ -444,7 +440,7 @@ const MonoTemplate: React.FC<BuilderTemplateComponentProps> = ({
 
         {achievements.length > 0 && (
           <section>
-            <SectionHeading>Achievements</SectionHeading>
+            <SectionHeading index={8}>Achievements</SectionHeading>
             <div className="flex -ml-20 gap-0">
               <div className="w-20.5 shrink-0" />
               <ul className="flex-1 space-y-0.75 list-disc list-outside pl-4">
