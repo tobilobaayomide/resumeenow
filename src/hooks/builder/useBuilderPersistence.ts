@@ -115,7 +115,6 @@ export const useBuilderPersistence = ({
       nextTitle,
     );
     hasHydratedInitialState.current = true;
-    // Run only once on new builder load
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isNew, locationState]);
 
@@ -173,9 +172,9 @@ export const useBuilderPersistence = ({
     }
 
     const { downloadResumeAsPdf } = await import('../../lib/builder/export');
-    const fileName = `${resumeData.personalInfo.fullName || 'Resume'} - ${title}`;
-    await downloadResumeAsPdf(fileName);
-  }, [id, resumeData.personalInfo.fullName, title]);
+    const fileName = title || resumeData.personalInfo.fullName || 'Resume';
+    await downloadResumeAsPdf(fileName, resumeData, templateId);
+  }, [id, resumeData, resumeData.personalInfo.fullName, title, templateId]);
 
   const handleBackToDashboard = () => {
     if (isDirty && !window.confirm('You have unsaved changes. Leave builder anyway?')) {

@@ -8,46 +8,43 @@ import {
 } from "../../../domain/resume";
 import { toDescriptionBullets } from "./utils";
 
-const INK = "black";
-const BODY = "black";
+const INK = "#111111";
 const MUTED = "#6b6b68";
 const RULE = "#d8d6d3";
 const SECTION_ACCENT = "#1f3a5f";
 
-const SectionTitle: React.FC<{ children: React.ReactNode }> = ({
-  children,
-}) => (
-  <div className="mb-2.5 flex items-stretch gap-2.5">
-    <div
-      className="w-0.75 shrink-0 rounded-full"
-      style={{ background: SECTION_ACCENT }}
-    />
-    <h2
-      className="text-[10.5px] font-bold uppercase tracking-[0.14em] leading-none self-center"
-      style={{ color: SECTION_ACCENT }}
-    >
+const SectionTitle: React.FC<{ children: React.ReactNode }> = ({ children }) => (
+  <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 8 }}>
+    <div style={{ width: 3, height: 13, backgroundColor: SECTION_ACCENT, borderRadius: 2, flexShrink: 0 }} />
+    <h2 style={{ fontSize: 9.5, fontWeight: 700, color: SECTION_ACCENT, letterSpacing: "0.14em", textTransform: "uppercase", lineHeight: 1, margin: 0 }}>
       {children}
     </h2>
   </div>
 );
 
-const DateRange: React.FC<{ startDate?: string; endDate?: string }> = ({
-  startDate = "",
-  endDate = "",
-}) => {
+const DateRange: React.FC<{ startDate?: string; endDate?: string }> = ({ startDate = "", endDate = "" }) => {
   const left = startDate.trim();
   const right = endDate.trim();
   if (!left && !right) return null;
   return (
-    <span
-      className="text-[10px] font-medium tabular-nums whitespace-nowrap shrink-0"
-      style={{ color: MUTED }}
-    >
-      {left}
-      {right ? ` – ${right}` : ""}
+    <span style={{ fontSize: 8.5, color: MUTED, whiteSpace: "nowrap", flexShrink: 0 }}>
+      {left}{right ? ` – ${right}` : ""}
     </span>
   );
 };
+
+const Bullets: React.FC<{ items: string[] }> = ({ items }) => (
+  <div style={{ marginTop: 3 }}>
+    {items.map((item, i) => (
+      <div key={i} style={{ display: "flex", marginTop: 3 }}>
+        <span style={{ fontSize: 9.5, color: INK, marginRight: 5, lineHeight: 1.6, flexShrink: 0 }}>•</span>
+        <span data-break-point="true" style={{ fontSize: 9.5, color: INK, lineHeight: 1.6, flex: 1, textAlign: "justify" }}>
+          {item}
+        </span>
+      </div>
+    ))}
+  </div>
+);
 
 const ExperienceBlock: React.FC<{
   item: {
@@ -60,45 +57,21 @@ const ExperienceBlock: React.FC<{
   };
 }> = ({ item }) => {
   const bullets = toDescriptionBullets(item.description || "");
-
   return (
-    <div data-no-split="true" className="space-y-0.75">
-      <div className="flex items-baseline justify-between gap-3">
-        <p
-          className="text-[12px] font-bold leading-snug"
-          style={{ color: INK }}
-        >
-          {item.role}
-        </p>
+    <div data-no-split="true" style={{ marginBottom: 10 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
+        <span style={{ fontSize: 10.5, fontWeight: 700, color: INK }}>{item.role}</span>
         <DateRange startDate={item.startDate} endDate={item.endDate} />
       </div>
       {item.company && (
-        <p
-          className="text-[10.5px] font-semibold"
-          style={{ color: SECTION_ACCENT }}
-        >
+        <div style={{ fontSize: 9.5, fontWeight: 700, color: SECTION_ACCENT, marginTop: 2 }}>
           {item.company}
-        </p>
+        </div>
       )}
       {bullets.length > 0 ? (
-        <ul className="list-disc pl-4 space-y-0.75 mt-1.5">
-          {bullets.map((line, i) => (
-            <li
-              key={`${item.id}-b-${i}`}
-              data-break-point="true"
-              className="text-[11px] leading-[1.6] text-justify"
-              style={{ color: BODY }}
-            >
-              {line}
-            </li>
-          ))}
-        </ul>
+        <Bullets items={bullets} />
       ) : item.description ? (
-        <p
-          data-break-point="true"
-          className="text-[11px] leading-[1.6] text-justify mt-1.5"
-          style={{ color: BODY }}
-        >
+        <p data-break-point="true" style={{ fontSize: 9.5, color: INK, lineHeight: 1.6, textAlign: "justify", marginTop: 3 }}>
           {item.description}
         </p>
       ) : null}
@@ -106,10 +79,7 @@ const ExperienceBlock: React.FC<{
   );
 };
 
-const AtsTemplate: React.FC<BuilderTemplateComponentProps> = ({
-  data,
-  contentRef,
-}) => {
+const AtsTemplate: React.FC<BuilderTemplateComponentProps> = ({ data, contentRef }) => {
   const {
     personalInfo,
     summary,
@@ -126,301 +96,206 @@ const AtsTemplate: React.FC<BuilderTemplateComponentProps> = ({
   const visibleLinks = getVisiblePersonalLinks(personalInfo);
   const activeSkills = getActiveSkillItems(skills);
   const groupedSkills = skills.groups.filter((g) => g.items.length > 0);
-  const shouldRenderGroupedSkills =
-    skills.mode === "grouped" && groupedSkills.length > 0;
-
-  const contactItems = [
-    personalInfo.email
-      ? { id: "email", type: "email" as const, value: personalInfo.email }
-      : null,
-    personalInfo.phone
-      ? { id: "phone", type: "text" as const, value: personalInfo.phone }
-      : null,
-    personalInfo.location
-      ? { id: "location", type: "text" as const, value: personalInfo.location }
-      : null,
-    ...visibleLinks.map((link) => ({
-      id: link.id,
-      type: "link" as const,
-      label: getPersonalLinkDisplayLabel(link),
-      href: toExternalLinkHref(link.url),
-    })),
-  ].filter(Boolean) as Array<
-    | { id: string; type: "email"; value: string }
-    | { id: string; type: "text"; value: string }
-    | { id: string; type: "link"; label: string; href: string }
-  >;
+  const shouldRenderGroupedSkills = skills.mode === "grouped" && groupedSkills.length > 0;
 
   return (
-    <div ref={contentRef} className="font-sans text-black space-y-5">
-      <header data-no-split="true" className="space-y-1.5">
-        <h1
-          className="text-[33px] font-bold tracking-[-0.02em] leading-none"
-          style={{ color: INK }}
-        >
-          {personalInfo.fullName || (
-            <span style={{ color: RULE }}>Your Name</span>
-          )}
+    <div
+      ref={contentRef}
+      style={{
+        fontFamily: "Helvetica, Arial, sans-serif",
+        color: INK,
+        paddingTop: 25,
+        paddingBottom: 25,
+        paddingLeft: 35,
+        paddingRight: 35,
+      }}
+    >
+      {/* Header */}
+      <div data-no-split="true">
+        <h1 style={{ fontSize: 26, fontWeight: 700, color: INK, letterSpacing: "-0.5px", lineHeight: 1.1, margin: 0 }}>
+          {personalInfo.fullName || <span style={{ color: RULE }}>Your Name</span>}
           {personalInfo.jobTitle && (
-            <span
-              className="font-normal text-[33px] tracking-[-0.01em]"
-              style={{ color: MUTED }}
-            >
-              {""}, {personalInfo.jobTitle}
+            <span style={{ fontSize: 26, fontWeight: 400, color: MUTED, letterSpacing: "-0.3px" }}>
+              , {personalInfo.jobTitle}
             </span>
           )}
         </h1>
 
-        {contactItems.length > 0 && (
-          <p className="text-[10px] leading-relaxed" style={{ color: MUTED }}>
-            {contactItems.map((item, i) => (
-              <React.Fragment key={item.id}>
-                {i > 0 && <span style={{ color: RULE }}> · </span>}
-                {item.type === "link" ? (
-                  <a
-                    href={item.href}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="hover:underline break-all"
-                    style={{ color: MUTED }}
-                  >
-                    {item.label}
-                  </a>
-                ) : item.type === "email" ? (
-                  <a
-                    href={`mailto:${item.value}`}
-                    className="hover:underline break-all"
-                    style={{ color: MUTED }}
-                  >
-                    {item.value}
-                  </a>
-                ) : (
-                  <span>{item.value}</span>
-                )}
-              </React.Fragment>
-            ))}
-          </p>
-        )}
+        <div style={{ display: "flex", flexWrap: "wrap", marginTop: 5 }}>
+          {personalInfo.email && (
+            <a
+              href={`mailto:${personalInfo.email}`}
+              style={{ fontSize: 8.5, color: MUTED, textDecoration: "none" }}
+            >
+              {personalInfo.email}
+            </a>
+          )}
+          {personalInfo.phone && (
+            <React.Fragment>
+              {personalInfo.email && (
+                <span style={{ fontSize: 8.5, color: RULE, marginLeft: 3, marginRight: 3 }}>·</span>
+              )}
+              <span style={{ fontSize: 8.5, color: MUTED }}>{personalInfo.phone}</span>
+            </React.Fragment>
+          )}
+          {personalInfo.location && (
+            <React.Fragment>
+              {(personalInfo.email || personalInfo.phone) && (
+                <span style={{ fontSize: 8.5, color: RULE, marginLeft: 3, marginRight: 3 }}>·</span>
+              )}
+              <span style={{ fontSize: 8.5, color: MUTED }}>{personalInfo.location}</span>
+            </React.Fragment>
+          )}
+          {visibleLinks.map((link) => (
+            <React.Fragment key={link.id}>
+              <span style={{ fontSize: 8.5, color: RULE, marginLeft: 3, marginRight: 3 }}>·</span>
+              <a
+                href={toExternalLinkHref(link.url)}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{ fontSize: 8.5, color: MUTED, textDecoration: "none" }}
+              >
+                {getPersonalLinkDisplayLabel(link)}
+              </a>
+            </React.Fragment>
+          ))}
+        </div>
 
-        <div className="pt-1" style={{ borderBottom: `1.5px solid ${INK}` }} />
-      </header>
+        <div style={{ borderBottom: `1.5px solid ${INK}`, marginTop: 8 }} />
+      </div>
 
+      {/* Summary */}
       {summary && (
-        <section>
+        <section style={{ marginTop: 16 }}>
           <SectionTitle>Summary</SectionTitle>
-          <p
-            data-break-point="true"
-            className="text-[11.5px] leading-relaxed text-justify"
-            style={{ color: BODY }}
-          >
+          <p data-break-point="true" style={{ fontSize: 9.5, color: INK, lineHeight: 1.6, textAlign: "justify", margin: 0 }}>
             {summary}
           </p>
         </section>
       )}
 
+      {/* Skills */}
       {activeSkills.length > 0 && (
-        <section>
+        <section style={{ marginTop: 16 }}>
           <SectionTitle>Technical Skills</SectionTitle>
           {shouldRenderGroupedSkills ? (
-            <div className="space-y-1">
+            <div>
               {groupedSkills.map((group) => (
-                <p
-                  key={group.id}
-                  data-break-point="true"
-                  className="text-[11px] leading-relaxed text-justify"
-                  style={{ color: BODY }}
-                >
-                  <span className="font-bold" style={{ color: INK }}>
-                    {group.label || "Skills"}:
-                  </span>{" "}
+                <p key={group.id} data-break-point="true" style={{ fontSize: 9.5, color: INK, lineHeight: 1.6, textAlign: "justify", margin: 0 }}>
+                  <span style={{ fontWeight: 700 }}>{group.label || "Skills"}: </span>
                   {group.items.join(", ")}
                 </p>
               ))}
             </div>
           ) : (
-            <p
-              data-break-point="true"
-              className="text-[11px] leading-relaxed text-justify"
-              style={{ color: BODY }}
-            >
+            <p data-break-point="true" style={{ fontSize: 9.5, color: INK, lineHeight: 1.6, textAlign: "justify", margin: 0 }}>
               {activeSkills.join(", ")}
             </p>
           )}
         </section>
       )}
 
+      {/* Experience */}
       {experience.length > 0 && (
-        <section>
+        <section style={{ marginTop: 16 }}>
           <SectionTitle>Professional Experience</SectionTitle>
-          <div className="space-y-3.5">
-            {experience.map((item) => (
-              <ExperienceBlock key={item.id} item={item} />
-            ))}
-          </div>
+          {experience.map((item) => (
+            <ExperienceBlock key={item.id} item={item} />
+          ))}
         </section>
       )}
 
+      {/* Projects */}
       {projects.length > 0 && (
-        <section>
+        <section style={{ marginTop: 16 }}>
           <SectionTitle>Projects</SectionTitle>
-          <div className="space-y-3.5">
-            {projects.map((project) => (
-              <div
-                key={project.id}
-                data-no-split="true"
-                className="space-y-0.75"
-              >
-                <div className="flex items-baseline justify-between gap-3">
-                  <p
-                    className="text-[12px] font-bold leading-snug"
-                    style={{ color: INK }}
-                  >
-                    {project.name}
-                  </p>
-                  <DateRange
-                    startDate={project.startDate}
-                    endDate={project.endDate}
-                  />
+          {projects.map((project) => {
+            const bullets = toDescriptionBullets(project.description ?? "");
+            return (
+              <div key={project.id} data-no-split="true" style={{ marginBottom: 10 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
+                  <span style={{ fontSize: 10.5, fontWeight: 700, color: INK }}>{project.name}</span>
+                  <DateRange startDate={project.startDate} endDate={project.endDate} />
                 </div>
-                   {project.link && (
+                {project.link && (
                   <a
                     href={toExternalLinkHref(project.link)}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-[10px] break-all hover:underline"
-                    style={{ color: MUTED }}
+                    style={{ fontSize: 8.5, color: MUTED, textDecoration: "none", display: "block" }}
                   >
                     {project.link}
                   </a>
                 )}
-                {project.description &&
-                  (() => {
-                    const bullets = toDescriptionBullets(project.description);
-                    if (bullets.length > 0) {
-                      return (
-                        <ul className="list-disc pl-4 space-y-0.75 mt-1.5">
-                          {bullets.map((line, i) => (
-                            <li
-                              key={`${project.id}-b-${i}`}
-                              data-break-point="true"
-                              className="text-[11px] leading-[1.6] text-justify"
-                              style={{ color: BODY }}
-                            >
-                              {line}
-                            </li>
-                          ))}
-                        </ul>
-                      );
-                    }
-                    return (
-                      <p
-                        data-break-point="true"
-                        className="text-[11px] leading-[1.6] text-justify whitespace-pre-line mt-1.5"
-                        style={{ color: BODY }}
-                      >
-                        {project.description}
-                      </p>
-                    );
-                  })()}
+                {bullets.length > 0 ? (
+                  <Bullets items={bullets} />
+                ) : project.description ? (
+                  <p data-break-point="true" style={{ fontSize: 9.5, color: INK, lineHeight: 1.6, textAlign: "justify", marginTop: 3 }}>
+                    {project.description}
+                  </p>
+                ) : null}
               </div>
-            ))}
-          </div>
+            );
+          })}
         </section>
       )}
 
+      {/* Volunteering */}
       {volunteering.length > 0 && (
-        <section>
+        <section style={{ marginTop: 16 }}>
           <SectionTitle>Volunteering</SectionTitle>
-          <div className="space-y-3.5">
-            {volunteering.map((item) => (
-              <ExperienceBlock key={item.id} item={item} />
-            ))}
-          </div>
+          {volunteering.map((item) => (
+            <ExperienceBlock key={item.id} item={item} />
+          ))}
         </section>
       )}
 
+      {/* Education */}
       {education.length > 0 && (
-        <section>
+        <section style={{ marginTop: 16 }}>
           <SectionTitle>Education</SectionTitle>
-          <div className="space-y-3">
-            {education.map((edu) => (
-              <div key={edu.id} data-no-split="true" className="space-y-0.75">
-                <div className="flex items-baseline justify-between gap-3">
-                  <p
-                    className="text-[12px] font-bold leading-snug"
-                    style={{ color: INK }}
-                  >
-                    {edu.degree}
-                  </p>
-                  <DateRange startDate={edu.startDate} endDate={edu.endDate} />
-                </div>
-                <p
-                  className="text-[10.5px] font-semibold"
-                  style={{ color: SECTION_ACCENT }}
-                >
-                  {edu.school}
-                </p>
-                {edu.description && (
-                  <p
-                    data-break-point="true"
-                    className="text-[11px] leading-[1.6] text-justify whitespace-pre-line"
-                    style={{ color: BODY }}
-                  >
-                    {edu.description}
-                  </p>
-                )}
+          {education.map((edu) => (
+            <div key={edu.id} data-no-split="true" style={{ marginBottom: 10 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
+                <span style={{ fontSize: 10.5, fontWeight: 700, color: INK }}>{edu.degree}</span>
+                <DateRange startDate={edu.startDate} endDate={edu.endDate} />
               </div>
-            ))}
-          </div>
+              <div style={{ fontSize: 9.5, fontWeight: 700, color: SECTION_ACCENT, marginTop: 2 }}>
+                {edu.school}
+              </div>
+              {edu.description && (
+                <p data-break-point="true" style={{ fontSize: 9.5, color: INK, lineHeight: 1.6, textAlign: "justify", marginTop: 3 }}>
+                  {edu.description}
+                </p>
+              )}
+            </div>
+          ))}
         </section>
       )}
 
+      {/* Certifications */}
       {certifications.length > 0 && (
-        <section>
+        <section style={{ marginTop: 16 }}>
           <SectionTitle>Certifications</SectionTitle>
-          <ul className="list-disc pl-4 space-y-0.75">
-            {certifications.map((cert, i) => (
-              <li
-                key={`${cert}-${i}`}
-                data-break-point="true"
-                className="text-[11px] leading-relaxed"
-                style={{ color: BODY }}
-              >
-                {cert}
-              </li>
-            ))}
-          </ul>
+          <Bullets items={certifications} />
         </section>
       )}
 
+      {/* Languages */}
       {languages.length > 0 && (
-        <section>
+        <section style={{ marginTop: 16 }}>
           <SectionTitle>Languages</SectionTitle>
-          <p
-            data-break-point="true"
-            className="text-[11px] leading-relaxed"
-            style={{ color: BODY }}
-          >
+          <p style={{ fontSize: 9.5, color: INK, lineHeight: 1.6, margin: 0 }}>
             {languages.join(", ")}
           </p>
         </section>
       )}
 
+      {/* Achievements */}
       {achievements.length > 0 && (
-        <section>
+        <section style={{ marginTop: 16 }}>
           <SectionTitle>Achievements</SectionTitle>
-          <ul className="list-disc pl-4 space-y-0.75">
-            {achievements.map((ach, i) => (
-              <li
-                key={`${ach}-${i}`}
-                data-break-point="true"
-                className="text-[11px] leading-relaxed"
-                style={{ color: BODY }}
-              >
-                {ach}
-              </li>
-            ))}
-          </ul>
+          <Bullets items={achievements} />
         </section>
       )}
     </div>
