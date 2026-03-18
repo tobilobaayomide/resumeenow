@@ -1,10 +1,55 @@
-import React from 'react';
+import React, { useEffect, useMemo } from 'react';
+import { usePDF } from '@react-pdf/renderer';
 import { FiX } from 'react-icons/fi';
 import { PREVIEW_RESUME_DATA } from '../../../domain/resume';
 import { isRenderableTemplate } from '../../../domain/templates';
 import type { TemplatesPreviewModalProps } from '../../../types/dashboard';
-import TemplateRenderer from '../../builder/templates/TemplateRenderer';
+import type { TemplateId } from '../../../domain/templates';
+import { PDFDocument } from '../../builder/pdf/PDFDocument';
 
+// ─── PDF Preview ─────────────────────────────────────────────────────────────
+// Separated so usePDF only runs when a renderable template is present
+const PDFPreview: React.FC<{ templateId: TemplateId }> = ({ templateId }) => {
+  const doc = useMemo(
+    () => <PDFDocument data={PREVIEW_RESUME_DATA} templateId={templateId} />,
+    [templateId],
+  );
+
+  const [instance, update] = usePDF({ document: doc });
+
+  useEffect(() => {
+    update(doc);
+  }, [doc]);
+
+  if (instance.loading || !instance.url) {
+    return (
+      <div className="w-full h-full min-h-80 bg-white animate-pulse">
+        <div className="h-24 bg-gray-200 mb-6" />
+        <div className="px-8 space-y-3">
+          <div className="h-3 w-24 bg-gray-200 rounded" />
+          <div className="h-2 w-full bg-gray-100 rounded" />
+          <div className="h-2 w-5/6 bg-gray-100 rounded" />
+          <div className="h-2 w-4/6 bg-gray-100 rounded" />
+          <div className="h-3 w-28 bg-gray-200 rounded mt-4" />
+          <div className="h-2 w-full bg-gray-100 rounded" />
+          <div className="h-2 w-5/6 bg-gray-100 rounded" />
+          <div className="h-2 w-3/6 bg-gray-100 rounded" />
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <iframe
+      key={instance.url}
+      src={`${instance.url}#toolbar=0&navpanes=0&scrollbar=0`}
+      className="w-full h-full"
+      style={{ border: 'none', display: 'block', minHeight: '70vh' }}
+    />
+  );
+};
+
+// ─── Main Modal ───────────────────────────────────────────────────────────────
 const TemplatesPreviewModal: React.FC<TemplatesPreviewModalProps> = ({
   previewTemplate,
   onClose,
@@ -20,6 +65,8 @@ const TemplatesPreviewModal: React.FC<TemplatesPreviewModalProps> = ({
       }}
     >
       <div className="w-full h-full md:h-auto md:max-h-[92vh] md:max-w-5xl bg-white border border-gray-200 md:rounded-2xl shadow-2xl overflow-hidden flex flex-col">
+
+        {/* Header */}
         <div className="px-4 md:px-6 py-4 border-b border-gray-100 flex items-start justify-between">
           <div>
             <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-gray-400">
@@ -44,13 +91,11 @@ const TemplatesPreviewModal: React.FC<TemplatesPreviewModalProps> = ({
           </button>
         </div>
 
+        {/* Body */}
         <div className="flex-1 p-3 md:p-6 bg-[#F6F6F6] overflow-auto">
           {isRenderableTemplate(previewTemplate.id) ? (
-            <div className="min-w-170 w-198.5 mx-auto bg-white border border-gray-200 shadow-2xl p-14.25">
-              <TemplateRenderer
-                templateId={previewTemplate.id}
-                data={PREVIEW_RESUME_DATA}
-              />
+            <div className="w-full h-full min-h-[70vh]">
+              <PDFPreview templateId={previewTemplate.id as TemplateId} />
             </div>
           ) : (
             <div className="max-w-xl mx-auto h-full min-h-80 rounded-2xl border border-dashed border-gray-300 bg-white flex flex-col items-center justify-center text-center p-8">
@@ -65,6 +110,7 @@ const TemplatesPreviewModal: React.FC<TemplatesPreviewModalProps> = ({
           )}
         </div>
 
+        {/* Footer */}
         <div className="px-4 md:px-6 py-4 border-t border-gray-100 bg-white flex items-center justify-between gap-3">
           <span className="text-xs text-gray-500 uppercase tracking-[0.12em] font-semibold">
             {previewTemplate.category}
@@ -89,6 +135,7 @@ const TemplatesPreviewModal: React.FC<TemplatesPreviewModalProps> = ({
             </button>
           </div>
         </div>
+
       </div>
     </div>
   );
