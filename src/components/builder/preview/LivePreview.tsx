@@ -1,240 +1,161 @@
-import React, { useRef, useState, useEffect } from 'react';
-import TemplateRenderer from '../templates/TemplateRenderer'; 
+import React, { useEffect, useRef, useState } from 'react';
+import { usePDF } from '@react-pdf/renderer';
+import * as pdfjs from 'pdfjs-dist';
+import workerSrc from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
+import { PDFDocument } from '../pdf/PDFDocument';
 import type { LivePreviewProps } from '../../../types/builder';
 
+pdfjs.GlobalWorkerOptions.workerSrc = workerSrc;
+
 const A4_WIDTH_PX = 794;
-const A4_HEIGHT_PX = 1123;
-const PAGE_GAP_PX = 24;
 
-const PAGE_MARGIN_TOP_PX = 47;
-const PAGE_MARGIN_BOTTOM_PX = 47;
-const PAGE_MARGIN_SIDE_PX = 57;
-
-const CONTENT_HEIGHT_PER_PAGE = A4_HEIGHT_PX - PAGE_MARGIN_TOP_PX - PAGE_MARGIN_BOTTOM_PX;
-
-const LivePreview: React.FC<LivePreviewProps> = ({ data, zoom = 0.8, templateId = 'executive' }) => {
-  const measureRef = useRef<HTMLDivElement>(null);
-  const [pageBreaks, setPageBreaks] = useState<number[]>([0]);
-  const [isSelfPadded, setIsSelfPadded] = useState(false);
+const PDFPageCanvas: React.FC<{
+  pdf: pdfjs.PDFDocumentProxy;
+  pageNumber: number;
+  zoom: number;
+}> = ({ pdf, pageNumber, zoom }) => {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
-    const calculatePageBreaks = () => {
-      if (!measureRef.current) return;
+    let cancelled = false;
 
-      const container = measureRef.current;
-      const containerTop = container.getBoundingClientRect().top;
+    const render = async () => {
+      const page = await pdf.getPage(pageNumber);
+      if (cancelled) return;
 
-      const selfPadded = container.querySelector('[data-self-padded="true"]') !== null;
-      setIsSelfPadded(selfPadded);
+      const dpi = window.devicePixelRatio * 2;
+      const viewport = page.getViewport({ scale: dpi });
 
-      const headerEl = container.querySelector(
-        '[data-page-header="true"]'
-      ) as HTMLElement | null;
-      const headerHeight = headerEl
-        ? headerEl.getBoundingClientRect().height
-        : 0;
+      const offscreen = document.createElement('canvas');
+      offscreen.width = viewport.width;
+      offscreen.height = viewport.height;
 
-      const allElements = Array.from(
-        container.querySelectorAll<HTMLElement>(
-          'p, h1, h2, h3, h4, h5, h6, li, td, th, span, div'
-        )
-      ).filter((el) => {
-        const rect = el.getBoundingClientRect();
-        const hasHeight = rect.height > 0;
-        const hasText = (el.textContent || '').trim().length > 0;
+      const offCtx = offscreen.getContext('2d');
+      if (!offCtx) return;
 
-        const hasBlockChildren = Array.from(el.children).some((child) => {
-          const style = window.getComputedStyle(child);
-          return (
-            style.display === 'block' ||
-            style.display === 'flex' ||
-            style.display === 'grid'
-          );
-        });
+      await page.render({ canvasContext: offCtx, viewport, canvas: offscreen }).promise;
+      if (cancelled) return;
 
-        return hasHeight && hasText && !hasBlockChildren;
-      });
+      const canvas = canvasRef.current;
+      if (!canvas) return;
 
-      const breaks: number[] = [0];
-      let currentPageStart = 0;
-      let isFirstPage = true;
+      canvas.width = viewport.width;
+      canvas.height = viewport.height;
+      canvas.style.width = `${viewport.width / dpi}px`;
+      canvas.style.height = `${viewport.height / dpi}px`;
 
-      allElements.forEach((el) => {
-        const rects = Array.from(el.getClientRects());
-        if (rects.length === 0) return;
-
-        for (const rect of rects) {
-          const lineTop = rect.top - containerTop;
-          const lineBottom = rect.bottom - containerTop;
-
-          const pageHeight = isFirstPage
-            ? CONTENT_HEIGHT_PER_PAGE - headerHeight
-            : CONTENT_HEIGHT_PER_PAGE;
-
-          const pageBoundary = currentPageStart + pageHeight;
-
-          if (lineBottom > pageBoundary) {
-            if (lineTop > currentPageStart + 0.5) {
-              breaks.push(lineTop);
-              currentPageStart = lineTop;
-              isFirstPage = false;
-            } else {
-              breaks.push(pageBoundary);
-              currentPageStart = pageBoundary;
-              isFirstPage = false;
-            }
-            break;
-          }
-        }
-      });
-
-      setPageBreaks(breaks);
+      const ctx = canvas.getContext('2d');
+      if (ctx) ctx.drawImage(offscreen, 0, 0);
     };
 
-    if (measureRef.current) {
-      let timeoutId: ReturnType<typeof setTimeout>;
-
-      const debouncedCalculate = () => {
-        clearTimeout(timeoutId);
-        timeoutId = setTimeout(calculatePageBreaks, 150);
-      };
-
-      const resizeObserver = new ResizeObserver(debouncedCalculate);
-      resizeObserver.observe(measureRef.current);
-
-      debouncedCalculate();
-      
-      return () => {
-        clearTimeout(timeoutId);
-        resizeObserver.disconnect();
-      };
-    }
-  }, [data, templateId]);
-
-  const totalPages = pageBreaks.length;
-
-  const renderPages = (isForPrint = false) => {
-    return Array.from({ length: totalPages }).map((_, pageIndex) => {
-      const pageStart = pageBreaks[pageIndex];
-      const nextPageStart = pageBreaks[pageIndex + 1];
-      const visibleContentHeight =
-        typeof nextPageStart === 'number'
-          ? Math.min(
-              CONTENT_HEIGHT_PER_PAGE,
-              Math.max(0, nextPageStart - pageStart),
-            )
-          : CONTENT_HEIGHT_PER_PAGE;
-
-      return (
-        <div
-          key={pageIndex}
-          data-export-page="true"
-          style={
-            isForPrint
-              ? {
-                  width: '100%',
-                  height: `${A4_HEIGHT_PX}px`,
-                  overflow: 'hidden',
-                  position: 'relative',
-                  pageBreakAfter: pageIndex < totalPages - 1 ? 'always' : 'auto',
-                  breakAfter: pageIndex < totalPages - 1 ? 'page' : 'auto',
-                  backgroundColor: 'white',
-                }
-              : {
-                  transform: `scale(${zoom})`,
-                  transformOrigin: 'top center',
-                  width: A4_WIDTH_PX,
-                  height: A4_HEIGHT_PX,
-                  marginBottom:
-                    zoom < 1 ? `${A4_HEIGHT_PX * zoom - A4_HEIGHT_PX}px` : 0,
-                }
-          }
-          className={isForPrint ? '' : 'relative bg-white shadow-2xl shrink-0'}
-        >
-          {!isForPrint && (
-            <div className="absolute bottom-3 right-4 text-[10px] text-gray-300 font-medium z-50 pointer-events-none select-none">
-              {pageIndex + 1} / {totalPages}
-            </div>
-          )}
-
-          <div
-            style={{
-              height: PAGE_MARGIN_TOP_PX,
-              width: '100%',
-              backgroundColor: 'white',
-            }}
-          />
-
-          <div
-            style={{
-              height: CONTENT_HEIGHT_PER_PAGE,
-              overflow: 'hidden',
-              paddingLeft: isSelfPadded ? 0 : PAGE_MARGIN_SIDE_PX,
-              paddingRight: isSelfPadded ? 0 : PAGE_MARGIN_SIDE_PX,
-            }}
-          >
-            <div style={{ height: visibleContentHeight, overflow: 'hidden' }}>
-              <div style={{ marginTop: `-${pageStart}px` }}>
-                <TemplateRenderer templateId={templateId} data={data} />
-              </div>
-            </div>
-            {visibleContentHeight < CONTENT_HEIGHT_PER_PAGE && (
-              <div
-                style={{
-                  height: CONTENT_HEIGHT_PER_PAGE - visibleContentHeight,
-                }}
-              />
-            )}
-          </div>
-
-          <div
-            style={{
-              height: PAGE_MARGIN_BOTTOM_PX,
-              width: '100%',
-              backgroundColor: 'white',
-            }}
-          />
-        </div>
-      );
-    });
-  };
+    render();
+    return () => { cancelled = true; };
+  }, [pdf, pageNumber]);
 
   return (
-    <div className="w-full bg-[#525659] print:bg-white print:p-0 print:m-0">
+    <canvas
+      ref={canvasRef}
+      style={{
+        display: 'block',
+        transform: `scale(${zoom})`,
+        transformOrigin: 'top center',
+        marginBottom: zoom < 1 ? `${A4_WIDTH_PX * zoom - A4_WIDTH_PX}px` : 0,
+      }}
+      className="bg-white shadow-2xl"
+    />
+  );
+};
 
-      {/* ============================================================
-          HIDDEN MEASUREMENT DIV
-      ============================================================ */}
-      <div
-        className="print:hidden"
-        style={{
-          width: A4_WIDTH_PX,
-          position: 'absolute',
-          top: 0,
-          left: -9999,
-          opacity: 0,
-          pointerEvents: 'none',
-          paddingLeft: isSelfPadded ? 0 : PAGE_MARGIN_SIDE_PX,
-          paddingRight: isSelfPadded ? 0 : PAGE_MARGIN_SIDE_PX,
-        }}
-      >
-        <div ref={measureRef}>
-          <TemplateRenderer templateId={templateId} data={data} />
+const LivePreview: React.FC<LivePreviewProps> = ({
+  data,
+  zoom = 0.8,
+  templateId = 'executive',
+}) => {
+  const doc = React.useMemo(
+    () => <PDFDocument data={data} templateId={templateId} />,
+    [data, templateId],
+  );
+
+  const [instance, update] = usePDF({ document: doc });
+  const [pdf, setPdf] = useState<pdfjs.PDFDocumentProxy | null>(null);
+  const [isFirstLoad, setIsFirstLoad] = useState(true);
+
+  useEffect(() => {
+    update(doc);
+  }, [doc]);
+
+  useEffect(() => {
+    if (!instance.url) return;
+
+    let cancelled = false;
+    let loadingTask: pdfjs.PDFDocumentLoadingTask | null = null;
+
+    const load = async () => {
+      try {
+        // Fetch the blob into an ArrayBuffer immediately while the URL is
+        // still valid — pdfjs then works from memory, not the blob URL,
+        // so revocation of the URL after this point doesn't matter.
+        const response = await fetch(instance.url!);
+        if (cancelled) return;
+
+        const buffer = await response.arrayBuffer();
+        if (cancelled) return;
+
+        loadingTask = pdfjs.getDocument({ data: buffer });
+        const loaded = await loadingTask.promise;
+        if (cancelled) {
+          loaded.destroy();
+          return;
+        }
+
+        // Destroy previous pdf before replacing
+        setPdf((prev) => {
+          prev?.destroy();
+          return loaded;
+        });
+        setIsFirstLoad(false);
+      } catch (err) {
+        if (!cancelled) console.error('Failed to load PDF preview:', err);
+      }
+    };
+
+    load();
+
+    return () => {
+      cancelled = true;
+      loadingTask?.destroy().catch(() => {});
+    };
+  }, [instance.url]);
+
+  if (isFirstLoad && (instance.loading || !pdf)) {
+    return (
+      <div className="w-full bg-[#525659] flex items-center justify-center py-8">
+        <div
+          style={{ width: A4_WIDTH_PX * zoom, height: 400 }}
+          className="bg-white shadow-2xl flex items-center justify-center text-gray-400 text-sm"
+        >
+          Generating preview…
         </div>
       </div>
+    );
+  }
 
-      <div
-        id="resume-preview-container"
-        className="print:hidden flex flex-col items-center py-8"
-        style={{ gap: PAGE_GAP_PX }}
-      >
-        {renderPages(false)}
+  if (instance.error) {
+    return <div className="text-red-400 text-sm">Failed to render PDF</div>;
+  }
+
+  return (
+    <div className="w-full bg-[#525659]">
+      <div className="flex flex-col items-center py-8 gap-6">
+        {Array.from({ length: pdf!.numPages }, (_, i) => (
+          <PDFPageCanvas
+            key={i}
+            pdf={pdf!}
+            pageNumber={i + 1}
+            zoom={zoom}
+          />
+        ))}
       </div>
-
-      <div className="hidden print:block print:w-full print:bg-white">
-        {renderPages(true)}
-      </div>
-
     </div>
   );
 };
