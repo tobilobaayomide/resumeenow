@@ -12,7 +12,7 @@ const A4_WIDTH_PX = 794;
 const getPreviewRenderScale = (): number => {
   const deviceScale = window.devicePixelRatio || 1;
   const isMobileViewport = window.innerWidth < 1024;
-  return isMobileViewport ? Math.min(deviceScale, 1.5) : Math.min(deviceScale, 2);
+  return isMobileViewport ? Math.min(deviceScale, 1) : Math.min(deviceScale, 2);
 };
 
 const PDFPageCanvas: React.FC<{
@@ -112,9 +112,6 @@ const LivePreview: React.FC<LivePreviewProps> = ({
       try {
         setPreviewError(null);
 
-        // Fetch the blob into an ArrayBuffer immediately while the URL is
-        // still valid — pdfjs then works from memory, not the blob URL,
-        // so revocation of the URL after this point doesn't matter.
         const response = await fetch(instance.url!);
         if (!response.ok) {
           throw new Error(`Preview fetch failed with status ${response.status}`);
@@ -131,7 +128,6 @@ const LivePreview: React.FC<LivePreviewProps> = ({
           return;
         }
 
-        // Destroy previous pdf before replacing
         setPdf((prev) => {
           prev?.destroy();
           return loaded;
