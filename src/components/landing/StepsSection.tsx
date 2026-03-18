@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from "react";
 import {
-  LANDING_FALLBACK_DEMO_VIDEO_URL,
   LANDING_STEP_ITEMS,
   LANDING_STEP_ROTATION_MS,
 } from "../../data/landing";
@@ -46,18 +45,18 @@ const StepsSection: React.FC = () => {
         </div>
 
         <div className="relative w-full aspect-4/3 md:aspect-21/9 bg-white rounded-xl md:rounded-3xl overflow-hidden shadow-[0_28px_70px_rgba(0,0,0,0.16)] border border-black/10 mb-10 md:mb-14">
-          <video
-            key={active}
-            autoPlay
-            preload="metadata"
-            loop
-            muted
-            playsInline
-            className="w-full h-full object-cover"
-          >
-            <source src={LANDING_STEP_ITEMS[active].video} type="video/mp4" />
-            <source src={LANDING_FALLBACK_DEMO_VIDEO_URL} type="video/mp4" />
-          </video>
+          {/* Placeholder until loops are ready */}
+          <div className="absolute inset-0 flex items-center justify-center bg-zinc-900 overflow-hidden">
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.05)_0%,transparent_100%)] animate-pulse" />
+            <div className="flex flex-col items-center gap-4 opacity-25">
+              <span className="text-6xl font-black text-white/10 select-none">
+                {LANDING_STEP_ITEMS[active].number}
+              </span>
+              <p className="text-[10px] uppercase tracking-widest text-white/40 font-mono pb-2">
+                Visualizing "{LANDING_STEP_ITEMS[active].title}"
+              </p>
+            </div>
+          </div>
           <div className="absolute inset-0 bg-linear-to-tr from-black/10 via-transparent to-transparent pointer-events-none" />
         </div>
 

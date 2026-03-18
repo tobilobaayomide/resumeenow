@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import {
-  LANDING_FALLBACK_DEMO_VIDEO_URL,
   LANDING_FEATURE_ITEMS,
   LANDING_FEATURE_ROTATION_MS,
   LANDING_FEATURE_TRANSITION_MS,
@@ -50,20 +49,17 @@ const FeaturesSection: React.FC = () => {
             <div className="w-full h-full max-h-175 p-2 md:p-3 bg-white/80 backdrop-blur-xl rounded-4xl border border-black/10 shadow-[0_28px_70px_rgba(0,0,0,0.18)] relative z-10 flex flex-col">
               <div className="relative w-full h-full bg-zinc-900 rounded-2xl overflow-hidden shadow-inner min-h-100">
                 
-                {/* Video Element */}
-                <video 
-                  key={activeFeature}
-                  className="absolute inset-0 w-full h-full object-cover opacity-95"
-                  autoPlay 
-                  preload="metadata"
-                  muted 
-                  loop 
-                  playsInline
-                >
-                  <source src={LANDING_FEATURE_ITEMS[activeFeature].media} type="video/mp4" />
-                  <source src={LANDING_FALLBACK_DEMO_VIDEO_URL} type="video/mp4" />
-                  Your browser does not support the video tag.
-                </video>
+                {/* Placeholder until loops are ready */}
+                <div className="absolute inset-0 flex items-center justify-center bg-zinc-900">
+                  <div className="flex flex-col items-center gap-4 opacity-20">
+                    <div className="w-16 h-16 bg-white/10 rounded-full flex items-center justify-center animate-pulse">
+                      {LANDING_FEATURE_ITEMS[activeFeature].icon}
+                    </div>
+                    <p className="text-[10px] uppercase tracking-widest text-white/50 font-mono">
+                      Preview Loading...
+                    </p>
+                  </div>
+                </div>
 
                 {/* Subtle Overlay gradient */}
                 <div className="absolute inset-0 bg-linear-to-tr from-black/10 to-transparent pointer-events-none"></div>

@@ -1,11 +1,12 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { usePDF } from '@react-pdf/renderer';
 import * as pdfjs from 'pdfjs-dist';
-import workerSrc from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
 import { PDFDocument } from '../pdf/PDFDocument';
 import type { LivePreviewProps } from '../../../types/builder';
 
-pdfjs.GlobalWorkerOptions.workerSrc = workerSrc;
+// Use a stable CDN for the worker to ensure it works reliably in production (Vercel/Mobile)
+// without local asset resolution or MIME-type issues.
+pdfjs.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@5.5.207/build/pdf.worker.min.mjs`;
 
 const A4_WIDTH_PX = 794;
 
