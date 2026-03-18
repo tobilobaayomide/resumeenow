@@ -1,14 +1,19 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { usePDF } from '@react-pdf/renderer';
 import * as pdfjs from 'pdfjs-dist';
+import pdfWorkerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
 import { PDFDocument } from '../pdf/PDFDocument';
 import type { LivePreviewProps } from '../../../types/builder';
 
-// Use a stable CDN for the worker to ensure it works reliably in production (Vercel/Mobile)
-// without local asset resolution or MIME-type issues.
-pdfjs.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@5.5.207/build/pdf.worker.min.mjs`;
+pdfjs.GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
 
 const A4_WIDTH_PX = 794;
+
+const getPreviewRenderScale = (): number => {
+  const deviceScale = window.devicePixelRatio || 1;
+  const isMobileViewport = window.innerWidth < 1024;
+  return isMobileViewport ? Math.min(deviceScale, 1.5) : Math.min(deviceScale, 2);
+};
 
 const PDFPageCanvas: React.FC<{
   pdf: pdfjs.PDFDocumentProxy;
@@ -19,38 +24,44 @@ const PDFPageCanvas: React.FC<{
 
   useEffect(() => {
     let cancelled = false;
+    let renderTask: pdfjs.RenderTask | null = null;
 
     const render = async () => {
-      const page = await pdf.getPage(pageNumber);
-      if (cancelled) return;
+      try {
+        const page = await pdf.getPage(pageNumber);
+        if (cancelled) return;
 
-      const dpi = window.devicePixelRatio * 2;
-      const viewport = page.getViewport({ scale: dpi });
+        const renderScale = getPreviewRenderScale();
+        const viewport = page.getViewport({ scale: renderScale });
+        const canvas = canvasRef.current;
+        if (!canvas) return;
 
-      const offscreen = document.createElement('canvas');
-      offscreen.width = viewport.width;
-      offscreen.height = viewport.height;
+        canvas.width = viewport.width;
+        canvas.height = viewport.height;
+        canvas.style.width = `${viewport.width / renderScale}px`;
+        canvas.style.height = `${viewport.height / renderScale}px`;
 
-      const offCtx = offscreen.getContext('2d');
-      if (!offCtx) return;
+        const ctx = canvas.getContext('2d', { alpha: false });
+        if (!ctx) return;
 
-      await page.render({ canvasContext: offCtx, viewport, canvas: offscreen }).promise;
-      if (cancelled) return;
-
-      const canvas = canvasRef.current;
-      if (!canvas) return;
-
-      canvas.width = viewport.width;
-      canvas.height = viewport.height;
-      canvas.style.width = `${viewport.width / dpi}px`;
-      canvas.style.height = `${viewport.height / dpi}px`;
-
-      const ctx = canvas.getContext('2d');
-      if (ctx) ctx.drawImage(offscreen, 0, 0);
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        renderTask = page.render({ canvasContext: ctx, viewport, canvas });
+        await renderTask.promise;
+      } catch (error) {
+        if (
+          !cancelled &&
+          !(error instanceof Error && error.name === 'RenderingCancelledException')
+        ) {
+          console.error(`Failed to render preview page ${pageNumber}:`, error);
+        }
+      }
     };
 
-    render();
-    return () => { cancelled = true; };
+    void render();
+    return () => {
+      cancelled = true;
+      renderTask?.cancel();
+    };
   }, [pdf, pageNumber]);
 
   return (
@@ -80,9 +91,15 @@ const LivePreview: React.FC<LivePreviewProps> = ({
   const [instance, update] = usePDF({ document: doc });
   const [pdf, setPdf] = useState<pdfjs.PDFDocumentProxy | null>(null);
   const [isFirstLoad, setIsFirstLoad] = useState(true);
+  const [previewError, setPreviewError] = useState<string | null>(null);
 
   useEffect(() => {
     update(doc);
+  }, [doc]);
+
+  useEffect(() => {
+    setPreviewError(null);
+    setIsFirstLoad(true);
   }, [doc]);
 
   useEffect(() => {
@@ -93,10 +110,15 @@ const LivePreview: React.FC<LivePreviewProps> = ({
 
     const load = async () => {
       try {
+        setPreviewError(null);
+
         // Fetch the blob into an ArrayBuffer immediately while the URL is
         // still valid — pdfjs then works from memory, not the blob URL,
         // so revocation of the URL after this point doesn't matter.
         const response = await fetch(instance.url!);
+        if (!response.ok) {
+          throw new Error(`Preview fetch failed with status ${response.status}`);
+        }
         if (cancelled) return;
 
         const buffer = await response.arrayBuffer();
@@ -116,11 +138,15 @@ const LivePreview: React.FC<LivePreviewProps> = ({
         });
         setIsFirstLoad(false);
       } catch (err) {
-        if (!cancelled) console.error('Failed to load PDF preview:', err);
+        if (!cancelled) {
+          console.error('Failed to load PDF preview:', err);
+          setPreviewError('Failed to load preview on this device.');
+          setIsFirstLoad(false);
+        }
       }
     };
 
-    load();
+    void load();
 
     return () => {
       cancelled = true;
@@ -128,11 +154,15 @@ const LivePreview: React.FC<LivePreviewProps> = ({
     };
   }, [instance.url]);
 
+  if (instance.error || previewError) {
+    return <div className="text-red-400 text-sm">{previewError ?? 'Failed to render PDF'}</div>;
+  }
+
   if (isFirstLoad && (instance.loading || !pdf)) {
     return (
       <div className="w-full bg-[#525659] flex items-center justify-center py-8">
         <div
-          style={{ width: A4_WIDTH_PX * zoom, height: 400 }}
+          style={{ width: A4_WIDTH_PX * zoom, height: 800 }}
           className="bg-white shadow-2xl flex items-center justify-center text-gray-400 text-sm"
         >
           Generating preview…
@@ -141,17 +171,17 @@ const LivePreview: React.FC<LivePreviewProps> = ({
     );
   }
 
-  if (instance.error) {
-    return <div className="text-red-400 text-sm">Failed to render PDF</div>;
+  if (!pdf) {
+    return <div className="text-red-400 text-sm">Preview is unavailable on this device.</div>;
   }
 
   return (
     <div className="w-full bg-[#525659]">
       <div className="flex flex-col items-center py-8 gap-6">
-        {Array.from({ length: pdf!.numPages }, (_, i) => (
+        {Array.from({ length: pdf.numPages }, (_, i) => (
           <PDFPageCanvas
             key={i}
-            pdf={pdf!}
+            pdf={pdf}
             pageNumber={i + 1}
             zoom={zoom}
           />

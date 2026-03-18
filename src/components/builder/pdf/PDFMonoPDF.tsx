@@ -114,18 +114,25 @@ const styles = StyleSheet.create({
     lineHeight: 1.6,
     textAlign: "justify",
   },
-  bulletText: {
+
+  // Hanging indent bullets
+  bulletRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    marginTop: 3,
+  },
+  bulletDot: {
+    width: 12,
     fontSize: 9.5,
     color: INK,
     lineHeight: 1.6,
-    marginTop: 2,
-    textAlign: "justify",
-    paddingLeft: 10,
-    textIndent: -10,
   },
-  bulletDot: {
+  bulletText: {
+    flex: 1,
     fontSize: 9.5,
-    color: MUTED,
+    color: INK,
+    lineHeight: 1.6,
+    textAlign: "justify",
   },
 
   inlineText: {
@@ -149,15 +156,21 @@ const SectionHeading: React.FC<{ label: string }> = ({ label }) => (
   </View>
 );
 
+const BulletItem: React.FC<{ text: string }> = ({ text }) => (
+  <View style={styles.bulletRow} wrap={false}>
+    <Text style={styles.bulletDot}>•</Text>
+    <Text style={styles.bulletText} widows={1} orphans={1}>
+      {text}
+    </Text>
+  </View>
+);
+
 const Bullets: React.FC<{ items: string[] }> = ({ items }) => (
-  <>
+  <View style={{ marginTop: 3 }}>
     {items.map((item, i) => (
-      <Text key={i} style={styles.bulletText} widows={1} orphans={1}>
-        <Text style={styles.bulletDot}>{"• "}</Text>
-        {item}
-      </Text>
+      <BulletItem key={i} text={item} />
     ))}
-  </>
+  </View>
 );
 
 export const PDFMonoPDF: React.FC<{ data: ResumeData }> = ({ data }) => {
@@ -229,7 +242,6 @@ export const PDFMonoPDF: React.FC<{ data: ResumeData }> = ({ data }) => {
           <SectionHeading label="Experience" />
           {experience.map((exp) => {
             const bullets = toDescriptionBullets(exp.description);
-            const [firstBullet, ...restBullets] = bullets;
 
             return (
               <React.Fragment key={exp.id}>
@@ -242,20 +254,9 @@ export const PDFMonoPDF: React.FC<{ data: ResumeData }> = ({ data }) => {
                     </Text>
                   </View>
                   {exp.company ? <Text style={styles.entrySubtitle}>{exp.company}</Text> : null}
-                  {firstBullet ? (
-                    <Text style={styles.bulletText} widows={1} orphans={1}>
-                      <Text style={styles.bulletDot}>{"• "}</Text>
-                      {firstBullet}
-                    </Text>
-                  ) : null}
                 </View>
 
-                {restBullets.map((item, i) => (
-                  <Text key={`${exp.id}-b-${i}`} style={styles.bulletText} widows={1} orphans={1}>
-                    <Text style={styles.bulletDot}>{"• "}</Text>
-                    {item}
-                  </Text>
-                ))}
+                {bullets.length > 0 ? <Bullets items={bullets} /> : null}
 
                 {!bullets.length && exp.description ? (
                   <Text style={styles.bodyText} widows={1} orphans={1}>
@@ -276,7 +277,6 @@ export const PDFMonoPDF: React.FC<{ data: ResumeData }> = ({ data }) => {
           <SectionHeading label="Projects" />
           {projects.map((project) => {
             const bullets = toDescriptionBullets(project.description);
-            const [firstBullet, ...restBullets] = bullets;
 
             return (
               <React.Fragment key={project.id}>
@@ -296,21 +296,9 @@ export const PDFMonoPDF: React.FC<{ data: ResumeData }> = ({ data }) => {
                       {project.link}
                     </Link>
                   ) : null}
-
-                  {firstBullet ? (
-                    <Text style={styles.bulletText} widows={1} orphans={1}>
-                      <Text style={styles.bulletDot}>{"• "}</Text>
-                      {firstBullet}
-                    </Text>
-                  ) : null}
                 </View>
 
-                {restBullets.map((item, i) => (
-                  <Text key={`${project.id}-b-${i}`} style={styles.bulletText} widows={1} orphans={1}>
-                    <Text style={styles.bulletDot}>{"• "}</Text>
-                    {item}
-                  </Text>
-                ))}
+                {bullets.length > 0 ? <Bullets items={bullets} /> : null}
 
                 {!bullets.length && project.description ? (
                   <Text style={styles.bodyText} widows={1} orphans={1}>
@@ -331,7 +319,6 @@ export const PDFMonoPDF: React.FC<{ data: ResumeData }> = ({ data }) => {
           <SectionHeading label="Volunteering" />
           {volunteering.map((item) => {
             const bullets = toDescriptionBullets(item.description);
-            const [firstBullet, ...restBullets] = bullets;
 
             return (
               <React.Fragment key={item.id}>
@@ -344,20 +331,9 @@ export const PDFMonoPDF: React.FC<{ data: ResumeData }> = ({ data }) => {
                     </Text>
                   </View>
                   {item.company ? <Text style={styles.entrySubtitle}>{item.company}</Text> : null}
-                  {firstBullet ? (
-                    <Text style={styles.bulletText} widows={1} orphans={1}>
-                      <Text style={styles.bulletDot}>{"• "}</Text>
-                      {firstBullet}
-                    </Text>
-                  ) : null}
                 </View>
 
-                {restBullets.map((b, i) => (
-                  <Text key={`${item.id}-b-${i}`} style={styles.bulletText} widows={1} orphans={1}>
-                    <Text style={styles.bulletDot}>{"• "}</Text>
-                    {b}
-                  </Text>
-                ))}
+                {bullets.length > 0 ? <Bullets items={bullets} /> : null}
 
                 {!bullets.length && item.description ? (
                   <Text style={styles.bodyText} widows={1} orphans={1}>
