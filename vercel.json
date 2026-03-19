@@ -1,8 +1,19 @@
 {
-  "rewrites": [
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "functions": {
+    "api/export-pdf.js": {
+      "memory": 1024,
+      "maxDuration": 60
+    }
+  },
+  "routes": [
     {
-      "source": "/(.*)",
-      "destination": "/index.html"
+      "src": "^/api/(.*)$",
+      "dest": "/api/$1"
+    },
+    {
+      "src": "^/(?!api/|@|src/|node_modules/|.*\\..*).*$",
+      "dest": "/index.html"
     }
   ]
 }
