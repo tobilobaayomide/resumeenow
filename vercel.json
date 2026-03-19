@@ -2,7 +2,7 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "functions": {
     "api/export-pdf.js": {
-      "memory": 1024,
+      "memory": 2048,
       "maxDuration": 60
     }
   },
