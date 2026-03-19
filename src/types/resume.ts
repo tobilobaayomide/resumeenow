@@ -10,8 +10,7 @@ export {
   type TemplateCategoryFilter,
   type TemplateCatalogId,
   type TemplateId,
-} from "../domain/templates";
-
+} from "../domain/templates/index.js";
 export {
   EMPTY_PERSONAL_INFO,
   EMPTY_SKILLS_SECTION,
@@ -42,4 +41,4 @@ export {
   type ResumeSkillsMode,
   type ResumeSkillsSection,
   type ResumeRecord,
-} from "../domain/resume";
+} from "../domain/resume/index.js";

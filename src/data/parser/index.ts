@@ -1,1 +1,1 @@
-export * from './resumeParser';
+export * from './resumeParser.js';

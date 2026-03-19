@@ -1,5 +1,5 @@
 import mammoth from 'mammoth';
-import { readFileAsArrayBuffer } from './file-reader';
+import { readFileAsArrayBuffer } from './file-reader.js';
 
 export const extractDocxText = async (file: File): Promise<string> => {
   try {

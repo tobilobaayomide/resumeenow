@@ -1,4 +1,4 @@
-import type { ResumeParserSectionKey } from '../../types/parser';
+import type { ResumeParserSectionKey } from '../../types/parser/index.js';
 
 export const RESUME_PARSER_MONTH_PATTERN =
   '(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\\.?';

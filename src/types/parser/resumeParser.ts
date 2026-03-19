@@ -1,4 +1,4 @@
-import type { ResumeData } from '../resume';
+import type { ResumeData } from '../resume.js';
 
 export type ResumeParserSectionKey =
   | 'summary'

@@ -1,10 +1,10 @@
 import {
   cleanupSectionText,
   isReadableDocumentText,
-} from './text';
-import { extractPdfPageLines, toPdfTextItem } from './pdf-text';
-import { ensurePdfJsBrowserPolyfills } from './pdf-polyfills';
-import { readFileAsArrayBuffer } from './file-reader';
+} from './text.js';
+import { extractPdfPageLines, toPdfTextItem } from './pdf-text.js';
+import { ensurePdfJsBrowserPolyfills } from './pdf-polyfills.js';
+import { readFileAsArrayBuffer } from './file-reader.js';
 // Vite ?url suffix: emit the worker as a static HTTPS asset at build time.
 // We import the URL statically so Vite always includes the file in the output.
 // This avoids blob: URLs (which mobile browsers block) and dynamic import()

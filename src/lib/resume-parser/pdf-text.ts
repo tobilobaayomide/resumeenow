@@ -1,5 +1,5 @@
-import type { PdfTextItem } from '../../types/parser';
-import { cleanLine, isNoiseLine } from './text';
+import type { PdfTextItem } from '../../types/parser/index.js';
+import { cleanLine, isNoiseLine } from './text.js';
 
 export const toPdfTextItem = (item: unknown): PdfTextItem | null => {
   if (typeof item !== 'object' || item === null) return null;

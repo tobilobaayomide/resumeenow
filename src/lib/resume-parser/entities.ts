@@ -3,7 +3,7 @@ import {
   RESUME_PARSER_LINK_INVALID_TLDS as LINK_INVALID_TLDS,
   RESUME_PARSER_LINK_TECH_TOKEN_BLACKLIST as LINK_TECH_TOKEN_BLACKLIST,
   RESUME_PARSER_URL_REGEX as URL_REGEX,
-} from '../../data/parser';
+} from '../../data/parser/index.js';
 import type {
   ResumeEducationItem,
   ResumeExperienceItem,
@@ -11,10 +11,10 @@ import type {
   ResumeProjectItem,
   ResumeSkillGroup,
   ResumeSkillsSection,
-} from '../../types/resume';
-import { LOOSE_DATE_RANGE_REGEX, parseLooseDateRange } from './dates';
-import { detectSectionHeading } from './sections';
-import { cleanLine, isNoiseLine, splitLines } from './text';
+} from '../../types/resume.js';
+import { LOOSE_DATE_RANGE_REGEX, parseLooseDateRange } from './dates.js';
+import { detectSectionHeading } from './sections.js';
+import { cleanLine, isNoiseLine, splitLines } from './text.js';
 
 const parseRoleAndCompany = (
   firstLine: string,

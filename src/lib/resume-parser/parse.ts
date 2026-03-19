@@ -1,12 +1,12 @@
 import {
   INITIAL_RESUME_DATA,
   type ResumeData,
-} from '../../types/resume';
+} from '../../types/resume.js';
 import {
   RESUME_PARSER_EMAIL_REGEX as EMAIL_REGEX,
   RESUME_PARSER_PHONE_REGEX as PHONE_REGEX,
-} from '../../data/parser';
-import type { ParsedResumeResult } from '../../types/parser';
+} from '../../data/parser/index.js';
+import type { ParsedResumeResult } from '../../types/parser/index.js';
 import {
   extractLinks,
   extractLocation,
@@ -19,19 +19,19 @@ import {
   parseSkillsSection,
   parseSkillsText,
   toSuggestedTitle,
-} from './entities';
+} from './entities.js';
 import {
   collectSections,
   extractSummaryFromPreamble,
   extractSkillsFromPreamble,
   detectSectionHeading,
-} from './sections';
+} from './sections.js';
 import {
   cleanLine,
   dedupeRepeatedHalves,
   isReadableDocumentText,
   splitLines,
-} from './text';
+} from './text.js';
 
 const sanitizeSummaryText = (value: string): string =>
   value
