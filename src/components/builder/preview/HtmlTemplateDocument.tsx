@@ -112,29 +112,60 @@ export const HtmlTemplateDocument: React.FC<HtmlTemplateDocumentProps> = ({
     if (!element) return;
 
     let timeoutId: ReturnType<typeof setTimeout>;
+    let animationFrameId = 0;
+    let cancelled = false;
 
-    const update = () => {
-      clearTimeout(timeoutId);
-      timeoutId = setTimeout(() => {
-        const selfPadded =
-          element.querySelector('[data-self-padded="true"]') !== null;
-        const hasFlushHeader =
-          element.querySelector('[data-flush-header="true"]') !== null;
+    const runMeasurement = () => {
+      if (cancelled) return;
 
-        setIsSelfPadded(selfPadded);
-        setFlushHeader(hasFlushHeader);
-        setPageBreaks(calculatePageBreaks(element, hasFlushHeader));
-      }, 150);
+      const selfPadded =
+        element.querySelector('[data-self-padded="true"]') !== null;
+      const hasFlushHeader =
+        element.querySelector('[data-flush-header="true"]') !== null;
+
+      setIsSelfPadded(selfPadded);
+      setFlushHeader(hasFlushHeader);
+      setPageBreaks(calculatePageBreaks(element, hasFlushHeader));
     };
 
-    update();
+    const scheduleMeasurement = (delay = 150) => {
+      clearTimeout(timeoutId);
+      timeoutId = setTimeout(() => {
+        animationFrameId = window.requestAnimationFrame(() => {
+          runMeasurement();
+        });
+      }, delay);
+    };
 
-    const observer = new ResizeObserver(update);
+    scheduleMeasurement(0);
+
+    const observer = new ResizeObserver(() => scheduleMeasurement());
     observer.observe(element);
 
+    const fonts = "fonts" in document ? document.fonts : null;
+    const handleFontsSettled = () => scheduleMeasurement(0);
+
+    if (fonts) {
+      void fonts.ready.then(handleFontsSettled).catch(() => {
+        // Ignore font readiness failures and keep the current layout.
+      });
+
+      if ("addEventListener" in fonts) {
+        fonts.addEventListener("loadingdone", handleFontsSettled);
+        fonts.addEventListener("loadingerror", handleFontsSettled);
+      }
+    }
+
     return () => {
+      cancelled = true;
       clearTimeout(timeoutId);
+      window.cancelAnimationFrame(animationFrameId);
       observer.disconnect();
+
+      if (fonts && "removeEventListener" in fonts) {
+        fonts.removeEventListener("loadingdone", handleFontsSettled);
+        fonts.removeEventListener("loadingerror", handleFontsSettled);
+      }
     };
   }, [data, templateId]);
 

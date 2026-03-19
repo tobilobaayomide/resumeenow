@@ -13,9 +13,11 @@
     "assets:optimize": "bash scripts/optimize-image.sh"
   },
   "dependencies": {
+    "@sparticuz/chromium": "^131.0.1",
     "@supabase/supabase-js": "^2.99.1",
     "mammoth": "^1.12.0",
     "pdfjs-dist": "^5.5.207",
+    "playwright-core": "^1.54.2",
     "react": "^19.2.4",
     "react-dom": "^19.2.0",
     "react-icons": "^5.5.0",

@@ -6,6 +6,51 @@ import type { TemplateId } from '../../domain/templates';
 import { HtmlTemplateDocument } from '../../components/builder/preview/HtmlTemplateDocument';
 
 const PRINT_HOST_ID = 'resume-print-host';
+const PDF_EXPORT_ENDPOINT = '/api/export-pdf';
+
+const sanitizeFileName = (value: string): string =>
+  value
+    .trim()
+    .replace(/[<>:"/\\|?*\u0000-\u001F]/g, '')
+    .replace(/\s+/g, '-')
+    .toLowerCase();
+
+const triggerBlobDownload = (blob: Blob, fileName: string): void => {
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = `${sanitizeFileName(fileName || 'resume') || 'resume'}.pdf`;
+  link.rel = 'noopener noreferrer';
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  window.setTimeout(() => URL.revokeObjectURL(url), 30_000);
+};
+
+const requestPdfExport = async (
+  fileName: string,
+  data: ResumeData,
+  templateId: TemplateId,
+): Promise<Blob> => {
+  const response = await fetch(PDF_EXPORT_ENDPOINT, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      fileName,
+      data,
+      templateId,
+    }),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(errorText || 'Failed to export PDF.');
+  }
+
+  return response.blob();
+};
 
 const waitForPrintableRender = async (): Promise<void> => {
   await new Promise<void>((resolve) => {
@@ -30,7 +75,18 @@ export const downloadResumeAsPdf = async (
   data: ResumeData,
   templateId: TemplateId,
 ): Promise<void> => {
-  const toastId = toast.loading('Preparing print preview...');
+  const toastId = toast.loading('Preparing PDF download...');
+
+  try {
+    const pdfBlob = await requestPdfExport(fileName, data, templateId);
+    triggerBlobDownload(pdfBlob, fileName);
+    toast.success('PDF download ready.', { id: toastId });
+    return;
+  } catch (error) {
+    console.error('Server PDF export failed, falling back to print flow.', error);
+  }
+
+  toast.loading('Falling back to print preview...', { id: toastId });
   let root: ReturnType<typeof createRoot> | null = null;
   let host: HTMLDivElement | null = null;
 

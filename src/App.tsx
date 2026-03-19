@@ -11,6 +11,7 @@ const CareerProfile = lazy(() => import('./components/dashboard/CareerProfile'))
 const Settings = lazy(() => import('./components/dashboard/Settings'));
 const BuilderPage = lazy(() => import('./components/builder/BuilderPage'));
 const ResetPasswordPage = lazy(() => import('./pages/ResetPasswordPage'));
+const ResumePrintPage = lazy(() => import('./pages/ResumePrintPage'));
 const AppToaster = lazy(() => import('./components/ui/AppToaster'));
 
 const ProtectedRoute = ({ children }: { children: ReactElement }) => {
@@ -30,6 +31,7 @@ export default function App() {
       </Suspense>
       <Suspense fallback={<AppFallback />}>
         <Routes>
+          <Route path="/print/resume" element={<ResumePrintPage />} />
           <Route path="/" element={<LandingPage />} />
           <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
           <Route path="/dashboard/myresumes" element={<ProtectedRoute><MyResumes /></ProtectedRoute>} />
