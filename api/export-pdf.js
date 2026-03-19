@@ -1,6 +1,4 @@
 import fs from "node:fs";
-import chromium from "@sparticuz/chromium";
-import { chromium as playwright } from "playwright-core";
 
 export const config = {
   maxDuration: 60,
@@ -67,10 +65,11 @@ const getLocalChromeExecutablePath = () => {
   return candidates.find((candidate) => fs.existsSync(candidate)) ?? null;
 };
 
-const getBrowserLaunchOptions = async (req) => {
+const loadBrowserRuntimes = async (req) => {
   const host = req.headers.host ?? "";
 
   if (isLocalHost(host)) {
+    const { chromium: playwright } = await import("playwright-core");
     const executablePath = getLocalChromeExecutablePath();
 
     if (!executablePath) {
@@ -80,15 +79,26 @@ const getBrowserLaunchOptions = async (req) => {
     }
 
     return {
-      executablePath,
-      headless: true,
+      playwright,
+      launchOptions: {
+        executablePath,
+        headless: true,
+      },
     };
   }
 
+  process.env.AWS_LAMBDA_JS_RUNTIME ??= "nodejs22.x";
+
+  const chromium = (await import("@sparticuz/chromium")).default;
+  const { chromium: playwright } = await import("playwright-core");
+
   return {
-    args: chromium.args,
-    executablePath: await chromium.executablePath(),
-    headless: true,
+    playwright,
+    launchOptions: {
+      args: chromium.args,
+      executablePath: await chromium.executablePath(),
+      headless: true,
+    },
   };
 };
 
@@ -120,7 +130,8 @@ export default async function handler(req, res) {
     const origin = getOrigin(req);
     const exportUrl = `${origin}/print/resume#${payload}`;
 
-    browser = await playwright.launch(await getBrowserLaunchOptions(req));
+    const { playwright, launchOptions } = await loadBrowserRuntimes(req);
+    browser = await playwright.launch(launchOptions);
 
     const page = await browser.newPage({
       viewport: {
