@@ -1,21 +1,24 @@
-import type { PdfTextItem } from '../../types/parser';
 import {
-  cleanLine,
   cleanupSectionText,
-  isNoiseLine,
   isReadableDocumentText,
 } from './text';
+import { extractPdfPageLines, toPdfTextItem } from './pdf-text';
 import { ensurePdfJsBrowserPolyfills } from './pdf-polyfills';
 import { readFileAsArrayBuffer } from './file-reader';
+// Vite ?url suffix: emit the worker as a static HTTPS asset at build time.
+// We import the URL statically so Vite always includes the file in the output.
+// This avoids blob: URLs (which mobile browsers block) and dynamic import()
+// side-effects (which pdfjs-dist v5 no longer uses).
+import pdfWorkerUrl from 'pdfjs-dist/legacy/build/pdf.worker.min.mjs?url';
 
 type PdfJsModule = typeof import('pdfjs-dist/legacy/build/pdf.mjs');
 
 let pdfJsModulePromise: Promise<PdfJsModule> | null = null;
+let activeWorker: Worker | null = null;
 let workerConfigured = false;
 
 const getPdfJsModule = async (): Promise<PdfJsModule> => {
   if (!pdfJsModulePromise) {
-    // Use the legacy build — it supports older mobile WebKit engines.
     pdfJsModulePromise = import('pdfjs-dist/legacy/build/pdf.mjs');
   }
   return pdfJsModulePromise;
@@ -27,99 +30,31 @@ const ensurePdfWorker = async (pdfJs: PdfJsModule): Promise<void> => {
   ensurePdfJsBrowserPolyfills();
 
   try {
-    // `new URL(..., import.meta.url)` is the Vite-native way to reference a
-    // static asset. Vite detects this pattern at build time, emits the worker
-    // file to the output directory, and replaces `import.meta.url` with the
-    // correct public base URL. The resulting URL is a plain HTTPS URL which
-    // works on real iOS Safari and Android WebView — unlike blob: URLs from
-    // dynamic import() which those browsers restrict or block entirely.
-    const workerUrl = new URL(
-      'pdfjs-dist/legacy/build/pdf.worker.min.mjs',
-      import.meta.url,
-    );
-    pdfJs.GlobalWorkerOptions.workerSrc = workerUrl.href;
-  } catch {
-    // Fallback: empty string tells PDF.js to run everything on the main thread
-    // (fake-worker / same-thread mode). Slower but universally compatible.
+    // We own the Worker creation and use { type: 'module' } explicitly.
+    //
+    // Reason: pdfjs-dist v5 ships an ES-module worker (pdf.worker.min.mjs).
+    // When PDF.js creates it internally via GlobalWorkerOptions.workerSrc it
+    // calls `new Worker(src)` — a CLASSIC worker — which cannot execute ES
+    // module syntax. Desktop Chrome silently accepts this; real iOS Safari and
+    // older Android WebView throw a TypeError or DOMException, causing every
+    // PDF parse attempt to fail.
+    //
+    // Passing our own Worker instance via workerPort bypasses PDF.js's internal
+    // worker spawn logic entirely. We use { type: 'module' } so the ES module
+    // worker file is loaded correctly on all modern mobile browsers.
+    const worker = new Worker(pdfWorkerUrl, { type: 'module' });
+    activeWorker = worker;
+    // workerPort accepts a Worker — the types say MessagePort but Worker also
+    // satisfies the required interface (postMessage + message events).
+    (pdfJs.GlobalWorkerOptions as unknown as Record<string, unknown>).workerPort = worker;
+  } catch (workerError) {
+    console.warn('[ResumeParser] Module worker failed, falling back to main-thread mode:', workerError);
+    // Last resort: empty workerSrc means PDF.js skips spawning a worker and
+    // runs everything synchronously in the main thread. Slower but always works.
     pdfJs.GlobalWorkerOptions.workerSrc = '';
   }
 
   workerConfigured = true;
-};
-
-const toPdfTextItem = (item: unknown): PdfTextItem | null => {
-  if (typeof item !== 'object' || item === null) return null;
-
-  const raw = item as Partial<PdfTextItem>;
-  if (typeof raw.str !== 'string' || !Array.isArray(raw.transform)) return null;
-
-  return {
-    str: raw.str,
-    transform: raw.transform,
-    width: typeof raw.width === 'number' ? raw.width : 0,
-    hasEOL: raw.hasEOL,
-  };
-};
-
-const extractPageLines = (items: PdfTextItem[]): string[] => {
-  const sorted = [...items].sort((a, b) => {
-    const yA = a.transform[5] ?? 0;
-    const yB = b.transform[5] ?? 0;
-    const yDiff = yB - yA;
-
-    if (Math.abs(yDiff) > 2.5) return yDiff;
-
-    const xA = a.transform[4] ?? 0;
-    const xB = b.transform[4] ?? 0;
-    return xA - xB;
-  });
-
-  const lines: string[] = [];
-  let currentLine = '';
-  let currentY: number | null = null;
-  let lastX = 0;
-
-  const pushCurrentLine = () => {
-    const line = cleanLine(currentLine);
-    if (line && !isNoiseLine(line)) {
-      lines.push(line);
-    }
-    currentLine = '';
-    currentY = null;
-    lastX = 0;
-  };
-
-  for (const item of sorted) {
-    const text = cleanLine(item.str);
-    if (!text) continue;
-
-    const x = item.transform[4] ?? 0;
-    const y = item.transform[5] ?? 0;
-
-    if (currentY === null || Math.abs(y - currentY) > 2.5) {
-      if (currentLine) pushCurrentLine();
-      currentY = y;
-      currentLine = text;
-      lastX = x + Math.max(item.width, text.length * 4);
-      if (item.hasEOL) pushCurrentLine();
-      continue;
-    }
-
-    if (x > lastX + 1.5) {
-      currentLine += ' ';
-    }
-
-    currentLine += text;
-    lastX = x + Math.max(item.width, text.length * 4);
-
-    if (item.hasEOL) {
-      pushCurrentLine();
-    }
-  }
-
-  if (currentLine) pushCurrentLine();
-
-  return lines;
 };
 
 export const extractPdfText = async (file: File): Promise<string> => {
@@ -147,15 +82,18 @@ export const extractPdfText = async (file: File): Promise<string> => {
 
       const items = textContent.items
         .map(toPdfTextItem)
-        .filter((item): item is PdfTextItem => item !== null);
+        .filter((item): item is NonNullable<ReturnType<typeof toPdfTextItem>> => item !== null);
 
-      const lines = extractPageLines(items);
+      const lines = extractPdfPageLines(items);
       if (lines.length > 0) {
         pageTexts.push(lines.join('\n'));
       }
     }
 
     await loadingTask.destroy();
+
+    // Don't terminate the worker — PDF.js reuses it across documents.
+    // If we need to clean up (e.g. page unload), the caller can handle it.
 
     const joined = cleanupSectionText(pageTexts.join('\n\n'));
     if (!isReadableDocumentText(joined)) {
@@ -168,8 +106,15 @@ export const extractPdfText = async (file: File): Promise<string> => {
   } catch (error: unknown) {
     console.error('[ResumeParser] PDF extraction failed:', error);
 
-    // Broadly catch any initialization failure — mobile browsers can throw
-    // TypeError, DOMException, or plain Error when workers fail to boot.
+    // Reset worker state so next attempt gets a fresh worker.
+    workerConfigured = false;
+    if (activeWorker) {
+      try { activeWorker.terminate(); } catch { /* ignore */ }
+      activeWorker = null;
+    }
+
+    // Broadly catch any initialization failure — mobile browsers throw
+    // TypeError, DOMException, or generic Error when workers fail to boot.
     const isInitError =
       error instanceof TypeError ||
       error instanceof DOMException ||
