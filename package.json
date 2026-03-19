@@ -28,6 +28,7 @@
     "react-icons": "^5.5.0",
     "react-router-dom": "^7.13.1",
     "sonner": "^2.0.7",
+    "unpdf": "^1.4.0",
     "zustand": "^5.0.11"
   },
   "devDependencies": {
