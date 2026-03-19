@@ -1,7 +1,7 @@
 import {
   RESUME_PARSER_DATE_RANGE_REGEX as DATE_RANGE_REGEX,
   RESUME_PARSER_LOOSE_DATE_RANGE_REGEX as LOOSE_DATE_RANGE_REGEX,
-} from '../../data/parser';
+} from '../../data/parser/index.js';
 import { cleanLine } from './text.js';
 
 export { LOOSE_DATE_RANGE_REGEX };

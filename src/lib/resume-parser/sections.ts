@@ -3,7 +3,7 @@ import {
   RESUME_PARSER_PHONE_REGEX as PHONE_REGEX,
   RESUME_PARSER_SECTION_LABELS as SECTION_LABELS,
   RESUME_PARSER_SECTION_PATTERNS as SECTION_PATTERNS,
-} from '../../data/parser';
+} from '../../data/parser/index.js';
 import type { ResumeParserSectionKey as SectionKey } from '../../types/parser/index.js';
 import { cleanLine, splitLines } from './text.js';
 
