@@ -6,8 +6,8 @@ import {
   isReadableDocumentText,
 } from './text';
 
-type PdfJsModule = typeof import('pdfjs-dist');
-type PdfWorkerModule = { default: string };
+type PdfJsModule = typeof import('pdfjs-dist/legacy/build/pdf.mjs');
+type PdfWorkerModule = typeof import('pdfjs-dist/legacy/build/pdf.worker.min.mjs');
 
 let pdfJsModulePromise: Promise<PdfJsModule> | null = null;
 let pdfWorkerModulePromise: Promise<PdfWorkerModule> | null = null;
@@ -23,24 +23,20 @@ const getPdfJsModule = async (): Promise<PdfJsModule> => {
   return pdfJsModulePromise;
 };
 
-const getPdfWorkerUrl = async (): Promise<string> => {
+const getPdfWorkerModule = async (): Promise<PdfWorkerModule> => {
   if (!pdfWorkerModulePromise) {
-    pdfWorkerModulePromise = import('pdfjs-dist/legacy/build/pdf.worker.min.mjs?url');
+    pdfWorkerModulePromise = import('pdfjs-dist/legacy/build/pdf.worker.min.mjs');
   }
-
-  const workerModule = await pdfWorkerModulePromise;
-  return workerModule.default;
+  return pdfWorkerModulePromise;
 };
 
 const ensurePdfWorker = async (): Promise<void> => {
   if (workerConfigured) return;
 
-  const [{ GlobalWorkerOptions }, workerUrl] = await Promise.all([
-    getPdfJsModule(),
-    getPdfWorkerUrl(),
-  ]);
-
-  GlobalWorkerOptions.workerSrc = workerUrl;
+  // Importing the worker module upfront registers `globalThis.pdfjsWorker`,
+  // which makes PDF.js use its in-process fake worker path instead of trying
+  // to bootstrap a module worker on browsers that handle that poorly.
+  await getPdfWorkerModule();
   workerConfigured = true;
 };
 
@@ -125,7 +121,13 @@ export const extractPdfText = async (file: File): Promise<string> => {
     const { getDocument } = await getPdfJsModule();
 
     const bytes = new Uint8Array(await file.arrayBuffer());
-    const loadingTask = getDocument({ data: bytes });
+    const loadingTask = getDocument({
+      data: bytes,
+      isImageDecoderSupported: false,
+      isOffscreenCanvasSupported: false,
+      useWasm: false,
+      useWorkerFetch: false,
+    });
     const pdf = await loadingTask.promise;
 
     const pageTexts: string[] = [];
@@ -155,6 +157,8 @@ export const extractPdfText = async (file: File): Promise<string> => {
 
     return joined;
   } catch (error: unknown) {
+    console.error('[ResumeParser] PDF extraction failed:', error);
+
     if (error instanceof TypeError) {
       throw new Error(
         'This browser could not initialize PDF parsing. Update your browser or upload a DOCX or TXT file instead.',
