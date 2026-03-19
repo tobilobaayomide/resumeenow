@@ -1,55 +1,28 @@
 import React from 'react';
-import { pdf } from '@react-pdf/renderer';
+import { createRoot } from 'react-dom/client';
 import { toast } from 'sonner';
 import type { ResumeData } from '../../domain/resume/types';
 import type { TemplateId } from '../../domain/templates';
-import { PDFDocument } from '../../components/builder/pdf/PDFDocument';
+import { HtmlTemplateDocument } from '../../components/builder/preview/HtmlTemplateDocument';
 
-const isSafariBrowser = (): boolean => {
-  const ua = window.navigator.userAgent;
-  return /Safari/i.test(ua) && !/Chrome|CriOS|Chromium|Android|FxiOS|EdgiOS|OPiOS|OPR|SamsungBrowser/i.test(ua);
-};
+const PRINT_HOST_ID = 'resume-print-host';
 
-const triggerAnchorDownload = (url: string, fileName: string): void => {
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = `${fileName}.pdf`;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-};
-
-const openPdfForSafari = (url: string): void => {
-  const opened = window.open(url, '_blank', 'noopener,noreferrer');
-  if (!opened) {
-    window.location.href = url;
-  }
-};
-
-const sharePdfFile = async (blob: Blob, fileName: string): Promise<boolean> => {
-  if (typeof window.navigator.share !== 'function') {
-    return false;
-  }
-
-  try {
-    const file = new File([blob], `${fileName}.pdf`, { type: 'application/pdf' });
-    if (typeof window.navigator.canShare === 'function' && !window.navigator.canShare({ files: [file] })) {
-      return false;
-    }
-
-    await window.navigator.share({
-      title: fileName,
-      files: [file],
+const waitForPrintableRender = async (): Promise<void> => {
+  await new Promise<void>((resolve) => {
+    window.requestAnimationFrame(() => {
+      window.requestAnimationFrame(() => resolve());
     });
+  });
 
-    return true;
-  } catch (error) {
-    if (error instanceof DOMException && error.name === 'AbortError') {
-      return true;
+  if ('fonts' in document) {
+    try {
+      await document.fonts.ready;
+    } catch {
+      // Ignore font readiness failures and continue to print.
     }
-
-    return false;
   }
+
+  await new Promise((resolve) => window.setTimeout(resolve, 300));
 };
 
 export const downloadResumeAsPdf = async (
@@ -57,33 +30,55 @@ export const downloadResumeAsPdf = async (
   data: ResumeData,
   templateId: TemplateId,
 ): Promise<void> => {
-  const toastId = toast.loading('Generating PDF...');
+  const toastId = toast.loading('Preparing print preview...');
+  let root: ReturnType<typeof createRoot> | null = null;
+  let host: HTMLDivElement | null = null;
 
   try {
-    const element = React.createElement(PDFDocument, { data, templateId }) as any;
-    const blob = await pdf(element).toBlob();
-    const url = URL.createObjectURL(blob);
-    const isSafari = isSafariBrowser();
+    host = document.createElement('div');
+    host.id = PRINT_HOST_ID;
+    host.className = 'resume-print-host';
+    document.body.appendChild(host);
 
-    if (isSafari) {
-      const shared = await sharePdfFile(blob, fileName);
-      if (shared) {
-        URL.revokeObjectURL(url);
-        toast.success('PDF ready to save or share.', { id: toastId });
-        return;
-      }
+    const container = document.createElement('div');
+    container.className = 'resume-print-shell';
+    host.appendChild(container);
 
-      openPdfForSafari(url);
-      window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
-      toast.success('PDF opened in Safari. Use Share to save it to Files.', { id: toastId });
-      return;
+    const previousTitle = document.title;
+    if (fileName) {
+      document.title = `${fileName}.pdf`;
     }
 
-    triggerAnchorDownload(url, fileName);
-    window.setTimeout(() => URL.revokeObjectURL(url), 1000);
-    toast.success('Resume downloaded!', { id: toastId });
+    root = createRoot(container);
+    root.render(
+      React.createElement(HtmlTemplateDocument, {
+        data,
+        templateId,
+        zoom: 1,
+        pageGap: 0,
+        withShadow: false,
+      }),
+    );
+
+    await waitForPrintableRender();
+
+    document.body.classList.add('resume-printing');
+
+    const cleanup = () => {
+      document.body.classList.remove('resume-printing');
+      root?.unmount();
+      host?.remove();
+      document.title = previousTitle;
+    };
+
+    window.addEventListener('afterprint', cleanup, { once: true });
+    window.print();
+    toast.success('Print dialog opened. Use Save as PDF to download.', { id: toastId });
   } catch (error) {
-    console.error('PDF Export Error:', error);
-    toast.error('Failed to generate PDF.', { id: toastId });
+    document.body.classList.remove('resume-printing');
+    root?.unmount();
+    host?.remove();
+    console.error('HTML Export Error:', error);
+    toast.error('Failed to open print preview.', { id: toastId });
   }
 };

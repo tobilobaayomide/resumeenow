@@ -110,6 +110,7 @@ const StudioTemplate: React.FC<BuilderTemplateComponentProps> = ({
       ref={contentRef}
       className="font-sans text-black bg-white"
       data-self-padded="true"
+       data-flush-header="true" 
     >
       <header
         data-no-split="true"

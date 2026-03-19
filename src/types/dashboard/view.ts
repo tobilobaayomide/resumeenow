@@ -17,6 +17,7 @@ export interface ResumeCardPreviewProps {
 
 export interface TemplateModalPreviewProps {
   templateId: TemplateId;
+  mode?: 'modal' | 'card';
 }
 
 export interface DashboardViewProps {

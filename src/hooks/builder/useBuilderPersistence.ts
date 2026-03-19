@@ -13,6 +13,7 @@ import {
   type ResumeData,
   type TemplateId,
 } from '../../types/resume';
+import { downloadResumeAsPdf } from '../../lib/builder/export';
 import { useBuilderStore } from '../../store/builderStore';
 
 interface BuilderLocationState {
@@ -171,7 +172,6 @@ export const useBuilderPersistence = ({
       // Ignore localStorage failures
     }
 
-    const { downloadResumeAsPdf } = await import('../../lib/builder/export');
     const fileName = title || resumeData.personalInfo.fullName || 'Resume';
     await downloadResumeAsPdf(fileName, resumeData, templateId);
   }, [id, resumeData, resumeData.personalInfo.fullName, title, templateId]);

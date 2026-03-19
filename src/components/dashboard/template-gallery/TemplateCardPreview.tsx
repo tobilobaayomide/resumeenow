@@ -32,7 +32,8 @@ const TemplateCardPreview: React.FC<TemplateCardPreviewProps> = ({ template }) =
         </div>
       }
       scaleWrapperClassName="absolute left-1/2 top-2 md:top-3 -translate-x-1/2 origin-top scale-[0.5] sm:scale-[0.43] pointer-events-none"
-      paperClassName="w-198.5 h-280.75 bg-white border border-gray-200 shadow-sm p-14.25 overflow-hidden"
+      paperClassName="bg-white border border-gray-200 shadow-sm overflow-hidden"
+      pageLimit={1}
     />
   );
 };

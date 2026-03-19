@@ -9,8 +9,6 @@ import {
 import { toDescriptionBullets } from "./utils";
 
 const INK = "#0f1117";
-const BODY = "#2d2f36";
-const DIM = "#6b7280";
 const PROMPT = "#16a34a";
 const BORDER = "#e2e4e9";
 const MONO =
@@ -43,8 +41,8 @@ const BulletList: React.FC<{ id: string; bullets: string[] }> = ({
       <li
         key={`${id}-b-${i}`}
         data-break-point="true"
-        className="text-[11px] leading-[1.65] text-justify"
-        style={{ color: BODY, fontFamily: MONO }}
+        className="text-[12px] leading-[1.65] text-justify"
+        style={{ color: INK, fontFamily: MONO }}
       >
         {line}
       </li>
@@ -59,8 +57,8 @@ const DateBracket: React.FC<{ start?: string; end?: string }> = ({
   if (!start && !end) return null;
   return (
     <span
-      className="text-[9.5px] whitespace-nowrap shrink-0 tabular-nums"
-      style={{ color: DIM, fontFamily: MONO }}
+      className="text-[12px] whitespace-nowrap shrink-0 tabular-nums"
+      style={{ color: INK, fontFamily: MONO }}
     >
       [{start}
       {end ? ` → ${end}` : " → now"}]
@@ -97,6 +95,7 @@ const SiliconTemplate: React.FC<BuilderTemplateComponentProps> = ({
       className="text-black bg-white"
       style={{ fontFamily: MONO }}
       data-self-padded="true"
+      data-flush-header="true"
     >
       <header
         data-no-split="true"
@@ -107,12 +106,7 @@ const SiliconTemplate: React.FC<BuilderTemplateComponentProps> = ({
         }}
       >
         <div className="flex items-baseline gap-2">
-          <span
-            className="text-[16px] font-bold select-none leading-none"
-            style={{ color: PROMPT }}
-          >
-            ❯
-          </span>
+          <span className="text-[16px] font-bold select-none leading-none mt-14" />
           <h1
             className="text-[30px] font-bold tracking-tight leading-none"
             style={{ color: INK }}
@@ -124,21 +118,17 @@ const SiliconTemplate: React.FC<BuilderTemplateComponentProps> = ({
         </div>
 
         {personalInfo.jobTitle && (
-          <p className="text-[11.5px] mt-2 ml-6.5" style={{ color: DIM }}>
+          <p className="text-[13px] mt-2 ml-2" style={{ color: INK }}>
             // {personalInfo.jobTitle}
           </p>
         )}
 
         <div
-          className="flex flex-wrap gap-x-5 gap-y-1 mt-3 pt-3 ml-6.5 text-[10px]"
-          style={{ borderTop: `1px solid ${BORDER}`, color: DIM }}
+          className="flex flex-wrap gap-x-5 gap-y-1 mt-3 pt-3 ml-2 text-[11px] break-all"
+          style={{ borderTop: `1px solid ${BORDER}`, color: INK }}
         >
           {personalInfo.email && (
-            <a
-              href={`mailto:${personalInfo.email}`}
-              className="hover:text-black transition-colors break-all"
-              style={{ color: DIM }}
-            >
+            <a href={`mailto:${personalInfo.email}`} style={{ color: INK }}>
               @ {personalInfo.email}
             </a>
           )}
@@ -150,8 +140,7 @@ const SiliconTemplate: React.FC<BuilderTemplateComponentProps> = ({
               href={toExternalLinkHref(link.url)}
               target="_blank"
               rel="noopener noreferrer"
-              className="hover:text-black transition-colors break-all"
-              style={{ color: DIM }}
+              style={{ color: INK }}
             >
               &gt; {getPersonalLinkDisplayLabel(link)}
             </a>
@@ -165,8 +154,8 @@ const SiliconTemplate: React.FC<BuilderTemplateComponentProps> = ({
             <SectionHeading label="About" />
             <p
               data-break-point="true"
-              className="text-[11px] leading-[1.75] text-justify pl-4 border-l-2"
-              style={{ color: BODY, borderColor: PROMPT }}
+              className="text-[12px] leading-[1.75] text-justify pl-4 border-l-2"
+              style={{ color: INK, borderColor: PROMPT }}
             >
               {summary}
             </p>
@@ -182,8 +171,8 @@ const SiliconTemplate: React.FC<BuilderTemplateComponentProps> = ({
                   <p
                     key={group.id}
                     data-break-point="true"
-                    className="text-[11px] leading-relaxed"
-                    style={{ color: BODY }}
+                    className="text-[12px] leading-relaxed"
+                    style={{ color: INK }}
                   >
                     <span className="font-bold" style={{ color: INK }}>
                       {group.label}:
@@ -197,7 +186,7 @@ const SiliconTemplate: React.FC<BuilderTemplateComponentProps> = ({
                 {activeSkills.map((skill) => (
                   <span
                     key={skill}
-                    className="text-[10px] px-2 py-0.75 font-medium"
+                    className="text-[12px] px-2 py-0.75 font-medium"
                     style={{
                       color: PROMPT,
                       border: `1px solid ${PROMPT}`,
@@ -233,8 +222,8 @@ const SiliconTemplate: React.FC<BuilderTemplateComponentProps> = ({
                         @
                       </span>
                       <span
-                        className="text-[11px] font-medium"
-                        style={{ color: DIM }}
+                        className="text-[12px] font-medium"
+                        style={{ color: INK }}
                       >
                         {exp.company}
                       </span>
@@ -249,8 +238,8 @@ const SiliconTemplate: React.FC<BuilderTemplateComponentProps> = ({
                       ) : (
                         <p
                           data-break-point="true"
-                          className="text-[11px] mt-1.5 leading-relaxed text-justify whitespace-pre-line"
-                          style={{ color: BODY }}
+                          className="text-[12px] mt-1.5 leading-relaxed text-justify whitespace-pre-line"
+                          style={{ color: INK }}
                         >
                           {exp.description}
                         </p>
@@ -299,8 +288,8 @@ const SiliconTemplate: React.FC<BuilderTemplateComponentProps> = ({
                       ) : (
                         <p
                           data-break-point="true"
-                          className="text-[11px] mt-1.5 leading-relaxed text-justify"
-                          style={{ color: BODY }}
+                          className="text-[12px] mt-1.5 leading-relaxed text-justify"
+                          style={{ color: INK }}
                         >
                           {project.description}
                         </p>
@@ -333,8 +322,8 @@ const SiliconTemplate: React.FC<BuilderTemplateComponentProps> = ({
                         @
                       </span>
                       <span
-                        className="text-[11px] font-medium"
-                        style={{ color: DIM }}
+                        className="text-[12px] font-medium"
+                        style={{ color: INK }}
                       >
                         {item.company}
                       </span>
@@ -349,8 +338,8 @@ const SiliconTemplate: React.FC<BuilderTemplateComponentProps> = ({
                       ) : (
                         <p
                           data-break-point="true"
-                          className="text-[11px] mt-1.5 leading-relaxed text-justify whitespace-pre-line"
-                          style={{ color: BODY }}
+                          className="text-[12px] mt-1.5 leading-relaxed text-justify whitespace-pre-line"
+                          style={{ color: INK }}
                         >
                           {item.description}
                         </p>
@@ -362,45 +351,49 @@ const SiliconTemplate: React.FC<BuilderTemplateComponentProps> = ({
           </section>
         )}
 
-        {education.length > 0 && (
-          <section>
-            <SectionHeading label="Education" />
-            <div className="space-y-3 pl-4">
-              {education.map((edu) => (
-                <div key={edu.id} data-no-split="true">
-                  <div className="flex items-baseline justify-between gap-2">
-                    <div>
-                      <span
-                        className="text-[12px] font-bold"
-                        style={{ color: INK }}
-                      >
-                        {edu.school}
-                      </span>
-                      {edu.degree && (
-                        <span
-                          className="text-[11px] ml-2"
-                          style={{ color: DIM }}
-                        >
-                          — {edu.degree}
-                        </span>
-                      )}
-                    </div>
-                    <DateBracket start={edu.startDate} end={edu.endDate} />
-                  </div>
-                  {edu.description && (
-                    <p
-                      data-break-point="true"
-                      className="text-[10.5px] mt-1 leading-relaxed"
-                      style={{ color: BODY }}
-                    >
-                      {edu.description}
-                    </p>
-                  )}
+     {education.length > 0 && (
+  <section>
+    <SectionHeading label="Education" />
+    <div className="space-y-3 pl-4">
+      {education.map((edu) => (
+        <div key={edu.id} data-no-split="true">
+          <div className="flex items-baseline justify-between gap-2">
+            <div>
+              <div
+                className="text-[12px] font-bold"
+                style={{ color: INK }}
+              >
+                {edu.school}
+              </div>
+
+              {edu.degree && (
+                <div
+                  className="text-[12px] mt-1"
+                  style={{ color: INK }}
+                >
+                  {edu.degree}
                 </div>
-              ))}
+              )}
             </div>
-          </section>
-        )}
+
+            <DateBracket start={edu.startDate} end={edu.endDate} />
+          </div>
+
+          {edu.description && (
+            <p
+              data-break-point="true"
+              className="text-[12px] mt-1 leading-relaxed"
+              style={{ color: INK }}
+            >
+              {edu.description}
+            </p>
+          )}
+        </div>
+      ))}
+    </div>
+  </section>
+)}
+
 
         {certifications.length > 0 && (
           <section>
@@ -410,8 +403,8 @@ const SiliconTemplate: React.FC<BuilderTemplateComponentProps> = ({
                 <li
                   key={`${cert}-${i}`}
                   data-break-point="true"
-                  className="flex items-start gap-2 text-[11px] font-semibold"
-                  style={{ color: BODY }}
+                  className="flex items-start gap-2 text-[12px] font-semibold"
+                  style={{ color: INK }}
                 >
                   <span className="shrink-0" style={{ color: PROMPT }}>
                     ›
@@ -430,9 +423,9 @@ const SiliconTemplate: React.FC<BuilderTemplateComponentProps> = ({
               {languages.map((lang, i) => (
                 <span
                   key={`${lang}-${i}`}
-                  className="text-[10px] px-2 py-0.75"
+                  className="text-[12px] px-2 py-0.75"
                   style={{
-                    color: DIM,
+                    color: INK,
                     border: `1px solid ${BORDER}`,
                     background: "#f8f9fa",
                   }}
@@ -452,8 +445,8 @@ const SiliconTemplate: React.FC<BuilderTemplateComponentProps> = ({
                 <li
                   key={`${ach}-${i}`}
                   data-break-point="true"
-                  className="flex items-start gap-2 text-[11px] font-semibold text-justify"
-                  style={{ color: BODY }}
+                  className="flex items-start gap-2 text-[12px] font-semibold text-justify"
+                  style={{ color: INK }}
                 >
                   <span className="shrink-0" style={{ color: PROMPT }}>
                     ›

@@ -230,10 +230,10 @@ const BuilderHeader: React.FC<BuilderHeaderProps> = ({
         <button
           onClick={onDownload}
           className="flex items-center justify-center w-9 h-9 sm:w-auto sm:px-4 rounded-xl text-[11.5px] font-bold text-gray-700 border border-gray-200 bg-white hover:bg-gray-50 hover:border-gray-300 shadow-sm transition-all"
-          title="Download PDF"
+          title="Print or save PDF"
         >
           <FiDownload size={14} />
-          <span className="hidden sm:inline sm:ml-2">Download</span>
+          <span className="hidden sm:inline sm:ml-2">Print / Save PDF</span>
         </button>
 
         <button

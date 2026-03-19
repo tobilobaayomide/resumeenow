@@ -24,7 +24,8 @@ const ResumeCardPreview: React.FC<ResumeCardPreviewProps> = ({ resume, compact =
           ? 'top-0 scale-[0.05]'
           : 'top-0.5 md:top-1 scale-[0.24] sm:scale-[0.24] lg:scale-[0.215] xl:scale-[0.315]'
       }`}
-      paperClassName="w-198.5 h-280.75 bg-white border border-gray-200 shadow-sm p-9 overflow-hidden"
+      paperClassName="bg-white border border-gray-200 shadow-sm overflow-hidden"
+      pageLimit={1}
     />
   );
 };
