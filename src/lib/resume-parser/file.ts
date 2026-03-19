@@ -1,5 +1,6 @@
 import { extractPdfText } from './pdf';
 import { extractDocxText } from './docx';
+import { readFileAsText } from './file-reader';
 import { cleanupSectionText } from './text';
 
 export const extractRawText = async (file: File): Promise<string> => {
@@ -17,7 +18,7 @@ export const extractRawText = async (file: File): Promise<string> => {
   }
   
   if (lowerName.endsWith('.txt') || file.type === 'text/plain') {
-    return cleanupSectionText(await file.text());
+    return cleanupSectionText(await readFileAsText(file));
   }
 
   throw new Error('Unsupported file format. Please upload a PDF, DOCX, or TXT file.');

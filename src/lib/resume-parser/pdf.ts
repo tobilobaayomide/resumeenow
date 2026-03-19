@@ -5,6 +5,8 @@ import {
   isNoiseLine,
   isReadableDocumentText,
 } from './text';
+import { ensurePdfJsBrowserPolyfills } from './pdf-polyfills';
+import { readFileAsArrayBuffer } from './file-reader';
 
 type PdfJsModule = typeof import('pdfjs-dist/legacy/build/pdf.mjs');
 type PdfWorkerModule = typeof import('pdfjs-dist/legacy/build/pdf.worker.min.mjs');
@@ -32,6 +34,8 @@ const getPdfWorkerModule = async (): Promise<PdfWorkerModule> => {
 
 const ensurePdfWorker = async (): Promise<void> => {
   if (workerConfigured) return;
+
+  ensurePdfJsBrowserPolyfills();
 
   // Importing the worker module upfront registers `globalThis.pdfjsWorker`,
   // which makes PDF.js use its in-process fake worker path instead of trying
@@ -120,7 +124,7 @@ export const extractPdfText = async (file: File): Promise<string> => {
     await ensurePdfWorker();
     const { getDocument } = await getPdfJsModule();
 
-    const bytes = new Uint8Array(await file.arrayBuffer());
+    const bytes = new Uint8Array(await readFileAsArrayBuffer(file));
     const loadingTask = getDocument({
       data: bytes,
       isImageDecoderSupported: false,
