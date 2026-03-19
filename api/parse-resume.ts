@@ -1,9 +1,41 @@
 import { Buffer } from 'node:buffer';
-import { getDocumentProxy } from 'unpdf';
-import { parseResumeText } from '../src/lib/resume-parser/parse.js';
-import { extractPdfPageLines, toPdfTextItem } from '../src/lib/resume-parser/pdf-text.js';
-import { cleanupSectionText, isReadableDocumentText } from '../src/lib/resume-parser/text.js';
+
 const MAX_FILE_BYTES = 8 * 1024 * 1024;
+
+type ParserModules = {
+  getDocumentProxy: typeof import('unpdf')['getDocumentProxy'];
+  parseResumeText: typeof import('../src/lib/resume-parser/parse.js')['parseResumeText'];
+  extractPdfPageLines: typeof import('../src/lib/resume-parser/pdf-text.js')['extractPdfPageLines'];
+  toPdfTextItem: typeof import('../src/lib/resume-parser/pdf-text.js')['toPdfTextItem'];
+  cleanupSectionText: typeof import('../src/lib/resume-parser/text.js')['cleanupSectionText'];
+  isReadableDocumentText: typeof import('../src/lib/resume-parser/text.js')['isReadableDocumentText'];
+};
+
+let parserModulesPromise: Promise<ParserModules> | null = null;
+
+const loadParserModules = async (): Promise<ParserModules> => {
+  if (!parserModulesPromise) {
+    parserModulesPromise = (async () => {
+      const [{ getDocumentProxy }, parseModule, pdfTextModule, textModule] = await Promise.all([
+        import('unpdf'),
+        import('../src/lib/resume-parser/parse.js'),
+        import('../src/lib/resume-parser/pdf-text.js'),
+        import('../src/lib/resume-parser/text.js'),
+      ]);
+
+      return {
+        getDocumentProxy,
+        parseResumeText: parseModule.parseResumeText,
+        extractPdfPageLines: pdfTextModule.extractPdfPageLines,
+        toPdfTextItem: pdfTextModule.toPdfTextItem,
+        cleanupSectionText: textModule.cleanupSectionText,
+        isReadableDocumentText: textModule.isReadableDocumentText,
+      };
+    })();
+  }
+
+  return parserModulesPromise;
+};
 
 const createTextResponse = (status: number, message: string): Response =>
   new Response(message, {
@@ -47,14 +79,12 @@ const readRequestBuffer = async (request: Request): Promise<Buffer> => {
   return buffer;
 };
 
-const extractPdfTextFromBuffer = async (buffer: Buffer): Promise<string> => {
+const extractPdfTextFromBuffer = async (
+  buffer: Buffer,
+  modules: ParserModules,
+): Promise<string> => {
   const bytes = new Uint8Array(buffer.buffer, buffer.byteOffset, buffer.byteLength);
-  const pdf = await getDocumentProxy(bytes, {
-    isImageDecoderSupported: false,
-    isOffscreenCanvasSupported: false,
-    useWasm: false,
-    useWorkerFetch: false,
-  });
+  const pdf = await modules.getDocumentProxy(bytes);
 
   try {
     const pageTexts: string[] = [];
@@ -63,10 +93,10 @@ const extractPdfTextFromBuffer = async (buffer: Buffer): Promise<string> => {
       const page = await pdf.getPage(pageNumber);
       const textContent = await page.getTextContent();
       const items = textContent.items
-        .map(toPdfTextItem)
-        .filter((item): item is NonNullable<ReturnType<typeof toPdfTextItem>> => item !== null);
+        .map(modules.toPdfTextItem)
+        .filter((item): item is NonNullable<ReturnType<ParserModules['toPdfTextItem']>> => item !== null);
 
-      const lines = extractPdfPageLines(items);
+      const lines = modules.extractPdfPageLines(items);
       if (lines.length > 0) {
         pageTexts.push(lines.join('\n'));
       }
@@ -74,8 +104,8 @@ const extractPdfTextFromBuffer = async (buffer: Buffer): Promise<string> => {
       page.cleanup();
     }
 
-    const joined = cleanupSectionText(pageTexts.join('\n\n'));
-    if (!isReadableDocumentText(joined)) {
+    const joined = modules.cleanupSectionText(pageTexts.join('\n\n'));
+    if (!modules.isReadableDocumentText(joined)) {
       throw new Error(
         'Could not extract reliable text from this PDF. This often happens with scanned or image-based PDFs without OCR.',
       );
@@ -104,13 +134,17 @@ const handleRequest = async (request: Request): Promise<Response> => {
   }
 
   try {
+    console.info('[ResumeParser] Server parse started.', { fileName });
+
+    const modules = await loadParserModules();
     const buffer = await readRequestBuffer(request);
+
     if (buffer.length === 0) {
       return createTextResponse(400, 'Missing PDF file upload.');
     }
 
-    const rawText = await extractPdfTextFromBuffer(buffer);
-    const result = parseResumeText(rawText, fileName);
+    const rawText = await extractPdfTextFromBuffer(buffer, modules);
+    const result = modules.parseResumeText(rawText, fileName);
     return createJsonResponse(200, result);
   } catch (error) {
     console.error('[ResumeParser] Server PDF parse failed:', error);
@@ -123,6 +157,14 @@ const handleRequest = async (request: Request): Promise<Response> => {
     return createTextResponse(statusCode, message);
   }
 };
+
+export const config = {
+  maxDuration: 60,
+};
+
+export async function POST(request: Request): Promise<Response> {
+  return handleRequest(request);
+}
 
 export default {
   async fetch(request: Request): Promise<Response> {
