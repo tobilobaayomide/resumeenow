@@ -5,6 +5,7 @@ import {
   isNoiseLine,
   isReadableDocumentText,
 } from './text';
+
 type PdfJsModule = typeof import('pdfjs-dist');
 type PdfWorkerModule = { default: string };
 
@@ -14,14 +15,17 @@ let workerConfigured = false;
 
 const getPdfJsModule = async (): Promise<PdfJsModule> => {
   if (!pdfJsModulePromise) {
-    pdfJsModulePromise = import('pdfjs-dist');
+    // The default PDF.js build assumes newer browser APIs that fail on older
+    // mobile WebKit engines. Resume imports are already lazy-loaded, so favor
+    // compatibility here.
+    pdfJsModulePromise = import('pdfjs-dist/legacy/build/pdf.mjs');
   }
   return pdfJsModulePromise;
 };
 
 const getPdfWorkerUrl = async (): Promise<string> => {
   if (!pdfWorkerModulePromise) {
-    pdfWorkerModulePromise = import('pdfjs-dist/build/pdf.worker.min.mjs?url');
+    pdfWorkerModulePromise = import('pdfjs-dist/legacy/build/pdf.worker.min.mjs?url');
   }
 
   const workerModule = await pdfWorkerModulePromise;
@@ -116,38 +120,47 @@ const extractPageLines = (items: PdfTextItem[]): string[] => {
 };
 
 export const extractPdfText = async (file: File): Promise<string> => {
-  await ensurePdfWorker();
-  const { getDocument } = await getPdfJsModule();
+  try {
+    await ensurePdfWorker();
+    const { getDocument } = await getPdfJsModule();
 
-  const bytes = new Uint8Array(await file.arrayBuffer());
-  const loadingTask = getDocument({ data: bytes });
-  const pdf = await loadingTask.promise;
+    const bytes = new Uint8Array(await file.arrayBuffer());
+    const loadingTask = getDocument({ data: bytes });
+    const pdf = await loadingTask.promise;
 
-  const pageTexts: string[] = [];
+    const pageTexts: string[] = [];
 
-  for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber += 1) {
-    const page = await pdf.getPage(pageNumber);
-    const textContent = await page.getTextContent();
+    for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber += 1) {
+      const page = await pdf.getPage(pageNumber);
+      const textContent = await page.getTextContent();
 
-    const items = textContent.items
-      .map(toPdfTextItem)
-      .filter((item): item is PdfTextItem => item !== null);
+      const items = textContent.items
+        .map(toPdfTextItem)
+        .filter((item): item is PdfTextItem => item !== null);
 
-    const lines = extractPageLines(items);
-    if (lines.length > 0) {
-      pageTexts.push(lines.join('\n'));
+      const lines = extractPageLines(items);
+      if (lines.length > 0) {
+        pageTexts.push(lines.join('\n'));
+      }
     }
+
+    await loadingTask.destroy();
+
+    const joined = cleanupSectionText(pageTexts.join('\n\n'));
+    if (!isReadableDocumentText(joined)) {
+      throw new Error(
+        'Unable to extract reliable text from this PDF. Try another PDF or paste your resume as plain text.',
+      );
+    }
+
+    return joined;
+  } catch (error: unknown) {
+    if (error instanceof TypeError) {
+      throw new Error(
+        'This browser could not initialize PDF parsing. Update your browser or upload a DOCX or TXT file instead.',
+      );
+    }
+
+    throw error;
   }
-
-  await loadingTask.destroy();
-
-  const joined = cleanupSectionText(pageTexts.join('\n\n'));
-  if (!isReadableDocumentText(joined)) {
-    throw new Error(
-      'Unable to extract reliable text from this PDF. Try another PDF or paste your resume as plain text.',
-    );
-  }
-
-  return joined;
 };
-
