@@ -1,4 +1,4 @@
-import type { ResumeLinkItem, ResumePersonalInfo } from "./types";
+import type { ResumeLinkItem, ResumePersonalInfo } from "./types.js";
 
 const normalizeLinkUrl = (value: string): string => value.trim();
 

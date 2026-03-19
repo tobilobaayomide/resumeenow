@@ -1,4 +1,4 @@
-import type { ResumeData } from "../types";
+import type { ResumeData } from "../types.js";
 
 export const PREVIEW_RESUME_DATA: ResumeData = {
   personalInfo: {

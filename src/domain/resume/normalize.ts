@@ -2,9 +2,9 @@ import {
   DEFAULT_TEMPLATE_ID,
   TEMPLATE_IDS,
   type TemplateId,
-} from "../templates";
-import { EMPTY_PERSONAL_INFO, INITIAL_RESUME_DATA } from "./defaults";
-import { normalizeSkillsSection } from "./skills";
+} from "../templates/index.js";
+import { EMPTY_PERSONAL_INFO, INITIAL_RESUME_DATA } from "./defaults.js";
+import { normalizeSkillsSection } from "./skills.js";
 import type {
   ResumeData,
   ResumeEducationItem,
@@ -13,7 +13,7 @@ import type {
   ResumePersonalInfo,
   ResumeProjectItem,
   ResumeRecord,
-} from "./types";
+} from "./types.js";
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === "object" && value !== null;

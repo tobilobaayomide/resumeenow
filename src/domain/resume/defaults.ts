@@ -1,5 +1,5 @@
-import type { ResumeData, ResumePersonalInfo } from "./types";
-import { EMPTY_SKILLS_SECTION } from "./skills";
+import type { ResumeData, ResumePersonalInfo } from "./types.js";
+import { EMPTY_SKILLS_SECTION } from "./skills.js";
 
 export const EMPTY_PERSONAL_INFO: ResumePersonalInfo = {
   fullName: "",

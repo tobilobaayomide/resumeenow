@@ -1,4 +1,4 @@
-import type { TemplateId } from "../templates";
+import type { TemplateId } from "../templates/index.js";
 
 export interface ResumePersonalInfo {
   fullName: string;

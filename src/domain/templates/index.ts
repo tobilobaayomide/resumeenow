@@ -1,2 +1,2 @@
-export * from "./types";
-export * from "./catalog";
+export * from "./types.js";
+export * from "./catalog.js";

@@ -3,7 +3,7 @@ import type {
   LandingTemplateItem,
   TemplateGalleryItem,
   TemplatePickerItem,
-} from "./types";
+} from "./types.js";
 
 export const LANDING_TEMPLATE_ITEMS: LandingTemplateItem[] = [
   {
