@@ -1,40 +1,10 @@
 import { Buffer } from 'node:buffer';
-import path from 'node:path';
+import { getDocumentProxy } from 'unpdf';
 import { parseResumeText } from '../src/lib/resume-parser/parse';
 import { extractPdfPageLines, toPdfTextItem } from '../src/lib/resume-parser/pdf-text';
 import { cleanupSectionText, isReadableDocumentText } from '../src/lib/resume-parser/text';
 
 const MAX_FILE_BYTES = 8 * 1024 * 1024;
-
-type PdfJsModule = typeof import('pdfjs-dist/legacy/build/pdf.mjs');
-type PdfWorkerModule = typeof import('pdfjs-dist/legacy/build/pdf.worker.mjs');
-
-let pdfJsModulePromise: Promise<PdfJsModule> | null = null;
-
-const standardFontDataUrl = `${path.join(process.cwd(), 'node_modules/pdfjs-dist/standard_fonts')}${path.sep}`;
-
-const loadPdfJs = async (): Promise<PdfJsModule> => {
-  if (!pdfJsModulePromise) {
-    pdfJsModulePromise = (async () => {
-      const [pdfJs, pdfWorker] = await Promise.all([
-        import('pdfjs-dist/legacy/build/pdf.mjs'),
-        import('pdfjs-dist/legacy/build/pdf.worker.mjs'),
-      ]);
-
-      const pdfWorkerGlobal = globalThis as typeof globalThis & {
-        pdfjsWorker?: PdfWorkerModule;
-      };
-
-      // Server-side PDF.js uses its fake-worker path. Registering the worker
-      // module lazily avoids crashing the function during module initialization.
-      pdfWorkerGlobal.pdfjsWorker ??= pdfWorker;
-
-      return pdfJs;
-    })();
-  }
-
-  return pdfJsModulePromise;
-};
 
 const createTextResponse = (status: number, message: string): Response =>
   new Response(message, {
@@ -79,19 +49,15 @@ const readRequestBuffer = async (request: Request): Promise<Buffer> => {
 };
 
 const extractPdfTextFromBuffer = async (buffer: Buffer): Promise<string> => {
-  const pdfJs = await loadPdfJs();
   const bytes = new Uint8Array(buffer.buffer, buffer.byteOffset, buffer.byteLength);
-  const loadingTask = pdfJs.getDocument({
-    data: bytes,
+  const pdf = await getDocumentProxy(bytes, {
     isImageDecoderSupported: false,
     isOffscreenCanvasSupported: false,
-    standardFontDataUrl,
     useWasm: false,
     useWorkerFetch: false,
   });
 
   try {
-    const pdf = await loadingTask.promise;
     const pageTexts: string[] = [];
 
     for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber += 1) {
@@ -118,7 +84,7 @@ const extractPdfTextFromBuffer = async (buffer: Buffer): Promise<string> => {
 
     return joined;
   } finally {
-    await loadingTask.destroy();
+    await pdf.destroy();
   }
 };
 
