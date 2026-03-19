@@ -16,6 +16,8 @@
     "assets:optimize": "bash scripts/optimize-image.sh"
   },
   "dependencies": {
+    "@fontsource/dm-sans": "^5.2.8",
+    "@fontsource/ubuntu": "^5.2.8",
     "@sparticuz/chromium": "^131.0.1",
     "@supabase/supabase-js": "^2.99.1",
     "mammoth": "^1.12.0",

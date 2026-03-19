@@ -1,3 +1,5 @@
+import '@fontsource/dm-sans/index.css'
+import '@fontsource/ubuntu/index.css'
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { AuthProvider } from './context/AuthContext'
