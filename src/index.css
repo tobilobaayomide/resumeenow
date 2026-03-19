@@ -5,6 +5,16 @@
 body {
     font-family: 'DM Sans', sans-serif;
 }
+
+.resume-print-host {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  opacity: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+
 .no-scrollbar::-webkit-scrollbar {
   display: none;
 }
@@ -15,9 +25,8 @@ body {
 
 @media print {
     @page {
-        /* CHANGED: Set to 0 to remove browser headers/footers */
         margin: 0;
-        size: auto;
+        size: A4;
     }
 
     body {
@@ -30,8 +39,35 @@ body {
         height: auto;
         width: 100%;
         overflow: visible;
+    }
 
+    body.resume-printing #root {
+        display: none !important;
+    }
 
+    body.resume-printing .resume-print-host {
+        position: static;
+        inset: auto;
+        z-index: auto;
+        opacity: 1;
+        pointer-events: auto;
+        overflow: visible;
+    }
+
+    body.resume-printing .resume-print-shell {
+        margin: 0;
+        padding: 0;
+    }
+
+    body.resume-printing .resume-print-page {
+        margin: 0 auto;
+        box-shadow: none !important;
+        break-after: page;
+        page-break-after: always;
+    }
+
+    body.resume-printing .resume-print-page:last-child {
+        break-after: auto;
+        page-break-after: auto;
     }
 }
-
