@@ -9,38 +9,41 @@ import { ensurePdfJsBrowserPolyfills } from './pdf-polyfills';
 import { readFileAsArrayBuffer } from './file-reader';
 
 type PdfJsModule = typeof import('pdfjs-dist/legacy/build/pdf.mjs');
-type PdfWorkerModule = typeof import('pdfjs-dist/legacy/build/pdf.worker.min.mjs');
 
 let pdfJsModulePromise: Promise<PdfJsModule> | null = null;
-let pdfWorkerModulePromise: Promise<PdfWorkerModule> | null = null;
 let workerConfigured = false;
 
 const getPdfJsModule = async (): Promise<PdfJsModule> => {
   if (!pdfJsModulePromise) {
-    // The default PDF.js build assumes newer browser APIs that fail on older
-    // mobile WebKit engines. Resume imports are already lazy-loaded, so favor
-    // compatibility here.
+    // Use the legacy build — it supports older mobile WebKit engines.
     pdfJsModulePromise = import('pdfjs-dist/legacy/build/pdf.mjs');
   }
   return pdfJsModulePromise;
 };
 
-const getPdfWorkerModule = async (): Promise<PdfWorkerModule> => {
-  if (!pdfWorkerModulePromise) {
-    pdfWorkerModulePromise = import('pdfjs-dist/legacy/build/pdf.worker.min.mjs');
-  }
-  return pdfWorkerModulePromise;
-};
-
-const ensurePdfWorker = async (): Promise<void> => {
+const ensurePdfWorker = async (pdfJs: PdfJsModule): Promise<void> => {
   if (workerConfigured) return;
 
   ensurePdfJsBrowserPolyfills();
 
-  // Importing the worker module upfront registers `globalThis.pdfjsWorker`,
-  // which makes PDF.js use its in-process fake worker path instead of trying
-  // to bootstrap a module worker on browsers that handle that poorly.
-  await getPdfWorkerModule();
+  try {
+    // `new URL(..., import.meta.url)` is the Vite-native way to reference a
+    // static asset. Vite detects this pattern at build time, emits the worker
+    // file to the output directory, and replaces `import.meta.url` with the
+    // correct public base URL. The resulting URL is a plain HTTPS URL which
+    // works on real iOS Safari and Android WebView — unlike blob: URLs from
+    // dynamic import() which those browsers restrict or block entirely.
+    const workerUrl = new URL(
+      'pdfjs-dist/legacy/build/pdf.worker.min.mjs',
+      import.meta.url,
+    );
+    pdfJs.GlobalWorkerOptions.workerSrc = workerUrl.href;
+  } catch {
+    // Fallback: empty string tells PDF.js to run everything on the main thread
+    // (fake-worker / same-thread mode). Slower but universally compatible.
+    pdfJs.GlobalWorkerOptions.workerSrc = '';
+  }
+
   workerConfigured = true;
 };
 
@@ -121,8 +124,10 @@ const extractPageLines = (items: PdfTextItem[]): string[] => {
 
 export const extractPdfText = async (file: File): Promise<string> => {
   try {
-    await ensurePdfWorker();
-    const { getDocument } = await getPdfJsModule();
+    const pdfJs = await getPdfJsModule();
+    await ensurePdfWorker(pdfJs);
+
+    const { getDocument } = pdfJs;
 
     const bytes = new Uint8Array(await readFileAsArrayBuffer(file));
     const loadingTask = getDocument({
@@ -163,7 +168,15 @@ export const extractPdfText = async (file: File): Promise<string> => {
   } catch (error: unknown) {
     console.error('[ResumeParser] PDF extraction failed:', error);
 
-    if (error instanceof TypeError) {
+    // Broadly catch any initialization failure — mobile browsers can throw
+    // TypeError, DOMException, or plain Error when workers fail to boot.
+    const isInitError =
+      error instanceof TypeError ||
+      error instanceof DOMException ||
+      (error instanceof Error &&
+        /worker|module|initialize|script/i.test(error.message));
+
+    if (isInitError) {
       throw new Error(
         'This browser could not initialize PDF parsing. Update your browser or upload a DOCX or TXT file instead.',
       );
