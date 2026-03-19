@@ -1,6 +1,10 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "functions": {
+    "api/parse-resume.ts": {
+      "memory": 1024,
+      "maxDuration": 60
+    },
     "api/export-pdf.js": {
       "memory": 2048,
       "maxDuration": 60
