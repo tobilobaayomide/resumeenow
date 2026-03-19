@@ -4,4 +4,5 @@ export interface LivePreviewProps {
   data: ResumeData;
   zoom?: number;
   templateId?: TemplateId;
+  allowPan?: boolean;
 }
