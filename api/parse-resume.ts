@@ -1,9 +1,8 @@
 import { Buffer } from 'node:buffer';
 import { getDocumentProxy } from 'unpdf';
-import { parseResumeText } from '../src/lib/resume-parser/parse';
-import { extractPdfPageLines, toPdfTextItem } from '../src/lib/resume-parser/pdf-text';
-import { cleanupSectionText, isReadableDocumentText } from '../src/lib/resume-parser/text';
-
+import { parseResumeText } from '../src/lib/resume-parser/parse.js';
+import { extractPdfPageLines, toPdfTextItem } from '../src/lib/resume-parser/pdf-text.js';
+import { cleanupSectionText, isReadableDocumentText } from '../src/lib/resume-parser/text.js';
 const MAX_FILE_BYTES = 8 * 1024 * 1024;
 
 const createTextResponse = (status: number, message: string): Response =>
