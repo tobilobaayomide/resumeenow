@@ -1,53 +1,8 @@
-import React, { useEffect, useMemo } from 'react';
-import { usePDF } from '@react-pdf/renderer';
+import React from 'react';
 import { FiX } from 'react-icons/fi';
-import { PREVIEW_RESUME_DATA } from '../../../domain/resume';
 import { isRenderableTemplate } from '../../../domain/templates';
 import type { TemplatesPreviewModalProps } from '../../../types/dashboard';
-import type { TemplateId } from '../../../domain/templates';
-import { PDFDocument } from '../../builder/pdf/PDFDocument';
-
-// ─── PDF Preview ─────────────────────────────────────────────────────────────
-// Separated so usePDF only runs when a renderable template is present
-const PDFPreview: React.FC<{ templateId: TemplateId }> = ({ templateId }) => {
-  const doc = useMemo(
-    () => <PDFDocument data={PREVIEW_RESUME_DATA} templateId={templateId} />,
-    [templateId],
-  );
-
-  const [instance, update] = usePDF({ document: doc });
-
-  useEffect(() => {
-    update(doc);
-  }, [doc]);
-
-  if (instance.loading || !instance.url) {
-    return (
-      <div className="w-full h-full min-h-80 bg-white animate-pulse">
-        <div className="h-24 bg-gray-200 mb-6" />
-        <div className="px-8 space-y-3">
-          <div className="h-3 w-24 bg-gray-200 rounded" />
-          <div className="h-2 w-full bg-gray-100 rounded" />
-          <div className="h-2 w-5/6 bg-gray-100 rounded" />
-          <div className="h-2 w-4/6 bg-gray-100 rounded" />
-          <div className="h-3 w-28 bg-gray-200 rounded mt-4" />
-          <div className="h-2 w-full bg-gray-100 rounded" />
-          <div className="h-2 w-5/6 bg-gray-100 rounded" />
-          <div className="h-2 w-3/6 bg-gray-100 rounded" />
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <iframe
-      key={instance.url}
-      src={`${instance.url}#toolbar=0&navpanes=0&scrollbar=0`}
-      className="w-full h-full"
-      style={{ border: 'none', display: 'block', minHeight: '70vh' }}
-    />
-  );
-};
+import TemplateModalPreview from '../view/TemplateModalPreview';
 
 // ─── Main Modal ───────────────────────────────────────────────────────────────
 const TemplatesPreviewModal: React.FC<TemplatesPreviewModalProps> = ({
@@ -64,7 +19,7 @@ const TemplatesPreviewModal: React.FC<TemplatesPreviewModalProps> = ({
         if (event.target === event.currentTarget) onClose();
       }}
     >
-      <div className="w-full h-full md:h-auto md:max-h-[92vh] md:max-w-5xl bg-white border border-gray-200 md:rounded-2xl shadow-2xl overflow-hidden flex flex-col">
+      <div className="w-full h-full md:h-auto md:w-fit md:max-h-[92vh] md:max-w-5xl bg-white border border-gray-200 md:rounded-2xl shadow-2xl overflow-hidden flex flex-col">
 
         {/* Header */}
         <div className="px-4 md:px-6 py-4 border-b border-gray-100 flex items-start justify-between">
@@ -92,10 +47,10 @@ const TemplatesPreviewModal: React.FC<TemplatesPreviewModalProps> = ({
         </div>
 
         {/* Body */}
-        <div className="flex-1 p-3 md:p-6 bg-[#F6F6F6] overflow-auto">
+        <div className="relative min-h-0 flex-1 p-3 md:flex-none md:p-6 bg-[#F6F6F6] overflow-auto md:overflow-visible">
           {isRenderableTemplate(previewTemplate.id) ? (
-            <div className="w-full h-full min-h-[70vh]">
-              <PDFPreview templateId={previewTemplate.id as TemplateId} />
+            <div className="relative w-full h-full min-h-[70vh] md:h-auto md:min-h-0">
+              <TemplateModalPreview templateId={previewTemplate.id} />
             </div>
           ) : (
             <div className="max-w-xl mx-auto h-full min-h-80 rounded-2xl border border-dashed border-gray-300 bg-white flex flex-col items-center justify-center text-center p-8">
@@ -111,14 +66,14 @@ const TemplatesPreviewModal: React.FC<TemplatesPreviewModalProps> = ({
         </div>
 
         {/* Footer */}
-        <div className="px-4 md:px-6 py-4 border-t border-gray-100 bg-white flex items-center justify-between gap-3">
-          <span className="text-xs text-gray-500 uppercase tracking-[0.12em] font-semibold">
+        <div className="sticky bottom-0 z-10 px-4 md:px-6 py-4 border-t border-gray-100 bg-white flex flex-col items-stretch gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <span className="text-xs text-gray-500 uppercase tracking-[0.12em] font-semibold self-start">
             {previewTemplate.category}
           </span>
-          <div className="flex items-center gap-2">
+          <div className="flex w-full items-center gap-2 sm:w-auto">
             <button
               onClick={onClose}
-              className="h-10 px-4 rounded-xl border border-gray-200 bg-white text-sm font-semibold text-gray-700 hover:border-gray-300 hover:text-gray-900"
+              className="h-10 flex-1 px-4 rounded-xl border border-gray-200 bg-white text-sm font-semibold text-gray-700 hover:border-gray-300 hover:text-gray-900 sm:flex-none"
             >
               Close
             </button>
@@ -128,7 +83,7 @@ const TemplatesPreviewModal: React.FC<TemplatesPreviewModalProps> = ({
                 previewTemplate.available
                   ? 'bg-black text-white hover:bg-gray-800'
                   : 'bg-gray-100 text-gray-400 cursor-not-allowed'
-              }`}
+              } flex-1 sm:flex-none`}
               disabled={!previewTemplate.available}
             >
               {previewTemplate.available ? 'Use Template' : 'Coming Soon'}

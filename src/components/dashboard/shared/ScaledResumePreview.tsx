@@ -1,9 +1,8 @@
-import React, { useEffect, useMemo } from "react";
-import { usePDF } from "@react-pdf/renderer";
+import React from "react";
 import { isRenderableTemplate } from "../../../domain/templates";
 import type { ResumeData } from "../../../types/resume";
 import type { TemplateId } from "../../../domain/templates";
-import { PDFDocument } from "../../builder/pdf/PDFDocument";
+import { HtmlTemplateDocument } from "../../builder/preview/HtmlTemplateDocument";
 
 interface ScaledResumePreviewProps {
   templateId: string;
@@ -12,59 +11,39 @@ interface ScaledResumePreviewProps {
   containerClassName?: string;
   scaleWrapperClassName: string;
   paperClassName: string;
+  pageLimit?: number;
+  previewZoom?: number;
 }
 
-const Skeleton: React.FC<{ paperClassName: string }> = ({ paperClassName }) => (
-  <div className={`${paperClassName} bg-white animate-pulse overflow-hidden`} style={{ padding: 0 }}>
-    <div className="h-24 bg-gray-200 mb-6" />
-    <div className="px-8 space-y-3">
-      <div className="h-3 w-24 bg-gray-200 rounded" />
-      <div className="h-2 w-full bg-gray-100 rounded" />
-      <div className="h-2 w-5/6 bg-gray-100 rounded" />
-      <div className="h-2 w-4/6 bg-gray-100 rounded" />
-      <div className="h-3 w-28 bg-gray-200 rounded mt-4" />
-      <div className="h-2 w-full bg-gray-100 rounded" />
-      <div className="h-2 w-5/6 bg-gray-100 rounded" />
-      <div className="h-2 w-3/6 bg-gray-100 rounded" />
-      <div className="h-3 w-20 bg-gray-200 rounded mt-4" />
-      <div className="h-2 w-full bg-gray-100 rounded" />
-      <div className="h-2 w-4/6 bg-gray-100 rounded" />
-    </div>
-  </div>
-);
-
-// Inner component — usePDF only runs when template is renderable
-const PDFPreview: React.FC<{
+const HtmlPreview: React.FC<{
   templateId: TemplateId;
   data: ResumeData;
   containerClassName: string;
   scaleWrapperClassName: string;
   paperClassName: string;
-}> = ({ templateId, data, containerClassName, scaleWrapperClassName, paperClassName }) => {
-  const doc = useMemo(
-    () => <PDFDocument data={data} templateId={templateId} />,
-    [data, templateId],
-  );
-
-  const [instance, update] = usePDF({ document: doc });
-
-  useEffect(() => {
-    update(doc);
-  }, [doc]);
-
+  pageLimit?: number;
+  previewZoom?: number;
+}> = ({
+  templateId,
+  data,
+  containerClassName,
+  scaleWrapperClassName,
+  paperClassName,
+  pageLimit = 1,
+  previewZoom = 1,
+}) => {
   return (
     <div className={containerClassName}>
       <div className={scaleWrapperClassName}>
-        {instance.loading || !instance.url ? (
-          <Skeleton paperClassName={paperClassName} />
-        ) : (
-          <iframe
-            key={instance.url}
-            src={`${instance.url}#toolbar=0&navpanes=0&scrollbar=0`}
-            className={paperClassName}
-            style={{ border: "none", display: "block", padding: 0 }}
-          />
-        )}
+        <HtmlTemplateDocument
+          data={data}
+          templateId={templateId}
+          zoom={previewZoom}
+          pageGap={0}
+          withShadow={false}
+          pageClassName={paperClassName}
+          pageLimit={pageLimit}
+        />
       </div>
     </div>
   );
@@ -77,6 +56,8 @@ const ScaledResumePreview: React.FC<ScaledResumePreviewProps> = ({
   containerClassName = "absolute inset-0 overflow-hidden bg-linear-to-b from-white to-gray-50",
   scaleWrapperClassName,
   paperClassName,
+  pageLimit = 1,
+  previewZoom = 1,
 }) => {
   const normalizedId = templateId.trim().toLowerCase();
 
@@ -85,12 +66,14 @@ const ScaledResumePreview: React.FC<ScaledResumePreviewProps> = ({
   }
 
   return (
-    <PDFPreview
+    <HtmlPreview
       templateId={normalizedId as TemplateId}
       data={data}
       containerClassName={containerClassName}
       scaleWrapperClassName={scaleWrapperClassName}
       paperClassName={paperClassName}
+      pageLimit={pageLimit}
+      previewZoom={previewZoom}
     />
   );
 };

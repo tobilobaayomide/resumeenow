@@ -65,8 +65,8 @@ const TemplatePickerModal: React.FC<TemplatePickerModalProps> = ({
                       group-focus-visible:ring-4 group-focus-visible:ring-indigo-500 group-focus-visible:ring-offset-2 group-focus-visible:-translate-y-2
                     `}
                   >
-                    <div className="absolute md:scale-[1.2] mt-5 md:mt-8  inset-0 bg-white">
-                      <TemplateModalPreview templateId={template.id} />
+                    <div className="absolute inset-0 bg-white">
+                      <TemplateModalPreview templateId={template.id} mode="card" />
                     </div>
 
                     <div className="absolute inset-0 bg-white/20 backdrop-blur-[2px] opacity-0 group-hover:opacity-100 transition-all duration-300 flex items-center justify-center">
