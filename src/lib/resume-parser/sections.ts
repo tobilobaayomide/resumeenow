@@ -4,8 +4,8 @@ import {
   RESUME_PARSER_SECTION_LABELS as SECTION_LABELS,
   RESUME_PARSER_SECTION_PATTERNS as SECTION_PATTERNS,
 } from '../../data/parser';
-import type { ResumeParserSectionKey as SectionKey } from '../../types/parser';
-import { cleanLine, splitLines } from './text';
+import type { ResumeParserSectionKey as SectionKey } from '../../types/parser/index.js';
+import { cleanLine, splitLines } from './text.js';
 
 export interface CollectedResumeSections {
   preamble: string;

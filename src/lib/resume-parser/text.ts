@@ -1,4 +1,4 @@
-import { RESUME_PARSER_NOISE_PATTERNS as NOISE_PATTERNS } from '../../data/parser';
+import { RESUME_PARSER_NOISE_PATTERNS as NOISE_PATTERNS } from '../../data/parser/index.js';
 
 export const cleanLine = (value: string): string => value.replace(/\s+/g, ' ').trim();
 

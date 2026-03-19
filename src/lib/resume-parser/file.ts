@@ -1,7 +1,7 @@
-import { extractPdfText } from './pdf';
-import { extractDocxText } from './docx';
-import { readFileAsText } from './file-reader';
-import { cleanupSectionText } from './text';
+import { extractPdfText } from './pdf.js';
+import { extractDocxText } from './docx.js';
+import { readFileAsText } from './file-reader.js';
+import { cleanupSectionText } from './text.js';
 
 export const extractRawText = async (file: File): Promise<string> => {
   const lowerName = file.name.toLowerCase();
