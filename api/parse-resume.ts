@@ -1,4 +1,5 @@
 import { Buffer } from 'node:buffer';
+import path from 'node:path';
 import { parseResumeText } from '../src/lib/resume-parser/parse';
 import { extractPdfPageLines, toPdfTextItem } from '../src/lib/resume-parser/pdf-text';
 import { cleanupSectionText, isReadableDocumentText } from '../src/lib/resume-parser/text';
@@ -9,6 +10,8 @@ type PdfJsModule = typeof import('pdfjs-dist/legacy/build/pdf.mjs');
 type PdfWorkerModule = typeof import('pdfjs-dist/legacy/build/pdf.worker.mjs');
 
 let pdfJsModulePromise: Promise<PdfJsModule> | null = null;
+
+const standardFontDataUrl = `${path.join(process.cwd(), 'node_modules/pdfjs-dist/standard_fonts')}${path.sep}`;
 
 const loadPdfJs = async (): Promise<PdfJsModule> => {
   if (!pdfJsModulePromise) {
@@ -82,6 +85,7 @@ const extractPdfTextFromBuffer = async (buffer: Buffer): Promise<string> => {
     data: bytes,
     isImageDecoderSupported: false,
     isOffscreenCanvasSupported: false,
+    standardFontDataUrl,
     useWasm: false,
     useWorkerFetch: false,
   });
