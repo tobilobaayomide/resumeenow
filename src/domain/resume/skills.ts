@@ -2,7 +2,7 @@ import type {
   ResumeSkillGroup,
   ResumeSkillsMode,
   ResumeSkillsSection,
-} from "./types";
+} from "./types.js";
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === "object" && value !== null;
@@ -163,4 +163,3 @@ export const toListSkills = (skills: ResumeSkillsSection): ResumeSkillsSection =
   list: getActiveSkillItems(skills),
   groups: skills.groups,
 });
-
