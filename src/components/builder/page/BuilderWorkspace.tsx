@@ -13,12 +13,22 @@ const BuilderWorkspace: React.FC<BuilderWorkspaceProps> = ({
 }) => {
   const resumeData = useBuilderStore((store) => store.resumeData);
   const templateId = useBuilderStore((store) => store.templateId);
+  const isMobileEditor = mobileView === 'editor';
+  const isMobilePreview = mobileView === 'preview';
 
   return (
-  <div className="flex flex-1 min-h-0 overflow-hidden relative isolate print:block print:h-auto print:overflow-visible">
+  <div
+    className={`
+      relative isolate flex flex-1
+      ${isMobilePreview ? 'min-h-0 overflow-hidden' : 'overflow-visible'}
+      md:min-h-0 md:overflow-hidden
+      print:block print:h-auto print:overflow-visible
+    `}
+  >
     <div
       className={`
-        w-full lg:w-auto
+        min-h-0 w-full ${isMobileEditor ? 'flex-1' : ''}
+        lg:w-auto lg:flex-none
         ${mobileView === 'editor' ? 'flex' : 'hidden'}
         ${isEditorCollapsed ? 'lg:hidden' : 'lg:flex'}
       `}
@@ -29,14 +39,14 @@ const BuilderWorkspace: React.FC<BuilderWorkspaceProps> = ({
 
     <div
       className={`
-        flex-1 h-full relative flex-col min-w-0
+        relative min-w-0 flex-col
         bg-[#525659]
-        ${mobileView === 'preview' ? 'flex' : 'hidden'}
-        lg:flex
+        ${mobileView === 'preview' ? 'flex min-h-0 flex-1 overflow-hidden' : 'hidden'}
+        lg:flex lg:h-full lg:flex-1
         print:opacity-100 print:z-50 print:visible print:static print:block print:h-auto print:w-full print:m-0 print:bg-white print:overflow-visible
       `}
     >
-      <div className="flex-1 overflow-auto flex justify-start lg:justify-center items-start px-2 sm:px-4 pt-3 sm:pt-4 lg:pt-8 lg:p-8 touch-auto overscroll-contain w-full print:p-0 print:block print:h-auto print:overflow-visible">
+      <div className="flex min-h-0 flex-1 w-full items-start justify-start overflow-auto px-2 pt-3 pb-24 touch-auto overscroll-contain sm:px-4 sm:pt-4 lg:justify-center lg:p-8 print:block print:h-auto print:overflow-visible print:p-0">
         <LivePreview
           data={resumeData}
           templateId={templateId}
@@ -45,7 +55,7 @@ const BuilderWorkspace: React.FC<BuilderWorkspaceProps> = ({
         />
       </div>
 
-      <div className="absolute bottom-6 right-6 md:bottom-8 md:right-8 z-50 print:hidden">
+      <div className="fixed right-4 bottom-4 z-50 md:absolute md:right-8 md:bottom-8 print:hidden">
         <div className="bg-white/90 backdrop-blur-sm rounded-full shadow-xl border border-gray-200 p-1.5 flex gap-1">
           <button
             onClick={onZoomOut}

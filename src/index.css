@@ -1,8 +1,21 @@
 @import "tailwindcss";
 
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
 body {
     font-family: 'DM Sans', sans-serif;
     font-synthesis: none;
+}
+
+@media (max-width: 767px) {
+  input,
+  select,
+  textarea {
+    font-size: 13px;
+  }
 }
 
 .resume-print-host {

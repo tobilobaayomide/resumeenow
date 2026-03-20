@@ -90,7 +90,7 @@ const EditorPanel: React.FC = () => {
 
   return (
     <div
-      className="relative flex flex-col bg-[#F8F9FB] border-r border-gray-100 z-20 shrink-0 h-full min-h-0 overflow-hidden"
+      className="relative z-20 flex shrink-0 flex-col overflow-visible bg-[#F8F9FB] border-r border-gray-100 min-h-full md:h-full md:min-h-0 md:overflow-hidden"
       style={{ width: isDesktop ? `${panelWidth}px` : '100%' }}
     >
       {/* Header */}
@@ -102,7 +102,7 @@ const EditorPanel: React.FC = () => {
       {/* Scrollable content */}
       <div
         ref={panelScrollRef}
-        className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden overscroll-contain touch-pan-y flex flex-col bg-transparent px-3 py-3 gap-2 pb-8"
+        className="flex flex-col gap-2 bg-transparent px-3 py-3 pb-24 md:flex-1 md:min-h-0 md:overflow-y-auto md:overflow-x-hidden md:overscroll-contain md:touch-pan-y md:pb-8"
       >
         <EditorPersonalSection
           data={data}

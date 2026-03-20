@@ -226,8 +226,8 @@ export const Section: React.FC<EditorSectionProps> = ({
       </button>
 
       <div
-        className="border-t border-gray-100 overflow-y-auto overscroll-contain [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none]"
-        style={{ maxHeight: "70vh", scrollbarWidth: "none" }}
+        className="border-t border-gray-100 overflow-visible md:max-h-[70vh] md:overflow-y-auto md:overscroll-contain [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none]"
+        style={{ scrollbarWidth: "none" }}
       >
         <div className="px-3.5 pb-4 pt-3">{children}</div>
       </div>
