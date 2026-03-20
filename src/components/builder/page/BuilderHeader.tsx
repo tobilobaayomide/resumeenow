@@ -56,7 +56,7 @@ const BuilderHeader: React.FC<BuilderHeaderProps> = ({
 
   return (
     <>
-    <header className="md:hidden bg-white border-b border-gray-100 px-4 py-3 z-30 shrink-0 shadow-[0_4px_20px_-10px_rgba(0,0,0,0.05)] print:hidden">
+    <header className="sticky top-0 md:hidden bg-white/95 backdrop-blur border-b border-gray-100 px-4 py-3 z-40 shrink-0 shadow-[0_4px_20px_-10px_rgba(0,0,0,0.05)] print:hidden">
       <div className="flex items-start gap-3">
         <button
           onClick={onBackToDashboard}

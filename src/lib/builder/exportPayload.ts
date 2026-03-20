@@ -4,6 +4,7 @@ import type { TemplateId } from "../../domain/templates";
 interface ExportPayload {
   data: ResumeData;
   templateId: TemplateId;
+  fileName?: string;
 }
 
 const getBase64Encoder = (): ((value: string) => string) => {

@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo } from "react";
 import { HtmlTemplateDocument } from "../components/builder/preview/HtmlTemplateDocument";
 import { decodeExportPayload } from "../lib/builder/exportPayload";
 import { normalizeResumeData, normalizeTemplateId } from "../types/resume";
@@ -13,32 +13,58 @@ declare global {
 interface ExportRouteState {
   data: ResumeData;
   templateId: TemplateId;
+  fileName?: string;
+}
+
+interface ExportRouteResult {
+  payload: ExportRouteState | null;
+  error: string;
 }
 
 const ResumePrintPage: React.FC = () => {
-  const [payload, setPayload] = useState<ExportRouteState | null>(null);
-  const [error, setError] = useState("");
-
-  useEffect(() => {
-    window.__RESUME_PRINT_READY__ = false;
+  const { payload, error } = useMemo<ExportRouteResult>(() => {
+    if (typeof window === "undefined") {
+      return { payload: null, error: "" };
+    }
 
     try {
       const hash = window.location.hash.replace(/^#/, "");
       if (!hash) {
-        setError("Missing export payload.");
-        return;
+        return { payload: null, error: "Missing export payload." };
       }
 
       const decoded = decodeExportPayload(hash);
-      setPayload({
-        data: normalizeResumeData(decoded.data),
-        templateId: normalizeTemplateId(decoded.templateId),
-      });
+      return {
+        payload: {
+          data: normalizeResumeData(decoded.data),
+          templateId: normalizeTemplateId(decoded.templateId),
+          fileName:
+            typeof decoded.fileName === "string" && decoded.fileName.trim()
+              ? decoded.fileName.trim()
+              : "Resume",
+        },
+        error: "",
+      };
     } catch (decodeError) {
       console.error("Failed to decode export payload", decodeError);
-      setError("Could not load resume export.");
+      return { payload: null, error: "Could not load resume export." };
     }
   }, []);
+
+  useEffect(() => {
+    window.__RESUME_PRINT_READY__ = false;
+  }, []);
+
+  useEffect(() => {
+    const previousTitle = document.title;
+    if (payload?.fileName) {
+      document.title = payload.fileName;
+    }
+
+    return () => {
+      document.title = previousTitle;
+    };
+  }, [payload?.fileName]);
 
   useEffect(() => {
     if (!payload) return;

@@ -70,7 +70,7 @@ const BuilderAiWorkflowModal: React.FC<BuilderAiWorkflowModalProps> = ({
 
   return (
     <div
-      className="fixed inset-0 z-100 bg-slate-900/30 backdrop-blur-sm flex items-center justify-center p-4 sm:p-6 print:hidden animate-in fade-in duration-200"
+      className="fixed inset-0 z-[100] bg-slate-900/30 backdrop-blur-sm flex items-center justify-center p-4 sm:p-6 print:hidden animate-in fade-in duration-200"
       onClick={(event) => {
         if (event.target === event.currentTarget) onClose();
       }}

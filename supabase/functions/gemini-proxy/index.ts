@@ -1,8 +1,13 @@
-// @ts-ignore - Supabase Edge Functions use Deno, but your IDE uses Node/React TS Config
+// @ts-expect-error Supabase Edge Functions use npm: specifiers in the Deno runtime.
 import { createClient } from 'npm:@supabase/supabase-js@2.48.1';
 
-// @ts-ignore - Deno is a global available in the Supabase Edge Runtime
-declare const Deno: any;
+// @ts-expect-error Deno is a global provided by the Supabase Edge runtime.
+declare const Deno: {
+  env: {
+    get: (name: string) => string | undefined;
+  };
+  serve: (handler: (req: Request) => Response | Promise<Response>) => void;
+};
 
 Deno.serve(async (req: Request) => {
   const corsHeaders = {

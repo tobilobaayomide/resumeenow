@@ -4,22 +4,26 @@ import { toast } from 'sonner';
 import type { ResumeData } from '../../domain/resume/types';
 import type { TemplateId } from '../../domain/templates';
 import { HtmlTemplateDocument } from '../../components/builder/preview/HtmlTemplateDocument';
+import { supabase } from '../supabase';
 
 const PRINT_HOST_ID = 'resume-print-host';
 const PDF_EXPORT_ENDPOINT = '/api/export-pdf';
 
+const isInvalidFileNameCharacter = (char: string): boolean =>
+  /[<>:"/\\|?*]/.test(char) || char.charCodeAt(0) < 32;
+
 const sanitizeFileName = (value: string): string =>
-  value
-    .trim()
-    .replace(/[<>:"/\\|?*\u0000-\u001F]/g, '')
-    .replace(/\s+/g, '-')
-    .toLowerCase();
+  Array.from(value.trim())
+    .filter((char) => !isInvalidFileNameCharacter(char))
+    .join('')
+    .replace(/\s+/g, ' ')
+    .replace(/[. ]+$/g, '');
 
 const triggerBlobDownload = (blob: Blob, fileName: string): void => {
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
   link.href = url;
-  link.download = `${sanitizeFileName(fileName || 'resume') || 'resume'}.pdf`;
+  link.download = `${sanitizeFileName(fileName || 'Resume') || 'Resume'}.pdf`;
   link.rel = 'noopener noreferrer';
   document.body.appendChild(link);
   link.click();
@@ -27,14 +31,29 @@ const triggerBlobDownload = (blob: Blob, fileName: string): void => {
   window.setTimeout(() => URL.revokeObjectURL(url), 30_000);
 };
 
+const getAccessToken = async (): Promise<string> => {
+  const {
+    data: { session },
+    error,
+  } = await supabase.auth.getSession();
+
+  if (error || !session?.access_token) {
+    throw new Error('Please sign in again to continue.');
+  }
+
+  return session.access_token;
+};
+
 const requestPdfExport = async (
   fileName: string,
   data: ResumeData,
   templateId: TemplateId,
 ): Promise<Blob> => {
+  const accessToken = await getAccessToken();
   const response = await fetch(PDF_EXPORT_ENDPOINT, {
     method: 'POST',
     headers: {
+      Authorization: `Bearer ${accessToken}`,
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
@@ -102,7 +121,7 @@ export const downloadResumeAsPdf = async (
 
     const previousTitle = document.title;
     if (fileName) {
-      document.title = `${fileName}.pdf`;
+      document.title = fileName;
     }
 
     root = createRoot(container);

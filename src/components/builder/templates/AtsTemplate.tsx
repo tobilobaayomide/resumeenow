@@ -10,7 +10,7 @@ import { toDescriptionBullets } from "./utils";
 
 const INK = "#111111";
 const BODY = "#222222";
-const MUTED = "#5f5f5b";
+const MUTED = "#7d7d7d";
 const RULE = "#d8d6d3";
 const SECTION_ACCENT = "#2f2f2b";
 
@@ -272,7 +272,7 @@ const AtsTemplate: React.FC<BuilderTemplateComponentProps> = ({ data, contentRef
             <span
               style={{
                 fontSize: NAME_SIZE,
-                fontWeight: 500,
+                fontWeight: 700,
                 color: MUTED,
                 letterSpacing: "0.02em",
               }}

@@ -1,6 +1,7 @@
 import { normalizeResumeData } from '../types/resume';
 import type { ParsedResumeResult } from '../types/parser';
 import { parseResumeText } from './resume-parser/parse';
+import { supabase } from './supabase';
 
 const PDF_PARSE_ENDPOINT = '/api/parse-resume';
 
@@ -23,9 +24,20 @@ const toServerResponseError = (status: number, message: string): ResponseError =
   return error;
 };
 
-const shouldFallbackToBrowserParse = (error: unknown): boolean => {
-  if (!import.meta.env.DEV) return false;
+const getAccessToken = async (): Promise<string> => {
+  const {
+    data: { session },
+    error,
+  } = await supabase.auth.getSession();
 
+  if (error || !session?.access_token) {
+    throw new Error('Please sign in again to continue.');
+  }
+
+  return session.access_token;
+};
+
+const shouldFallbackToBrowserParse = (error: unknown): boolean => {
   if (error instanceof TypeError) {
     return true;
   }
@@ -35,13 +47,15 @@ const shouldFallbackToBrowserParse = (error: unknown): boolean => {
   }
 
   const responseError = error as ResponseError;
-  return responseError.status === 404 || responseError.status === 405;
+  return responseError.status === 404 || responseError.status === 405 || (responseError.status ?? 0) >= 500;
 };
 
 const parsePdfFileOnServer = async (file: File): Promise<ParsedResumeResult> => {
+  const accessToken = await getAccessToken();
   const response = await fetch(PDF_PARSE_ENDPOINT, {
     method: 'POST',
     headers: {
+      Authorization: `Bearer ${accessToken}`,
       'Content-Type': file.type || 'application/pdf',
       'X-Resume-File-Name': encodeURIComponent(file.name),
     },
@@ -78,7 +92,7 @@ export const parseResumeFile = async (file: File): Promise<ParsedResumeResult> =
         }
 
         console.warn(
-          '[ResumeParser] Server PDF parsing unavailable in development, falling back to browser parser.',
+          '[ResumeParser] Server PDF parsing unavailable, falling back to browser parser.',
           error,
         );
       }

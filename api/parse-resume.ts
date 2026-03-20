@@ -2,6 +2,15 @@ import { Buffer } from 'node:buffer';
 
 const MAX_FILE_BYTES = 8 * 1024 * 1024;
 
+class HttpError extends Error {
+  status: number;
+
+  constructor(status: number, message: string) {
+    super(message);
+    this.status = status;
+  }
+}
+
 type ParserModules = {
   getDocumentProxy: typeof import('unpdf')['getDocumentProxy'];
   parseResumeText: typeof import('../src/lib/resume-parser/parse.js')['parseResumeText'];
@@ -12,6 +21,65 @@ type ParserModules = {
 };
 
 let parserModulesPromise: Promise<ParserModules> | null = null;
+let supabaseAuthClientPromise: Promise<import('@supabase/supabase-js').SupabaseClient> | null = null;
+
+const getSupabaseServerConfig = (): { url: string; anonKey: string } => {
+  const url = process.env.SUPABASE_URL ?? process.env.VITE_SUPABASE_URL;
+  const anonKey = process.env.SUPABASE_ANON_KEY ?? process.env.VITE_SUPABASE_ANON_KEY;
+
+  if (!url || !anonKey) {
+    throw new HttpError(
+      500,
+      'Server authentication is not configured. Set SUPABASE_URL and SUPABASE_ANON_KEY.',
+    );
+  }
+
+  return { url, anonKey };
+};
+
+const getSupabaseAuthClient = async (): Promise<import('@supabase/supabase-js').SupabaseClient> => {
+  if (!supabaseAuthClientPromise) {
+    supabaseAuthClientPromise = (async () => {
+      const { url, anonKey } = getSupabaseServerConfig();
+      const { createClient } = await import('@supabase/supabase-js');
+
+      return createClient(url, anonKey, {
+        auth: {
+          autoRefreshToken: false,
+          persistSession: false,
+        },
+      });
+    })();
+  }
+
+  return supabaseAuthClientPromise;
+};
+
+const getBearerToken = (authorization: string | null): string | null => {
+  if (!authorization) return null;
+
+  const [scheme, token] = authorization.trim().split(/\s+/, 2);
+  if (!/^Bearer$/i.test(scheme) || !token) return null;
+
+  return token;
+};
+
+const authenticateRequest = async (request: Request): Promise<void> => {
+  const accessToken = getBearerToken(request.headers.get('authorization'));
+  if (!accessToken) {
+    throw new HttpError(401, 'Authentication required. Please sign in again.');
+  }
+
+  const supabase = await getSupabaseAuthClient();
+  const {
+    data: { user },
+    error,
+  } = await supabase.auth.getUser(accessToken);
+
+  if (error || !user) {
+    throw new HttpError(401, 'Invalid or expired session. Please sign in again.');
+  }
+};
 
 const loadParserModules = async (): Promise<ParserModules> => {
   if (!parserModulesPromise) {
@@ -134,6 +202,8 @@ const handleRequest = async (request: Request): Promise<Response> => {
   }
 
   try {
+    await authenticateRequest(request);
+
     console.info('[ResumeParser] Server parse started.', { fileName });
 
     const modules = await loadParserModules();
@@ -150,7 +220,8 @@ const handleRequest = async (request: Request): Promise<Response> => {
     console.error('[ResumeParser] Server PDF parse failed:', error);
     const message = error instanceof Error ? error.message : 'Failed to parse uploaded PDF.';
     const statusCode =
-      /too large/i.test(message) ? 413
+      error instanceof HttpError ? error.status
+      : /too large/i.test(message) ? 413
       : /reliable text|image-based|scanned/i.test(message) ? 422
       : 500;
 

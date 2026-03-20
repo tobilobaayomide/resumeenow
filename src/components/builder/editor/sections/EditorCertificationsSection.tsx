@@ -47,15 +47,21 @@ const EditorCertificationsSection: React.FC<
           data.certifications.map((certification, index) => (
             <div
               key={`${certification}-${index}`}
-              className="group flex items-start justify-between gap-3 bg-white border border-gray-200 p-2.5 rounded-lg text-[11.5px] font-medium text-gray-700 shadow-sm transition-all hover:border-gray-300 pointer-events-none"
+              className="group flex items-start justify-between gap-3 bg-white border border-gray-200 p-2.5 rounded-lg text-[11.5px] font-medium text-gray-700 shadow-sm transition-all hover:border-gray-300"
             >
-              <span className="flex-1 leading-relaxed mt-px">
-                {certification}
-              </span>
+              <input
+                type="text"
+                value={certification}
+                onChange={(event) =>
+                  state.updateCertification(index, event.target.value)
+                }
+                placeholder="Certification"
+                className="min-w-0 flex-1 bg-transparent leading-relaxed mt-px text-[11.5px] font-medium text-gray-700 placeholder:text-gray-300 focus:outline-none"
+              />
               <button
                 type="button"
-                onClick={() => state.removeCertification(certification)}
-                className="text-gray-300 hover:text-red-500 hover:bg-red-50 p-1 rounded-md transition-all shrink-0 pointer-events-auto"
+                onClick={() => state.removeCertificationAtIndex(index)}
+                className="text-gray-300 hover:text-red-500 hover:bg-red-50 p-1 rounded-md transition-all shrink-0"
                 title="Remove certification"
               >
                 <FiX size={12} />

@@ -14,7 +14,7 @@ const TemplatePickerModal: React.FC<TemplatePickerModalProps> = ({
 
   return (
     <div
-      className="fixed inset-0 z-100 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4 sm:p-6 animate-in fade-in duration-200"
+      className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4 sm:p-6 animate-in fade-in duration-200"
       onClick={(event) => {
         if (event.target === event.currentTarget) onClose();
       }}

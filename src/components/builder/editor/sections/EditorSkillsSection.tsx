@@ -69,26 +69,34 @@ const EditorSkillsSection: React.FC<EditorSkillsSectionProps> = ({
 
         <div className="animate-in fade-in duration-300">
           {data.skills.mode === "list" ? (
-            <div className="min-h-25 flex flex-wrap content-start gap-2 bg-gray-50/50 border border-dashed border-gray-200 rounded-xl p-3">
+            <div className="min-h-25 flex flex-col gap-2 bg-gray-50/50 border border-dashed border-gray-200 rounded-xl p-3">
               {data.skills.list.length === 0 ? (
                 <p className="text-[11px] text-gray-400 w-full text-center mt-6">
                   No skills added yet. Use the input below.
                 </p>
               ) : (
-                data.skills.list.map((skill) => (
-                  <span
-                    key={skill}
-                    className="group inline-flex items-center gap-1.5 bg-white border border-gray-200 px-2.5 py-1.5 rounded-lg text-[11px] font-medium text-gray-700 shadow-sm transition-all hover:border-gray-300 pointer-events-none"
+                data.skills.list.map((skill, index) => (
+                  <div
+                    key={`skill-${index}`}
+                    className="group flex items-center gap-2 bg-white border border-gray-200 px-2.5 py-1.5 rounded-lg text-[11px] font-medium text-gray-700 shadow-sm transition-all hover:border-gray-300"
                   >
-                    {skill}
+                    <input
+                      type="text"
+                      value={skill}
+                      onChange={(event) =>
+                        state.updateSkill(index, event.target.value)
+                      }
+                      placeholder="Skill"
+                      className="min-w-0 flex-1 bg-transparent text-[11px] font-medium text-gray-700 placeholder:text-gray-300 focus:outline-none"
+                    />
                     <button
                       type="button"
-                      onClick={() => state.removeSkill(skill)}
-                      className="text-gray-300 hover:text-red-500 hover:bg-red-50 rounded p-0.5 transition-all pointer-events-auto"
+                      onClick={() => state.removeSkillAtIndex(index)}
+                      className="text-gray-300 hover:text-red-500 hover:bg-red-50 rounded p-0.5 transition-all shrink-0"
                     >
                       <FiX size={11} />
                     </button>
-                  </span>
+                  </div>
                 ))
               )}
             </div>
@@ -140,29 +148,42 @@ const EditorSkillsSection: React.FC<EditorSkillsSectionProps> = ({
                     </button>
                   </div>
 
-                  <div className="flex flex-wrap gap-2 min-h-7">
+                  <div className="flex flex-col gap-2 min-h-7">
                     {group.items.length === 0 ? (
                       <span className="text-[10px] text-gray-400 italic flex items-center h-full">
                         Empty category
                       </span>
                     ) : (
-                      group.items.map((skill) => (
-                        <span
-                          key={`${group.id}-${skill}`}
-                          className="group inline-flex items-center gap-1.5 bg-white border border-gray-200 px-2.5 py-1.5 rounded-lg text-[11px] font-medium text-gray-700 shadow-sm transition-all hover:border-gray-300 pointer-events-none"
+                      group.items.map((skill, index) => (
+                        <div
+                          key={`${group.id}-${index}`}
+                          className="group flex items-center gap-2 bg-white border border-gray-200 px-2.5 py-1.5 rounded-lg text-[11px] font-medium text-gray-700 shadow-sm transition-all hover:border-gray-300"
                         >
-                          {skill}
+                          <input
+                            type="text"
+                            value={skill}
+                            onChange={(event) =>
+                              state.updateSkill(
+                                index,
+                                event.target.value,
+                                group.id,
+                              )
+                            }
+                            onClick={(event) => event.stopPropagation()}
+                            placeholder="Skill"
+                            className="min-w-0 flex-1 bg-transparent text-[11px] font-medium text-gray-700 placeholder:text-gray-300 focus:outline-none"
+                          />
                           <button
                             type="button"
                             onClick={(e) => {
                               e.stopPropagation();
-                              state.removeSkill(skill, group.id);
+                              state.removeSkillAtIndex(index, group.id);
                             }}
-                            className="text-gray-300 hover:text-red-500 hover:bg-red-50 rounded p-0.5 transition-all pointer-events-auto"
+                            className="text-gray-300 hover:text-red-500 hover:bg-red-50 rounded p-0.5 transition-all shrink-0"
                           >
                             <FiX size={11} />
                           </button>
-                        </span>
+                        </div>
                       ))
                     )}
                   </div>

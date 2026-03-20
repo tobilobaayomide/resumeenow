@@ -187,6 +187,14 @@ const splitFirst = (value: string, delimiter: string): [string, string] => {
   return [value.slice(0, index), value.slice(index + delimiter.length)];
 };
 
+const DESCRIPTION_BULLET_PREFIX_REGEX = /^(?:[•●◦▪‣*-]|o)\s+/;
+
+const normalizeDescriptionLine = (value: string): string =>
+  cleanLine(value.replace(DESCRIPTION_BULLET_PREFIX_REGEX, ''));
+
+const joinDescriptionLines = (value: string[]): string =>
+  value.map(normalizeDescriptionLine).filter(Boolean).join(' ');
+
 export const parseExperienceSection = (sectionText: string): ResumeExperienceItem[] => {
   if (!sectionText.trim()) return [];
 
@@ -357,14 +365,9 @@ export const parseExperienceSection = (sectionText: string): ResumeExperienceIte
         descriptionEnd -= 1;
       }
 
-      // FIX: join with \n not space — preserves bullet structure for splitBullets in gemini.ts
-      // joining with space collapses "Led team\nBuilt API" into "Led team Built API"
-      // which sentence-boundary splitting cannot reliably recover
-      const description = lines
-        .slice(descriptionStart, descriptionEnd + 1)
-        .map((line) => cleanLine(line.replace(/^[o•●*-]\s*/, '')))
-        .filter(Boolean)
-        .join('\n');
+      const description = joinDescriptionLines(
+        lines.slice(descriptionStart, descriptionEnd + 1),
+      );
 
       entries.push({
         id: `exp-${anchorIndex + 1}`,
@@ -426,7 +429,7 @@ export const parseExperienceSection = (sectionText: string): ResumeExperienceIte
       continue;
     }
 
-    const detail = cleanLine(line.replace(/^[o•●*-]\s*/, ''));
+    const detail = normalizeDescriptionLine(line);
     if (!detail) continue;
 
     if (!current) {
@@ -441,9 +444,8 @@ export const parseExperienceSection = (sectionText: string): ResumeExperienceIte
       continue;
     }
 
-    // FIX: join with \n not space — preserves bullet structure
     current.description = current.description
-      ? `${current.description}\n${detail}`
+      ? `${current.description} ${detail}`
       : detail;
   }
 
@@ -674,7 +676,7 @@ export const parseProjectSection = (sectionText: string): ResumeProjectItem[] =>
       continue;
     }
 
-    const detail = cleanLine(line.replace(/^[o•●*-]\s*/, ''));
+    const detail = normalizeDescriptionLine(line);
     if (!detail) continue;
 
     if (current?.link && /^\.?app$/i.test(detail)) {
