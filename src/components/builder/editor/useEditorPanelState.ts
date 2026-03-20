@@ -277,6 +277,66 @@ export const useEditorPanelState = (onSectionToggle?: (section: EditorSectionTab
     });
   };
 
+  const removeSkillAtIndex = (index: number, groupId?: string) => {
+    if (data.skills.mode === 'grouped') {
+      const nextGroups = data.skills.groups.map((group) => {
+        if (groupId && group.id !== groupId) return group;
+
+        return {
+          ...group,
+          items: group.items.filter((_, itemIndex) => itemIndex !== index),
+        };
+      });
+
+      onSkillsChange({
+        mode: 'grouped',
+        list: getActiveSkillItems({
+          ...data.skills,
+          mode: 'grouped',
+          groups: nextGroups,
+        }),
+        groups: nextGroups,
+      });
+      return;
+    }
+
+    onSkillsChange({
+      ...data.skills,
+      mode: 'list',
+      list: data.skills.list.filter((_, skillIndex) => skillIndex !== index),
+    });
+  };
+
+  const updateSkill = (index: number, value: string, groupId?: string) => {
+    if (data.skills.mode === 'grouped') {
+      const nextGroups = data.skills.groups.map((group) => {
+        if (groupId && group.id !== groupId) return group;
+
+        return {
+          ...group,
+          items: group.items.map((item, itemIndex) => (itemIndex === index ? value : item)),
+        };
+      });
+
+      onSkillsChange({
+        mode: 'grouped',
+        list: getActiveSkillItems({
+          ...data.skills,
+          mode: 'grouped',
+          groups: nextGroups,
+        }),
+        groups: nextGroups,
+      });
+      return;
+    }
+
+    onSkillsChange({
+      ...data.skills,
+      mode: 'list',
+      list: data.skills.list.map((skill, skillIndex) => (skillIndex === index ? value : skill)),
+    });
+  };
+
   const switchSkillMode = (mode: ResumeSkillsMode) => {
     if (mode === data.skills.mode) return;
 
@@ -392,6 +452,14 @@ export const useEditorPanelState = (onSectionToggle?: (section: EditorSectionTab
   const removeLanguage = (language: string) =>
     onLanguagesChange(data.languages.filter((existingLanguage) => existingLanguage !== language));
 
+  const updateLanguage = (index: number, value: string) =>
+    onLanguagesChange(
+      data.languages.map((language, languageIndex) => (languageIndex === index ? value : language)),
+    );
+
+  const removeLanguageAtIndex = (index: number) =>
+    onLanguagesChange(data.languages.filter((_, languageIndex) => languageIndex !== index));
+
   const addCertification = () => {
     const trimmedCertification = newCertification.trim();
     if (!trimmedCertification || hasValueIgnoreCase(data.certifications, trimmedCertification)) return;
@@ -404,6 +472,18 @@ export const useEditorPanelState = (onSectionToggle?: (section: EditorSectionTab
       data.certifications.filter((existingCertification) => existingCertification !== certification),
     );
 
+  const updateCertification = (index: number, value: string) =>
+    onCertificationsChange(
+      data.certifications.map((certification, certificationIndex) =>
+        certificationIndex === index ? value : certification,
+      ),
+    );
+
+  const removeCertificationAtIndex = (index: number) =>
+    onCertificationsChange(
+      data.certifications.filter((_, certificationIndex) => certificationIndex !== index),
+    );
+
   const addAchievement = () => {
     const trimmedAchievement = newAchievement.trim();
     if (!trimmedAchievement || hasValueIgnoreCase(data.achievements, trimmedAchievement)) return;
@@ -414,6 +494,18 @@ export const useEditorPanelState = (onSectionToggle?: (section: EditorSectionTab
   const removeAchievement = (achievement: string) =>
     onAchievementsChange(
       data.achievements.filter((existingAchievement) => existingAchievement !== achievement),
+    );
+
+  const updateAchievement = (index: number, value: string) =>
+    onAchievementsChange(
+      data.achievements.map((achievement, achievementIndex) =>
+        achievementIndex === index ? value : achievement,
+      ),
+    );
+
+  const removeAchievementAtIndex = (index: number) =>
+    onAchievementsChange(
+      data.achievements.filter((_, achievementIndex) => achievementIndex !== index),
     );
 
   const activeExperience =
@@ -484,16 +576,24 @@ export const useEditorPanelState = (onSectionToggle?: (section: EditorSectionTab
     removeLink,
     addSkill,
     removeSkill,
+    removeSkillAtIndex,
+    updateSkill,
     switchSkillMode,
     addSkillGroup,
     removeSkillGroup,
     updateSkillGroupLabel,
     addLanguage,
     removeLanguage,
+    removeLanguageAtIndex,
+    updateLanguage,
     addCertification,
     removeCertification,
+    removeCertificationAtIndex,
+    updateCertification,
     addAchievement,
     removeAchievement,
+    removeAchievementAtIndex,
+    updateAchievement,
     activeExperience,
     activeEducation,
     activeVolunteering,

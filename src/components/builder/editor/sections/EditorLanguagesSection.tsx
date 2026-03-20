@@ -39,26 +39,34 @@ const EditorLanguagesSection: React.FC<EditorLanguagesSectionProps> = ({
         </p>
       </div>
 
-      <div className="min-h-25 flex flex-wrap content-start gap-2 bg-gray-50/50 border border-dashed border-gray-200 rounded-xl p-3 animate-in fade-in duration-300">
+      <div className="min-h-25 flex flex-col gap-2 bg-gray-50/50 border border-dashed border-gray-200 rounded-xl p-3 animate-in fade-in duration-300">
         {data.languages.length === 0 ? (
           <p className="text-[11px] text-gray-400 w-full text-center mt-6">
             No languages added yet. Use the input below.
           </p>
         ) : (
-          data.languages.map((language) => (
-            <span
-              key={language}
-              className="group inline-flex items-center gap-1.5 bg-white border border-gray-200 px-2.5 py-1.5 rounded-lg text-[11px] font-medium text-gray-700 shadow-sm transition-all hover:border-gray-300 pointer-events-none"
+          data.languages.map((language, index) => (
+            <div
+              key={`language-${index}`}
+              className="group flex items-center gap-2 bg-white border border-gray-200 px-2.5 py-1.5 rounded-lg text-[11px] font-medium text-gray-700 shadow-sm transition-all hover:border-gray-300"
             >
-              {language}
+              <input
+                type="text"
+                value={language}
+                onChange={(event) =>
+                  state.updateLanguage(index, event.target.value)
+                }
+                placeholder="Language"
+                className="min-w-0 flex-1 bg-transparent text-[11px] font-medium text-gray-700 placeholder:text-gray-300 focus:outline-none"
+              />
               <button
                 type="button"
-                onClick={() => state.removeLanguage(language)}
-                className="text-gray-300 hover:text-red-500 hover:bg-red-50 rounded p-0.5 transition-all pointer-events-auto"
+                onClick={() => state.removeLanguageAtIndex(index)}
+                className="text-gray-300 hover:text-red-500 hover:bg-red-50 rounded p-0.5 transition-all shrink-0"
               >
                 <FiX size={11} />
               </button>
-            </span>
+            </div>
           ))
         )}
       </div>
