@@ -4,6 +4,7 @@ import type { AtsAuditResult, CoverLetterTone } from '../types/builder';
 import {
   DEFAULT_TEMPLATE_ID,
   INITIAL_RESUME_DATA,
+  normalizeSkillsSection,
   normalizeTemplateId,
   type ResumeData,
   type TemplateId,
@@ -65,6 +66,12 @@ type BuilderActions = {
 type BuilderStore = BuilderState & BuilderActions;
 
 const storageTimers: Record<string, ReturnType<typeof setTimeout>> = {};
+
+const parseAiSkills = (value: string): string[] =>
+  value
+    .split(',')
+    .map((item) => item.trim())
+    .filter(Boolean);
 
 /**
  * Custom storage that debounces writes to localStorage
@@ -189,7 +196,7 @@ export const useBuilderStore = create<BuilderStore>()(
       confirmTailoredPreview: () => set((state) => {
         if (!state.tailorPreview) return state;
         
-        let nextData = { ...state.resumeData };
+        const nextData = { ...state.resumeData };
         const p = state.tailorPreview;
 
         // Apply Job Title
@@ -200,10 +207,11 @@ export const useBuilderStore = create<BuilderStore>()(
 
         // Apply Skills
         if (p.skills) {
-           // skills.better is usually a list of strings if categorized well, but here we treat it as a refined section.
-           // For simplicity in this surgical view, we might need a more structured skills update.
-           // But let's assume skills.better is applied to the list.
-           nextData.skills = { ...nextData.skills, list: p.skills.better.split(',').map(s => s.trim()) };
+           nextData.skills = normalizeSkillsSection({
+             mode: 'list',
+             list: parseAiSkills(p.skills.better),
+             groups: [],
+           });
         }
 
         // Apply Experience Improvements

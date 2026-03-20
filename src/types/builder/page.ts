@@ -22,6 +22,13 @@ export interface AtsAuditBreakdownItem {
   max: number;
 }
 
+export interface AtsAuditImprovement {
+  id?: string;
+  type: 'bullet' | 'skill';
+  current: string;
+  better: string;
+}
+
 export interface AtsAuditResult {
   score: number;
   keywordCoverage: number;
@@ -34,7 +41,7 @@ export interface AtsAuditResult {
   suggestions: string[];
   weakBullets?: { id: string; originalText: string; suggestion: string }[];
   keywordDensity?: { keyword: string; count: number; importance: number }[];
-  improvements?: { id?: string; type: 'bullet' | 'skill'; current: string; better: string }[];
+  improvements?: AtsAuditImprovement[];
   criticalMistake?: { title: string; description: string; fix: string };
 }
 
@@ -130,7 +137,7 @@ export interface BuilderAiWorkflowModalProps {
   onRunAtsAudit: () => void;
   onApplyAtsKeywordHints: () => void;
   onApplyAtsImprovements: () => void;
-  onApplyAtsImprovement: (improvement: any) => void;
+  onApplyAtsImprovement: (improvement: AtsAuditImprovement) => void;
   onGenerateCoverLetter: () => void;
   onCopyCoverLetter: () => void;
 }

@@ -6,8 +6,44 @@ import {
   generateTailoredSummary,
 } from '../../lib/gemini';
 import { useBuilderStore } from '../../store/builderStore';
-import { getActiveSkillItems } from '../../types/resume';
+import { getActiveSkillItems, normalizeSkillsSection } from '../../types/resume';
 import { usePlan } from '../../context/usePlan';
+import type { AtsAuditImprovement } from '../../types/builder';
+
+const parseAiSkills = (value: string): string[] =>
+  value
+    .split(',')
+    .map((item) => item.trim())
+    .filter(Boolean);
+
+const applyAiSkillsList = (value: string) =>
+  normalizeSkillsSection({
+    mode: 'list',
+    list: parseAiSkills(value),
+    groups: [],
+  });
+
+const applyAtsSkillImprovement = (
+  skills: import('../../types/resume').ResumeData['skills'],
+  improvement: AtsAuditImprovement,
+) => {
+  if (skills.mode === 'grouped' && skills.groups.length > 0) {
+    return normalizeSkillsSection({
+      mode: 'grouped',
+      list: skills.list.map((item) => (item === improvement.current ? improvement.better : item)),
+      groups: skills.groups.map((group) => ({
+        ...group,
+        items: group.items.map((item) => (item === improvement.current ? improvement.better : item)),
+      })),
+    });
+  }
+
+  return normalizeSkillsSection({
+    ...skills,
+    mode: 'list',
+    list: skills.list.map((item) => (item === improvement.current ? improvement.better : item)),
+  });
+};
 
 export function useBuilderAiFlows() {
   const resumeData = useBuilderStore((store) => store.resumeData);
@@ -100,13 +136,11 @@ export function useBuilderAiFlows() {
     if (!p) return;
 
     setResumeData((prev) => {
-      let next = { ...prev };
+      const next = { ...prev };
       if (type === 'summary' && p.summary) {
         next.summary = p.summary.better;
       } else if (type === 'skills' && p.skills) {
-        // AI re-aligns skills. We replace the current list but keep groups if they exist.
-        // For simplicity, we update the main list.
-        next.skills = { ...next.skills, list: p.skills.better.split(',').map(s => s.trim()) };
+        next.skills = applyAiSkillsList(p.skills.better);
       } else if (type === 'experience' && id && current) {
         const imp = p.experienceImprovements.find(i => i.id === id && i.current === current);
         if (imp) {
@@ -303,7 +337,7 @@ export function useBuilderAiFlows() {
         return;
       }
       setResumeData((prev) => {
-        let nextContext = { ...prev };
+        const nextContext = { ...prev };
         atsResult.improvements?.forEach((imp) => {
           if (imp.type === 'bullet' && imp.id) {
             nextContext.experience = nextContext.experience.map((exp) =>
@@ -312,16 +346,7 @@ export function useBuilderAiFlows() {
                 : exp
             );
           } else if (imp.type === 'skill') {
-             if (nextContext.skills.mode === 'list') {
-                nextContext.skills.list = nextContext.skills.list.map((s) => 
-                   s === imp.current ? imp.better : s
-                );
-             } else {
-                nextContext.skills.groups = nextContext.skills.groups.map((g) => ({
-                   ...g,
-                   items: g.items.map((s) => s === imp.current ? imp.better : s)
-                }));
-             }
+             nextContext.skills = applyAtsSkillImprovement(nextContext.skills, imp);
           }
         });
         return nextContext;
@@ -329,9 +354,9 @@ export function useBuilderAiFlows() {
       toast.success('Strategic improvements applied!');
       closeAiFlows();
     },
-    onApplyAtsImprovement: (imp: any) => {
+    onApplyAtsImprovement: (imp: AtsAuditImprovement) => {
       setResumeData((prev) => {
-        let nextContext = { ...prev };
+        const nextContext = { ...prev };
         if (imp.type === 'bullet' && imp.id) {
           nextContext.experience = nextContext.experience.map((exp) =>
             exp.id === imp.id 
@@ -339,16 +364,7 @@ export function useBuilderAiFlows() {
               : exp
           );
         } else if (imp.type === 'skill') {
-          if (nextContext.skills.mode === 'list') {
-            nextContext.skills.list = nextContext.skills.list.map((s) => 
-              s === imp.current ? imp.better : s
-            );
-          } else {
-            nextContext.skills.groups = nextContext.skills.groups.map((g) => ({
-              ...g,
-              items: g.items.map((s) => s === imp.current ? imp.better : s)
-            }));
-          }
+          nextContext.skills = applyAtsSkillImprovement(nextContext.skills, imp);
         }
         return nextContext;
       });

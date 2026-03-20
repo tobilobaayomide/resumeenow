@@ -1,7 +1,7 @@
 import { supabase } from './supabase';
 import { getActiveSkillItems } from '../types/resume';
 import type { ResumeData } from '../types/resume';
-import type { AtsAuditResult } from '../types/builder';
+import type { AtsAuditImprovement, AtsAuditResult } from '../types/builder';
 
 // ─── Cache ────────────────────────────────────────────────────────────────────
 const responseCache = new Map<string, { value: string; timestamp: number }>();
@@ -382,7 +382,7 @@ RULES for improvements:
       matchedKeywords: parsed.matchedKeywords || [],
       missingKeywords: parsed.missingKeywords || [],
       keywordDensity: parsed.keywordDensity || [],
-      improvements: (parsed.improvements || []).map((imp: any) => ({
+      improvements: ((parsed.improvements || []) as AtsAuditImprovement[]).map((imp) => ({
         id: imp.id || undefined,
         type: imp.type,
         current: imp.current,
