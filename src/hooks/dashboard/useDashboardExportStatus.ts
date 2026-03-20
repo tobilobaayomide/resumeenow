@@ -1,25 +1,22 @@
 import { useEffect, useState } from 'react';
+import { useAuth } from '../../context/useAuth';
+import { readPdfExportStatus } from '../../lib/dashboard/exportStatus';
 import type { UseDashboardExportStatusResult } from '../../types/dashboard';
 
 export const useDashboardExportStatus = (): UseDashboardExportStatusResult => {
-  const [hasExportedPdf, setHasExportedPdf] = useState<boolean>(() => {
-    if (typeof window === 'undefined') return false;
-    return Boolean(localStorage.getItem('resumeenow:lastPdfExportAt'));
-  });
-  const [lastExportResumeId, setLastExportResumeId] = useState<string | null>(() => {
-    if (typeof window === 'undefined') return null;
-    return localStorage.getItem('resumeenow:lastPdfExportResumeId');
-  });
+  const { user } = useAuth();
+  const [hasExportedPdf, setHasExportedPdf] = useState<boolean>(() =>
+    readPdfExportStatus(user?.id).hasExportedPdf,
+  );
+  const [lastExportResumeId, setLastExportResumeId] = useState<string | null>(() =>
+    readPdfExportStatus(user?.id).lastExportResumeId,
+  );
 
   useEffect(() => {
     const refreshExportStatus = () => {
-      try {
-        setHasExportedPdf(Boolean(localStorage.getItem('resumeenow:lastPdfExportAt')));
-        setLastExportResumeId(localStorage.getItem('resumeenow:lastPdfExportResumeId'));
-      } catch {
-        setHasExportedPdf(false);
-        setLastExportResumeId(null);
-      }
+      const status = readPdfExportStatus(user?.id);
+      setHasExportedPdf(status.hasExportedPdf);
+      setLastExportResumeId(status.lastExportResumeId);
     };
 
     refreshExportStatus();
@@ -30,7 +27,7 @@ export const useDashboardExportStatus = (): UseDashboardExportStatusResult => {
       window.removeEventListener('focus', refreshExportStatus);
       window.removeEventListener('storage', refreshExportStatus);
     };
-  }, []);
+  }, [user?.id]);
 
   return {
     hasExportedPdf,

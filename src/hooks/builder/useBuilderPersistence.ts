@@ -14,6 +14,7 @@ import {
   type TemplateId,
 } from '../../types/resume';
 import { downloadResumeAsPdf } from '../../lib/builder/export';
+import { recordPdfExport } from '../../lib/dashboard/exportStatus';
 import { useBuilderStore } from '../../store/builderStore';
 
 interface BuilderLocationState {
@@ -163,18 +164,15 @@ export const useBuilderPersistence = ({
   }, [currentSnapshot, savedSnapshot]);
 
   const handleDownload = useCallback(async () => {
+    const fileName = title || resumeData.personalInfo.fullName || 'Resume';
+    await downloadResumeAsPdf(fileName, resumeData, templateId);
+
     try {
-      localStorage.setItem('resumeenow:lastPdfExportAt', new Date().toISOString());
-      if (id) {
-        localStorage.setItem('resumeenow:lastPdfExportResumeId', id);
-      }
+      recordPdfExport(user?.id, id && id !== 'new' ? id : null);
     } catch {
       // Ignore localStorage failures
     }
-
-    const fileName = title || resumeData.personalInfo.fullName || 'Resume';
-    await downloadResumeAsPdf(fileName, resumeData, templateId);
-  }, [id, resumeData, resumeData.personalInfo.fullName, title, templateId]);
+  }, [id, resumeData, templateId, title, user?.id]);
 
   const handleBackToDashboard = () => {
     if (isDirty && !window.confirm('You have unsaved changes. Leave builder anyway?')) {
