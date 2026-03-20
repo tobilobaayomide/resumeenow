@@ -13,35 +13,29 @@ const TemplateModalPreview: React.FC<TemplateModalPreviewProps> = ({
   templateId,
   mode = 'modal',
 }) => {
-  const [previewZoom, setPreviewZoom] = useState(
-    mode === 'card' ? CARD_PREVIEW_ZOOM : DESKTOP_PREVIEW_ZOOM,
+  const [viewportWidth, setViewportWidth] = useState(
+    typeof window === 'undefined' ? PAGE_WIDTH_PX + MOBILE_SIDE_GUTTER_PX : window.innerWidth,
   );
 
   useEffect(() => {
-    if (mode === 'card') {
-      setPreviewZoom(CARD_PREVIEW_ZOOM);
-      return;
-    }
+    if (mode === 'card') return;
 
-    const updatePreviewZoom = () => {
-      const availableWidth = Math.max(
-        0,
-        window.innerWidth - MOBILE_SIDE_GUTTER_PX,
-      );
-      const widthBoundZoom = availableWidth / PAGE_WIDTH_PX;
+    const updateViewportWidth = () => setViewportWidth(window.innerWidth);
 
-      setPreviewZoom(
-        Math.min(
-          DESKTOP_PREVIEW_ZOOM,
-          Math.max(MIN_MOBILE_PREVIEW_ZOOM, widthBoundZoom),
-        ),
-      );
-    };
-
-    updatePreviewZoom();
-    window.addEventListener('resize', updatePreviewZoom);
-    return () => window.removeEventListener('resize', updatePreviewZoom);
+    window.addEventListener('resize', updateViewportWidth);
+    return () => window.removeEventListener('resize', updateViewportWidth);
   }, [mode]);
+
+  const previewZoom =
+    mode === 'card'
+      ? CARD_PREVIEW_ZOOM
+      : Math.min(
+          DESKTOP_PREVIEW_ZOOM,
+          Math.max(
+            MIN_MOBILE_PREVIEW_ZOOM,
+            Math.max(0, viewportWidth - MOBILE_SIDE_GUTTER_PX) / PAGE_WIDTH_PX,
+          ),
+        );
 
   const containerClassName =
     mode === 'card'

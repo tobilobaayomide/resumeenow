@@ -23,7 +23,7 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({
 
   return (
     <div
-      className="fixed inset-0 z-100 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4 sm:p-6 animate-in fade-in duration-200"
+      className="fixed inset-0 z-[100] bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4 sm:p-6 animate-in fade-in duration-200"
       onClick={(event) => {
         if (event.target === event.currentTarget) onClose();
       }}

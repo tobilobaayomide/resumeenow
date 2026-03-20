@@ -141,7 +141,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ open, onClose, mode }) => {
   const isBusy = loading || oauthLoading !== null;
 
   return (
-    <div className="fixed inset-0 z-100 flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
       <div
         className="absolute inset-0 bg-black/55 backdrop-blur-sm transition-opacity duration-300"
         onClick={closeModal}
