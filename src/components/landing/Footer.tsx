@@ -67,7 +67,7 @@ const Footer: React.FC = () => {
                 className="h-6 w-6 object-contain grayscale group-hover:grayscale-0 transition-all duration-500"
               />
               <span className="text-lg font-medium tracking-tight text-white/95">
-                Resume<span className="text-zinc-500">Now.</span>
+                Resumee<span className="text-zinc-500">Now.</span>
               </span>
             </div>
             <p className="text-white/60 font-light leading-relaxed text-sm max-w-sm">
@@ -141,7 +141,7 @@ const Footer: React.FC = () => {
 
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3 pt-6 border-t border-white/10">
           <p className="text-white/45 text-xs">
-            &copy; {new Date().getFullYear()} ResumeNow Inc. All rights reserved.
+            &copy; {new Date().getFullYear()} ResumeeNow Inc. All rights reserved.
           </p>
           <div className="hidden md:flex gap-5">
             <a href="#" className="text-white/45 hover:text-white text-xs transition-colors">Sitemap</a>
@@ -152,7 +152,7 @@ const Footer: React.FC = () => {
 
       <div className="pointer-events-none absolute bottom-0 left-0 w-full overflow-hidden leading-none z-0 opacity-[0.07]">
         <h1 className="text-[17vw] font-extrabold text-white tracking-tight text-center whitespace-nowrap translate-y-[22%] select-none">
-          RESUMENOW
+          RESUMEENOW
         </h1>
       </div>
     </footer>

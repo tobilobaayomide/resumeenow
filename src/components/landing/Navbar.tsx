@@ -51,7 +51,7 @@ const Navbar: React.FC<NavbarProps> = ({ onLogin, onSignup }) => {
                             className="h-6 w-6 object-contain grayscale group-hover:grayscale-0 transition-all duration-500"
                         />
                         <span className="text-lg font-medium tracking-tight text-black/90">
-                           Resume<span className="text-zinc-500">Now.</span>
+                           Resumee<span className="text-zinc-500">Now.</span>
                         </span>
                     </div>
                 </div>
