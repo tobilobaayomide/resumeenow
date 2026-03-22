@@ -1,13 +1,13 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { FiX, FiMail, FiLock, FiUser, FiEye, FiEyeOff } from "react-icons/fi";
-import { AiOutlineApple } from "react-icons/ai";
+import { FiX, FiMail, FiLock, FiUser, FiEye, FiEyeOff, FiGithub } from "react-icons/fi";
 import { FcGoogle } from "react-icons/fc";
 import { supabase } from "../lib/supabase";
 import { toast } from "sonner";
 import type { AuthModalMode, AuthModalProps, OAuthProvider } from "../types/ui";
 
 const AuthModal: React.FC<AuthModalProps> = ({ open, onClose, mode }) => {
+  const oauthEnabled = false;
   const [currentMode, setCurrentMode] = useState<AuthModalMode>(mode);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -141,7 +141,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ open, onClose, mode }) => {
   const isBusy = loading || oauthLoading !== null;
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-100 flex items-center justify-center p-4">
       <div
         className="absolute inset-0 bg-black/55 backdrop-blur-sm transition-opacity duration-300"
         onClick={closeModal}
@@ -170,7 +170,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ open, onClose, mode }) => {
               ResumeNow Access
             </p>
             <h2 id="auth-modal-title" className="text-2xl font-semibold text-gray-900 tracking-tight">
-              {currentMode === "login" ? "Welcome back" : "Create your account"}
+              {currentMode === "login" ? "Welcome Back" : "Create Your Account"}
             </h2>
             <p id="auth-modal-description" className="text-gray-500 mt-2 text-sm font-light">
               {currentMode === "login"
@@ -179,39 +179,43 @@ const AuthModal: React.FC<AuthModalProps> = ({ open, onClose, mode }) => {
             </p>
           </div>
 
-          <div className="grid grid-cols-2 gap-2.5 mb-5">
-            <button
-              onClick={() => handleOAuthLogin("google")}
-              type="button"
-              disabled={isBusy}
-              className="h-11 flex items-center justify-center gap-2 border border-gray-200 rounded-xl hover:bg-gray-50 hover:border-gray-300 transition-all duration-200 disabled:opacity-60 disabled:cursor-not-allowed"
-            >
-              <FcGoogle size={19} />
-              <span className="text-sm font-medium text-gray-700">
-                {oauthLoading === "google" ? "Connecting..." : "Google"}
-              </span>
-            </button>
-            <button
-              type="button"
-              onClick={() => handleOAuthLogin("apple")}
-              disabled={isBusy}
-              className="h-11 flex items-center justify-center gap-2 border border-gray-200 rounded-xl hover:bg-gray-50 hover:border-gray-300 transition-all duration-200 disabled:opacity-60 disabled:cursor-not-allowed"
-            >
-              <AiOutlineApple size={19} />
-              <span className="text-sm font-medium text-gray-700">
-                {oauthLoading === "apple" ? "Connecting..." : "Apple"}
-              </span>
-            </button>
-          </div>
+          {oauthEnabled ? (
+            <>
+              <div className="grid grid-cols-2 gap-2.5 mb-5">
+                <button
+                  onClick={() => handleOAuthLogin("google")}
+                  type="button"
+                  disabled={isBusy}
+                  className="h-11 flex items-center justify-center gap-2 border border-gray-200 rounded-xl hover:bg-gray-50 hover:border-gray-300 transition-all duration-200 disabled:opacity-60 disabled:cursor-not-allowed"
+                >
+                  <FcGoogle size={19} />
+                  <span className="text-sm font-medium text-gray-700">
+                    {oauthLoading === "google" ? "Connecting..." : "Google"}
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleOAuthLogin("github")}
+                  disabled={isBusy}
+                  className="h-11 flex items-center justify-center gap-2 border border-gray-200 rounded-xl hover:bg-gray-50 hover:border-gray-300 transition-all duration-200 disabled:opacity-60 disabled:cursor-not-allowed"
+                >
+                  <FiGithub size={19} />
+                  <span className="text-sm font-medium text-gray-700">
+                    {oauthLoading === "github" ? "Connecting..." : "GitHub"}
+                  </span>
+                </button>
+              </div>
 
-          <div className="relative mb-5">
-            <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-gray-100" />
-            </div>
-            <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-white px-3 text-gray-400 font-medium tracking-wider">Or continue with email</span>
-            </div>
-          </div>
+              <div className="relative mb-5">
+                <div className="absolute inset-0 flex items-center">
+                  <div className="w-full border-t border-gray-100" />
+                </div>
+                <div className="relative flex justify-center text-xs uppercase">
+                  <span className="bg-white px-3 text-gray-400 font-medium tracking-wider">Or continue with email</span>
+                </div>
+              </div>
+            </>
+          ) : null}
 
           <form key={currentMode} onSubmit={handleAuth} className="flex flex-col gap-3.5 animate-in fade-in duration-200">
             {currentMode === "signup" && (
