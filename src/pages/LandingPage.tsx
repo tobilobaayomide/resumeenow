@@ -4,7 +4,6 @@ import { useNavigate } from 'react-router-dom';
 import Navbar from '../components/landing/Navbar';
 import HeroSection from '../components/landing/HeroSection';
 import FeaturesSection from '../components/landing/FeaturesSection';
-import PlansSection from '../components/landing/PlansSection';
 import TemplatesSection from '../components/landing/TemplatesSection';
 import StepsSection from '../components/landing/StepsSection';
 import TrustedSection from '../components/landing/TrustedSection';
@@ -56,7 +55,6 @@ const LandingPage: React.FC = () => {
       />
       <HeroSection />
       <FeaturesSection />
-      <PlansSection />
       <TemplatesSection onSelectTemplate={handleTemplateSelect} />
       <StepsSection />
       <TrustedSection />

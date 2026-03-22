@@ -80,7 +80,7 @@ const Navbar: React.FC<NavbarProps> = ({ onLogin, onSignup }) => {
                 </div>
                 <button
                   onClick={signOut}
-                  className="text-sm font-medium text-gray-700 hover:text-black transition-colors"
+                  className="text-sm font-medium text-gray-700 hover:text-black transition-colors cursor-pointer"
                 >
                   Sign out
                 </button>
@@ -89,13 +89,13 @@ const Navbar: React.FC<NavbarProps> = ({ onLogin, onSignup }) => {
               <>
                 <button
                   onClick={onLogin}
-                  className="text-sm font-medium text-gray-700 hover:text-black transition-colors"
+                  className="text-sm font-medium text-gray-700 hover:text-black transition-colors cursor-pointer "
                 >
                   Log In
                 </button>
                 <button
                   onClick={onSignup}
-                  className="group flex items-center gap-2 bg-gray-900 text-white px-5 py-2.5 rounded-full text-sm font-medium hover:bg-gray-800 transition-all shadow-lg hover:shadow-xl hover:-translate-y-0.5"
+                  className="group flex items-center gap-2 bg-gray-900 text-white px-5 py-2.5 cursor-pointer rounded-full text-sm font-medium hover:bg-gray-800 transition-all shadow-lg hover:shadow-xl hover:-translate-y-0.5"
                 >
                   Get Started
                   <div className="group-hover:translate-x-1 transition-transform" />
@@ -155,7 +155,7 @@ const Navbar: React.FC<NavbarProps> = ({ onLogin, onSignup }) => {
                     setMenuOpen(false);
                     onLogin();
                   }}
-                  className="text-lg font-medium text-gray-600 hover:text-blue-600 text-left"
+                  className="text-lg font-medium text-gray-600 hover:text-blue-600 text-left cursor-pointer"
                 >
                   Log In
                 </button>
@@ -164,7 +164,7 @@ const Navbar: React.FC<NavbarProps> = ({ onLogin, onSignup }) => {
                     setMenuOpen(false);
                     onSignup();
                   }}
-                  className="text-center bg-black text-white py-3 rounded-xl font-medium shadow-md transition"
+                  className="text-center bg-black text-white py-3 rounded-xl font-medium shadow-md transition cursor-pointer"
                 >
                   Get Started Free
                 </button>
