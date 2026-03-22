@@ -1,12 +1,16 @@
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   LANDING_STEP_ITEMS,
   LANDING_STEP_ROTATION_MS,
 } from "../../data/landing";
 
+const SWIPE_THRESHOLD_PX = 42;
+
 const StepsSection: React.FC = () => {
   const [active, setActive] = useState(0);
   const [cycleSeed, setCycleSeed] = useState(0);
+  const touchStartXRef = useRef<number | null>(null);
+
   useEffect(() => {
     const timer = window.setTimeout(() => {
       setActive((prevActive) => (prevActive + 1) % LANDING_STEP_ITEMS.length);
@@ -20,6 +24,31 @@ const StepsSection: React.FC = () => {
   const handleStepClick = (index: number) => {
     setActive(index);
     setCycleSeed((seed) => seed + 1);
+  };
+
+  const handleStepSwipe = (direction: 1 | -1) => {
+    setActive((prevActive) => (
+      prevActive + direction + LANDING_STEP_ITEMS.length
+    ) % LANDING_STEP_ITEMS.length);
+    setCycleSeed((seed) => seed + 1);
+  };
+
+  const handleTouchStart = (event: React.TouchEvent<HTMLDivElement>) => {
+    touchStartXRef.current = event.changedTouches[0]?.clientX ?? null;
+  };
+
+  const handleTouchEnd = (event: React.TouchEvent<HTMLDivElement>) => {
+    const startX = touchStartXRef.current;
+    const endX = event.changedTouches[0]?.clientX;
+
+    touchStartXRef.current = null;
+
+    if (startX === null || typeof endX !== "number") return;
+
+    const deltaX = endX - startX;
+    if (Math.abs(deltaX) < SWIPE_THRESHOLD_PX) return;
+
+    handleStepSwipe(deltaX < 0 ? 1 : -1);
   };
 
   return (
@@ -44,7 +73,12 @@ const StepsSection: React.FC = () => {
           </p>
         </div>
 
-        <div className="relative w-full aspect-4/3 md:aspect-21/9 bg-white rounded-xl md:rounded-3xl overflow-hidden shadow-[0_28px_70px_rgba(0,0,0,0.16)] border border-black/10 mb-10 md:mb-14">
+        <div
+          className="relative w-full aspect-4/3 md:aspect-21/9 bg-white rounded-xl md:rounded-3xl overflow-hidden shadow-[0_28px_70px_rgba(0,0,0,0.16)] border border-black/10 mb-10 md:mb-14"
+          onTouchStart={handleTouchStart}
+          onTouchEnd={handleTouchEnd}
+          style={{ touchAction: "pan-y" }}
+        >
           {/* Placeholder until loops are ready */}
           <div className="absolute inset-0 flex items-center justify-center bg-zinc-900 overflow-hidden">
             <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.05)_0%,transparent_100%)] animate-pulse" />
@@ -124,7 +158,7 @@ const StepsSection: React.FC = () => {
           {LANDING_STEP_ITEMS.map((_, i) => (
             <div
               key={i}
-              className={`h-1.5 rounded-full transition-all duration-300 ${active === i ? 'w-8 bg-black' : 'w-1.5 bg-gray-300'}`}
+              className={`h-1.5 rounded-full transition-all duration-300 ${active === i ? "w-8 bg-black" : "w-1.5 bg-gray-300"}`}
             />
           ))}
         </div>
