@@ -62,7 +62,7 @@ const CareerProfile: React.FC = () => {
     <div className="min-h-screen bg-linear-to-b from-[#ffffff] via-[#fcfcfc] to-[#f7f7f8] flex font-sans text-[#1a1a1a] selection:bg-black selection:text-white">
       <Sidebar />
       <div className="flex-1 flex flex-col min-h-screen relative w-full overflow-hidden">
-        <div className="flex-1 overflow-y-auto pb-32 md:pb-12">
+        <div className={`flex-1 overflow-y-auto ${isEditing ? 'pb-44' : 'pb-32'} md:pb-12`}>
           <CareerProfileHero
             isEditing={isEditing}
             saving={saving}

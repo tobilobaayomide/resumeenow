@@ -7,7 +7,7 @@ const CareerProfileMobileActions: React.FC<CareerProfileMobileActionsProps> = ({
   onDiscard,
   onSave,
 }) => (
-  <div className="fixed bottom-4 left-4 right-4 z-40 md:hidden">
+  <div className="fixed left-4 right-4 z-[60] md:hidden bottom-[calc(max(1.5rem,env(safe-area-inset-bottom))+5.5rem)]">
     <div className="rounded-2xl border border-gray-200 bg-white/95 backdrop-blur p-2 shadow-xl flex items-center gap-2">
       <button
         onClick={onDiscard}
