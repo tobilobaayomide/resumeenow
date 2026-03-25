@@ -58,77 +58,79 @@ Deno.serve(async (req: Request) => {
       });
     }
 
-    // 2. Fetch Usage and Subscription
-    const [subRes, usageRes] = await Promise.all([
-      supabaseClient.from('user_subscriptions').select('plan_tier').eq('user_id', user.id).single(),
-      supabaseClient.from('user_api_usage').select('ai_credits_used, last_reset_at').eq('user_id', user.id).single()
-    ]);
+    const { data: usageGate, error: usageGateError } = await supabaseClient
+      .rpc("consume_ai_credit", { user_id_param: user.id })
+      .single();
 
-    const isPro = subRes.data?.plan_tier === 'pro';
-    let creditsUsed = usageRes.data?.ai_credits_used ?? 0;
-    const lastResetDateStr = usageRes.data?.last_reset_at;
-    const lastResetDate = lastResetDateStr 
-      ? new Date(lastResetDateStr).toISOString().split('T')[0] 
-      : null;
-    const today = new Date().toISOString().split('T')[0];
-    const isNewDay = lastResetDate && lastResetDateStr !== "" && lastResetDate !== today;
-
-    // The dual-limit logic: 
-    // If it's the user's very first day signing up (or they have never been reset), they get 10 initial trial credits.
-    // If it is a new day (after their first day), they get 5 daily credits.
-    const hasHadFirstReset = (lastResetDate !== null && lastResetDateStr !== "");
-    const MAX_TRIAL_CREDITS = hasHadFirstReset ? 5 : 10;
-
-    if (isNewDay) {
-      creditsUsed = 0; // Fresh daily credits
-      
-      // We must atomically update the reset date and usage concurrently so they don't abuse the "0" state.
-      await supabaseClient.from('user_api_usage').upsert({
-        user_id: user.id,
-        ai_credits_used: 1, // We are consuming 1 right now for the current request
-        last_reset_at: new Date().toISOString()
-      });
-      creditsUsed = 1; // Opting them into the consumed state locally
+    if (usageGateError || !usageGate) {
+      throw new Error(`Failed to consume AI credit: ${usageGateError?.message || "Unknown error"}`);
     }
 
-    // 3. Enforce Limit
-    if (!isPro && creditsUsed >= MAX_TRIAL_CREDITS) {
-      return new Response(JSON.stringify({ error: "PAYMENT_REQUIRED", message: "Daily free trial limit reached." }), {
+    const isPro = usageGate.plan_tier === "pro";
+    let shouldRefundCredit = Boolean(usageGate.counted);
+
+    // 2. Enforce Limit
+    if (!usageGate.allowed) {
+      return new Response(JSON.stringify({
+        error: "PAYMENT_REQUIRED",
+        message: "Daily AI limit reached. Try again after 00:00 UTC.",
+        usedCredits: usageGate.used_credits,
+        creditLimit: usageGate.credit_limit,
+      }), {
         status: 402,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    // 4. Call Gemini
-    const res = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: {
-            temperature: 0.3,
-            ...(expectJson ? { responseMimeType: "application/json" } : {}),
-          },
-        }),
-      }
-    );
+    // 3. Call Gemini with the credit already reserved server-side.
+    try {
+      const res = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: prompt }] }],
+            generationConfig: {
+              temperature: 0.3,
+              ...(expectJson ? { responseMimeType: "application/json" } : {}),
+            },
+          }),
+        }
+      );
 
-    const data = await res.json();
-    const text = data.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
-
-    if (text) {
-      // 5. Increment Usage if successful
-      if (!isPro) {
-        const { error: rpcError } = await supabaseClient.rpc("increment_ai_usage", { user_id_param: user.id });
-        if (rpcError) console.error("Failed to increment usage:", rpcError);
+      if (!res.ok) {
+        throw new Error(`Gemini provider returned ${res.status}`);
       }
+
+      const data = await res.json();
+      const text = data.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
+
+      if (!text.trim()) {
+        throw new Error("Gemini returned an empty response.");
+      }
+
+      shouldRefundCredit = false;
+
+      return new Response(JSON.stringify({
+        text,
+        usage: {
+          usedCredits: usageGate.used_credits,
+          creditLimit: usageGate.credit_limit,
+          planTier: usageGate.plan_tier,
+        },
+      }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    } catch (providerError) {
+      if (!isPro && shouldRefundCredit) {
+        const { error: refundError } = await supabaseClient.rpc("refund_ai_credit", { user_id_param: user.id });
+        if (refundError) {
+          console.error("Failed to refund AI credit:", refundError);
+        }
+      }
+      throw providerError;
     }
-
-    return new Response(JSON.stringify({ text }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
   } catch (err) {
     return new Response(JSON.stringify({ error: String(err) }), {
       status: 500,

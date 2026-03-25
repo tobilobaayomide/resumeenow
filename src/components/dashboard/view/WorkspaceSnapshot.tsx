@@ -51,7 +51,7 @@ const WorkspaceSnapshot: React.FC<WorkspaceSnapshotProps> = ({
 
             <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-indigo-50/50 border border-indigo-100/50 text-[11.5px] font-semibold text-indigo-700">
               <FiZap size={12} className="text-indigo-400" />
-              Credits: {usedCredits} / {monthlyCredits}
+              AI used today: {usedCredits} / {monthlyCredits}
             </div>
           </div>
         </div>

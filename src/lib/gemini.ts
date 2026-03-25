@@ -1,16 +1,23 @@
+import { findMatchingDescriptionBullet } from './descriptionBullets';
 import { supabase } from './supabase';
+import { sanitizeAiKeywordList, sanitizeAiPlainText } from './aiText';
 import { getActiveSkillItems } from '../types/resume';
+import { parseAiGroupedSkills } from './aiResumeApply';
 import type { ResumeData } from '../types/resume';
 import type { AtsAuditImprovement, AtsAuditResult } from '../types/builder';
 
 // ─── Cache ────────────────────────────────────────────────────────────────────
 const responseCache = new Map<string, { value: string; timestamp: number }>();
 const CACHE_TTL_MS = 10 * 60 * 1000;
+const ACCESS_TOKEN_REFRESH_BUFFER_MS = 60 * 1000;
 export const clearGeminiCache = () => responseCache.clear();
 
 // ─── Error handler ────────────────────────────────────────────────────────────
 const handleError = (error: unknown): never => {
   const message = error instanceof Error ? error.message : String(error);
+  if (message.includes('Invalid JWT') || message.includes('invalid JWT') || message.includes('auth token')) {
+    throw new Error('Your session expired. Please sign in again and retry.');
+  }
   if (message.includes('429'))
     throw new Error('Rate limit reached. Please wait a moment and try again.');
   if (message.includes('quota'))
@@ -22,17 +29,73 @@ const handleError = (error: unknown): never => {
 // ─── Retry delays ─────────────────────────────────────────────────────────────
 const RETRY_DELAYS = [5000, 15000, 45000];
 
+const getValidAccessToken = async (): Promise<string> => {
+  const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+  if (sessionError) {
+    throw sessionError;
+  }
+
+  let session = sessionData.session;
+  const expiresSoon =
+    !session?.access_token ||
+    (typeof session.expires_at === 'number' &&
+      session.expires_at * 1000 <= Date.now() + ACCESS_TOKEN_REFRESH_BUFFER_MS);
+
+  if (expiresSoon) {
+    const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
+    if (refreshError) {
+      throw refreshError;
+    }
+    session = refreshData.session;
+  }
+
+  if (!session?.access_token) {
+    throw new Error('Please sign in again to use AI tools.');
+  }
+
+  const { data: userData, error: userError } = await supabase.auth.getUser(session.access_token);
+  if (userError || !userData.user) {
+    const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
+    if (refreshError || !refreshData.session?.access_token) {
+      throw new Error('Please sign in again to use AI tools.');
+    }
+    session = refreshData.session;
+  }
+
+  return session.access_token;
+};
+
 const callWithRetry = async (
   prompt: string,
   expectJson: boolean,
   retries = 2,
+  hasRefreshedSession = false,
 ): Promise<string> => {
   try {
-    const { data, error } = await supabase.functions.invoke('gemini-proxy', {
+    const accessToken = await getValidAccessToken();
+    const { data, error, response } = await supabase.functions.invoke('gemini-proxy', {
       body: { prompt, expectJson },
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
     });
 
-    if (error) throw new Error(error.message);
+    if (error) {
+      let responseMessage = '';
+      if (response) {
+        try {
+          const payload = await response.clone().json();
+          responseMessage = typeof payload?.message === 'string'
+            ? payload.message
+            : typeof payload?.error === 'string'
+              ? payload.error
+              : '';
+        } catch {
+          // Fall through to the generic error message below.
+        }
+      }
+      throw new Error(responseMessage || error.message);
+    }
     if (data?.error) throw new Error(data.error);
 
     let text: string = data?.text ?? '';
@@ -40,11 +103,20 @@ const callWithRetry = async (
     return text;
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : String(error);
+    if (
+      !hasRefreshedSession &&
+      (message.includes('Invalid JWT') || message.includes('invalid JWT') || message.includes('auth token'))
+    ) {
+      const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
+      if (!refreshError && refreshData.session) {
+        return callWithRetry(prompt, expectJson, retries, true);
+      }
+    }
     if (message.includes('429') && retries > 0) {
       const delay = RETRY_DELAYS[RETRY_DELAYS.length - retries] ?? 15000;
       console.warn(`Rate limited — retrying in ${delay / 1000}s (${retries} retries left)`);
       await new Promise((r) => setTimeout(r, delay));
-      return callWithRetry(prompt, expectJson, retries - 1);
+      return callWithRetry(prompt, expectJson, retries - 1, hasRefreshedSession);
     }
     return handleError(error);
   }
@@ -142,23 +214,95 @@ const hashString = (str: string): string => {
   return (4294967296 * (2097151 & h2) + (h1 >>> 0)).toString(36);
 };
 
+type TailoredSummaryResult = {
+  jobTitleAfter: string;
+  summary?: { current: string; better: string };
+  skills?: {
+    current: string;
+    better: string;
+    groups?: { label: string; items: string[] }[];
+  };
+  experienceImprovements: { id: string; current: string; better: string }[];
+  experienceAdditions: { id: string; better: string }[];
+  contactFix?: { current: string; better: string };
+  keywordAlignment: { matched: string[]; injected: string[]; stillMissing: string[] };
+};
+
+const buildSkillsContext = (resumeData: ResumeData): string => {
+  if (resumeData.skills.mode === 'grouped' && resumeData.skills.groups.length > 0) {
+    return resumeData.skills.groups
+      .filter((group) => group.items.length > 0)
+      .map((group) => `${group.label}: ${group.items.join(', ')}`)
+      .join('\n');
+  }
+
+  let activeSkills: string[] = [];
+  try { activeSkills = getActiveSkillItems(resumeData.skills); } catch { activeSkills = []; }
+  return activeSkills.join(', ');
+};
+
+const sanitizeTailoredSummaryResult = (
+  parsed: Partial<TailoredSummaryResult>,
+  experienceDescriptions: Map<string, string>,
+): TailoredSummaryResult => ({
+  jobTitleAfter: sanitizeAiPlainText(parsed.jobTitleAfter),
+  summary: parsed.summary
+    ? {
+        current: parsed.summary.current,
+        better: sanitizeAiPlainText(parsed.summary.better),
+      }
+    : undefined,
+  skills: parsed.skills
+    ? {
+        current: parsed.skills.current,
+        better: sanitizeAiPlainText(parsed.skills.better),
+        groups: parseAiGroupedSkills(parsed.skills.groups),
+      }
+    : undefined,
+  experienceImprovements: (parsed.experienceImprovements || []).reduce<
+    TailoredSummaryResult['experienceImprovements']
+  >((result, item) => {
+    const matchedCurrent = findMatchingDescriptionBullet(
+      experienceDescriptions.get(item.id) || '',
+      item.current,
+    );
+
+    if (!matchedCurrent) return result;
+
+    result.push({
+      ...item,
+      current: matchedCurrent,
+      better: sanitizeAiPlainText(item.better),
+    });
+    return result;
+  }, []),
+  experienceAdditions: (parsed.experienceAdditions || []).map((item) => ({
+    ...item,
+    better: sanitizeAiPlainText(item.better),
+  })),
+  contactFix: parsed.contactFix
+    ? {
+        current: parsed.contactFix.current,
+        better: sanitizeAiPlainText(parsed.contactFix.better),
+      }
+    : undefined,
+  keywordAlignment: {
+    matched: sanitizeAiKeywordList(parsed.keywordAlignment?.matched),
+    injected: sanitizeAiKeywordList(parsed.keywordAlignment?.injected),
+    stillMissing: sanitizeAiKeywordList(parsed.keywordAlignment?.stillMissing),
+  },
+});
+
 // ─── Exported functions ───────────────────────────────────────────────────────
 export const generateTailoredSummary = async (
   resumeData: ResumeData,
   role: string,
   company: string,
   jobDescription: string,
-): Promise<{
-  jobTitleAfter: string;
-  summary?: { current: string; better: string };
-  skills?: { current: string; better: string };
-  experienceImprovements: { id: string; current: string; better: string }[];
-  experienceAdditions: { id: string; better: string }[];
-  contactFix?: { current: string; better: string };
-  keywordAlignment: { matched: string[]; injected: string[]; stillMissing: string[] };
-}> => {
+): Promise<TailoredSummaryResult> => {
   const trimmedJD = jobDescription.trim().slice(0, 2500);
   try { getActiveSkillItems(resumeData.skills); } catch { /* ignore */ }
+  const skillsContext = buildSkillsContext(resumeData);
 
   const experienceContext = resumeData.experience.map((e) => {
     return { id: e.id, role: e.role, company: e.company, description: e.description };
@@ -182,6 +326,8 @@ ${trimmedJD}
 CURRENT RESUME:
 Title: ${resumeData.personalInfo?.jobTitle || ''}
 Summary: ${resumeData.summary || ''}
+Skills:
+${skillsContext || 'None'}
 Experience:
 ${experienceText}
 ═══════════════════════════════
@@ -195,12 +341,15 @@ Return ONLY valid JSON with this exact structure:
   },
   "skills": {
     "current": "Current skills string...",
-    "better": "A refined, premium skills section that mirrors the JD categories exactly."
+    "better": "A refined, premium skills section that mirrors the JD categories exactly.",
+    "groups": [
+      { "label": "Best matching skill group", "items": ["Skill A", "Skill B"] }
+    ]
   },
   "experienceImprovements": [
     {
       "id": "match existing ID",
-      "current": "verbatim substring bullet to replace",
+      "current": "exact full bullet line to replace",
       "better": "Optimized bullet integrating JD keywords + metrics."
     }
   ],
@@ -222,15 +371,21 @@ Return ONLY valid JSON with this exact structure:
 }
 
 RULES:
-1. 'current' MUST be a VERBATIM SUBSTRING from the context. For experience, it must be the EXACT single bullet or partial phrase you are improving.
+1. 'current' MUST be a VERBATIM SUBSTRING from the context. For experience, it must be the EXACT full bullet or line you are improving. Never return partial phrases.
 2. 'id' must follow the [ID: ...] exactly for the job/unit.
 3. Max 2 experienceImprovements per job. 1 experienceAddition max.
 4. If a section is already perfect, you can omit 'summary', 'skills', or 'contactFix' by making them null.
 5. Focus on HARD SKILLS and QUANTIFIABLE IMPACT.
 6. For 'skills.better', return a comma-separated list of the most critical 10-15 skills aligned with the job.
-7. Always return valid JSON. Do not include markdown formatting outside the JSON block.`;
+7. If the current skills section is grouped, 'skills.groups' must assign each suggested skill to the best existing group when it clearly fits. Create a concise new group only for suggestions that do not fit any current group.
+8. If the current skills section is not grouped, 'skills.groups' can be an empty array.
+9. For experience improvements and additions, 'better' must be a single bullet line with no bullet symbol and no newline.
+10. Always return valid JSON. Do not include markdown formatting outside the JSON block.
+11. Never use Markdown or rich-text markers inside string values. Do not use **bold**, *italics*, underscores, or backticks.`;
 
-  const cacheKey = `tailor-v2-${role}-${hashString(trimmedJD)}-${hashString(experienceText)}`;
+  const cacheKey = `tailor-v4-${role}-${hashString(trimmedJD)}-${hashString(
+    `${skillsContext}\n${experienceText}`,
+  )}`;
   const cached = responseCache.get(cacheKey);
   if (cached && Date.now() - cached.timestamp < CACHE_TTL_MS) {
     return JSON.parse(cached.value);
@@ -238,14 +393,18 @@ RULES:
 
   try {
     const resultText = await callGemini(prompt, cacheKey, true);
-    const parsed = JSON.parse(resultText);
+    const parsed = JSON.parse(resultText) as Partial<TailoredSummaryResult>;
+    const experienceDescriptions = new Map(
+      resumeData.experience.map((item) => [item.id, item.description]),
+    );
+    const sanitized = sanitizeTailoredSummaryResult({
+      ...parsed,
+      experienceImprovements: parsed.experienceImprovements || [],
+      experienceAdditions: parsed.experienceAdditions || [],
+    }, experienceDescriptions);
 
-    // Ensure arrays exist
-    if (!parsed.experienceImprovements) parsed.experienceImprovements = [];
-    if (!parsed.experienceAdditions) parsed.experienceAdditions = [];
-
-    responseCache.set(cacheKey, { value: JSON.stringify(parsed), timestamp: Date.now() });
-    return parsed;
+    responseCache.set(cacheKey, { value: JSON.stringify(sanitized), timestamp: Date.now() });
+    return sanitized;
   } catch (error: unknown) {
     console.error('Tailor Error:', error);
     throw error;
@@ -305,7 +464,7 @@ export const analyzeAtsCompleteness = async (
 ): Promise<AtsAuditResult> => {
   const trimmedJD = jobDescription.trim().slice(0, 1500);
   const resumeContext = buildAtsResumeContext(resumeData);
-  const cacheKey = `ats-${role}-${hashString(trimmedJD)}-${hashString(resumeContext)}`;
+  const cacheKey = `ats-v2-${role}-${hashString(trimmedJD)}-${hashString(resumeContext)}`;
 
   const prompt = `
 You are an Elite Recruiting Analyst and ATS Optimization Engineer. Your goal is to provide a "Big-Tech level" audit (FAANG/Tier-1) for this candidate.
@@ -365,7 +524,7 @@ Return ONLY valid JSON, no markdown fences:
 }
 
 RULES for improvements:
-1. For 'bullet', 'current' MUST be a verbatim single bullet or phrase from the context.
+1. For 'bullet', 'current' MUST be the exact full bullet from the context. Never return partial phrases.
 2. For 'skill', 'current' must be the exact skill name from the resume.
 3. Max 3 improvements total.`.trim();
 
