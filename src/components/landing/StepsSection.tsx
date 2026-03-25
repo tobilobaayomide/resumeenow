@@ -11,12 +11,17 @@ const SWIPE_THRESHOLD_PX = 42;
 const StepsSection: React.FC = () => {
   const [active, setActive] = useState(0);
   const [cycleSeed, setCycleSeed] = useState(0);
-  const [videoSource, setVideoSource] = useState(LANDING_STEP_ITEMS[0]?.video ?? LANDING_FALLBACK_DEMO_VIDEO_URL);
-  const [videoLoaded, setVideoLoaded] = useState(false);
+  const [loadedVideos, setLoadedVideos] = useState<Record<string, boolean>>({});
+  const [failedVideos, setFailedVideos] = useState<Record<string, boolean>>({});
+  const [displayedVideoSource, setDisplayedVideoSource] = useState<string | null>(null);
   const touchStartXRef = useRef<number | null>(null);
   const mediaRef = useRef<HTMLDivElement | null>(null);
   const activeStep = LANDING_STEP_ITEMS[active];
+  const nextStepIndex = LANDING_STEP_ITEMS.length > 0 ? (active + 1) % LANDING_STEP_ITEMS.length : 0;
   const shouldLoadVideo = useEnterViewport(mediaRef);
+  const activeVideoSource =
+    failedVideos[activeStep?.video ?? ""] ? LANDING_FALLBACK_DEMO_VIDEO_URL : activeStep?.video ?? LANDING_FALLBACK_DEMO_VIDEO_URL;
+  const activeVideoReady = Boolean(activeVideoSource && loadedVideos[activeVideoSource]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -29,9 +34,10 @@ const StepsSection: React.FC = () => {
   }, [active, cycleSeed]);
 
   useEffect(() => {
-    setVideoLoaded(false);
-    setVideoSource(activeStep?.video ?? LANDING_FALLBACK_DEMO_VIDEO_URL);
-  }, [activeStep]);
+    if (activeVideoReady && displayedVideoSource !== activeVideoSource) {
+      setDisplayedVideoSource(activeVideoSource);
+    }
+  }, [activeVideoReady, activeVideoSource, displayedVideoSource]);
 
   const handleStepClick = (index: number) => {
     setActive(index);
@@ -63,11 +69,20 @@ const StepsSection: React.FC = () => {
     handleStepSwipe(deltaX < 0 ? 1 : -1);
   };
 
-  const handleVideoError = () => {
-    if (videoSource !== LANDING_FALLBACK_DEMO_VIDEO_URL) {
-      setVideoLoaded(false);
-      setVideoSource(LANDING_FALLBACK_DEMO_VIDEO_URL);
-    }
+  const markVideoLoaded = (source: string) => {
+    setLoadedVideos((current) => {
+      if (current[source]) return current;
+      return { ...current, [source]: true };
+    });
+    setDisplayedVideoSource((current) => current ?? source);
+  };
+
+  const markVideoError = (source: string) => {
+    if (source === LANDING_FALLBACK_DEMO_VIDEO_URL) return;
+    setFailedVideos((current) => {
+      if (current[source]) return current;
+      return { ...current, [source]: true };
+    });
   };
 
   return (
@@ -99,35 +114,39 @@ const StepsSection: React.FC = () => {
           onTouchEnd={handleTouchEnd}
           style={{ touchAction: "pan-y" }}
         >
-          <div className="absolute inset-0 bg-zinc-900">
-            <video
-              key={videoSource}
-              className={`h-full w-full object-contain transition-opacity duration-500 ${
-                videoLoaded ? "opacity-100" : "opacity-0"
-              }`}
-              src={shouldLoadVideo ? videoSource : undefined}
-              autoPlay
-              loop
-              muted
-              playsInline
-              preload={shouldLoadVideo ? "metadata" : "none"}
-              onLoadedData={() => setVideoLoaded(true)}
-              onError={handleVideoError}
-            />
-          </div>
-          {!videoLoaded && (
-            <div className="absolute inset-0 flex items-center justify-center bg-zinc-900 overflow-hidden">
-              <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.05)_0%,transparent_100%)] animate-pulse" />
-              <div className="flex flex-col items-center gap-4 opacity-25">
-                <span className="text-6xl font-black text-white/10 select-none">
-                  {activeStep.number}
-                </span>
-                <p className="text-[10px] uppercase tracking-widest text-white/40 font-mono pb-2">
-                  Visualizing "{activeStep.title}"
-                </p>
-              </div>
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,#f4f0e7_0%,#ece9e1_52%,#dfdbd2_100%)]">
+            <div className="absolute inset-0 flex items-center justify-center">
+              {LANDING_STEP_ITEMS.map((step, index) => {
+                const resolvedVideoSource = failedVideos[step.video]
+                  ? LANDING_FALLBACK_DEMO_VIDEO_URL
+                  : step.video;
+                const shouldRequestVideo =
+                  shouldLoadVideo &&
+                  (index === active ||
+                    index === nextStepIndex ||
+                    resolvedVideoSource === displayedVideoSource);
+                const isDisplayedVideo = displayedVideoSource === resolvedVideoSource;
+
+                return (
+                  <video
+                    key={step.video}
+                    className={`absolute max-h-full max-w-full h-auto w-auto transition-opacity duration-500 ${
+                      isDisplayedVideo ? "opacity-100" : "opacity-0"
+                    }`}
+                    src={shouldRequestVideo ? resolvedVideoSource : undefined}
+                    poster={step.poster}
+                    autoPlay
+                    loop
+                    muted
+                    playsInline
+                    preload={shouldRequestVideo ? "auto" : "none"}
+                    onLoadedData={() => markVideoLoaded(resolvedVideoSource)}
+                    onError={() => markVideoError(step.video)}
+                  />
+                );
+              })}
             </div>
-          )}
+          </div>
           <div className="absolute inset-0 bg-linear-to-tr from-black/10 via-transparent to-transparent pointer-events-none" />
         </div>
 
