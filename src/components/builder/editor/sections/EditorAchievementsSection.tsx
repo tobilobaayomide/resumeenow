@@ -49,7 +49,7 @@ const EditorAchievementsSection: React.FC<EditorAchievementsSectionProps> = ({
         ) : (
           data.achievements.map((achievement, index) => (
             <div
-              key={`${achievement}-${index}`}
+              key={`achievement-${index}`}
               className="group flex items-start justify-between gap-3 bg-white border border-gray-200 p-2.5 rounded-lg text-[11.5px] font-medium text-gray-700 shadow-sm transition-all hover:border-gray-300"
             >
               <input
