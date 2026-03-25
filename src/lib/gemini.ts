@@ -12,16 +12,31 @@ const CACHE_TTL_MS = 10 * 60 * 1000;
 const ACCESS_TOKEN_REFRESH_BUFFER_MS = 60 * 1000;
 export const clearGeminiCache = () => responseCache.clear();
 
+const normalizeErrorMessage = (message: string): string =>
+  message.replace(/^(Error:\s*)+/i, '').trim();
+
 // ─── Error handler ────────────────────────────────────────────────────────────
 const handleError = (error: unknown): never => {
-  const message = error instanceof Error ? error.message : String(error);
+  const message = normalizeErrorMessage(error instanceof Error ? error.message : String(error));
   if (message.includes('Invalid JWT') || message.includes('invalid JWT') || message.includes('auth token')) {
     throw new Error('Your session expired. Please sign in again and retry.');
+  }
+  if (message.includes('Please sign in again to use AI tools.')) {
+    throw new Error('Your session expired. Please sign in again and retry.');
+  }
+  if (message.includes('AI provider model is unavailable right now.')) {
+    throw new Error('AI provider is temporarily unavailable. Please try again in a moment.');
+  }
+  if (message.includes('AI provider is temporarily unavailable.')) {
+    throw new Error('AI provider is temporarily unavailable. Please try again shortly.');
   }
   if (message.includes('429'))
     throw new Error('Rate limit reached. Please wait a moment and try again.');
   if (message.includes('quota'))
     throw new Error('Daily quota exceeded. Try again tomorrow.');
+  if (message.includes('Daily AI limit reached.')) {
+    throw new Error('Daily AI limit reached. Try again after 00:00 UTC.');
+  }
   console.error('Gemini Error:', error);
   throw new Error(message || 'AI Provider Failed. See console for details.');
 };
@@ -94,7 +109,7 @@ const callWithRetry = async (
           // Fall through to the generic error message below.
         }
       }
-      throw new Error(responseMessage || error.message);
+      throw new Error(normalizeErrorMessage(responseMessage || error.message));
     }
     if (data?.error) throw new Error(data.error);
 
@@ -102,7 +117,7 @@ const callWithRetry = async (
     if (expectJson) text = text.replace(/```json/g, '').replace(/```/g, '').trim();
     return text;
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : String(error);
+    const message = normalizeErrorMessage(error instanceof Error ? error.message : String(error));
     if (
       !hasRefreshedSession &&
       (message.includes('Invalid JWT') || message.includes('invalid JWT') || message.includes('auth token'))
