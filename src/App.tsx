@@ -12,6 +12,8 @@ const Settings = lazy(() => import('./components/dashboard/Settings'));
 const BuilderPage = lazy(() => import('./components/builder/BuilderPage'));
 const ResetPasswordPage = lazy(() => import('./pages/ResetPasswordPage'));
 const ResumePrintPage = lazy(() => import('./pages/ResumePrintPage'));
+const PrivacyPolicyPage = lazy(() => import('./pages/PrivacyPolicyPage'));
+const TermsOfServicePage = lazy(() => import('./pages/TermsOfServicePage'));
 const AppToaster = lazy(() => import('./components/ui/AppToaster'));
 
 const ProtectedRoute = ({ children }: { children: ReactElement }) => {
@@ -41,6 +43,8 @@ export default function App() {
           <Route path="/dashboard/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
           <Route path="/builder/:id" element={<ProtectedRoute><BuilderPage /></ProtectedRoute>} />
           <Route path="/reset-password" element={<ResetPasswordPage />} />
+          <Route path="/privacy" element={<PrivacyPolicyPage />} />
+          <Route path="/terms" element={<TermsOfServicePage />} />
         </Routes>
       </Suspense>
     </Router>

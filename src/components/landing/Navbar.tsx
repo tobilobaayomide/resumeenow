@@ -38,9 +38,9 @@ const Navbar: React.FC<NavbarProps> = ({ onLogin, onSignup }) => {
             : "bg-transparent border-b border-transparent"
         }`}
       >
-        <div className="max-w-360 mx-auto md:py-10 h-20 flex items-center justify-between">
+        <div className="max-w-360 mx-auto md:py-10 h-20 px-8 flex items-center justify-between">
           {/* Logo */}
-         <div className="h-24 flex items-center px-8">
+         <div className="h-24 flex items-center">
                     <div 
                         className="flex items-center gap-3 cursor-pointer group opacity-90 hover:opacity-100 transition-opacity" 
                         onClick={() => navigate('/')}
@@ -51,7 +51,7 @@ const Navbar: React.FC<NavbarProps> = ({ onLogin, onSignup }) => {
                             className="h-6 w-6 object-contain grayscale group-hover:grayscale-0 transition-all duration-500"
                         />
                         <span className="text-lg font-medium tracking-tight text-black/90">
-                           Resume<span className="text-zinc-500">Now.</span>
+                           Resumee<span className="text-zinc-500">Now.</span>
                         </span>
                     </div>
                 </div>
@@ -80,7 +80,7 @@ const Navbar: React.FC<NavbarProps> = ({ onLogin, onSignup }) => {
                 </div>
                 <button
                   onClick={signOut}
-                  className="text-sm font-medium text-gray-700 hover:text-black transition-colors"
+                  className="text-sm font-medium text-gray-700 hover:text-black transition-colors cursor-pointer"
                 >
                   Sign out
                 </button>
@@ -89,13 +89,13 @@ const Navbar: React.FC<NavbarProps> = ({ onLogin, onSignup }) => {
               <>
                 <button
                   onClick={onLogin}
-                  className="text-sm font-medium text-gray-700 hover:text-black transition-colors"
+                  className="text-sm font-medium text-gray-700 hover:text-black transition-colors cursor-pointer "
                 >
                   Log In
                 </button>
                 <button
                   onClick={onSignup}
-                  className="group flex items-center gap-2 bg-gray-900 text-white px-5 py-2.5 rounded-full text-sm font-medium hover:bg-gray-800 transition-all shadow-lg hover:shadow-xl hover:-translate-y-0.5"
+                  className="group flex items-center gap-2 bg-gray-900 text-white px-5 py-2.5 cursor-pointer rounded-full text-sm font-medium hover:bg-gray-800 transition-all shadow-lg hover:shadow-xl hover:-translate-y-0.5"
                 >
                   Get Started
                   <div className="group-hover:translate-x-1 transition-transform" />
@@ -106,7 +106,7 @@ const Navbar: React.FC<NavbarProps> = ({ onLogin, onSignup }) => {
 
           {/* Mobile Menu Button */}
           <button
-            className="md:hidden text-gray-700 focus:outline-none p-2 mr-5"
+            className="md:hidden text-gray-700 focus:outline-none p-2 "
             onClick={() => setMenuOpen(!menuOpen)}
             aria-label="Toggle menu"
           >
@@ -155,7 +155,7 @@ const Navbar: React.FC<NavbarProps> = ({ onLogin, onSignup }) => {
                     setMenuOpen(false);
                     onLogin();
                   }}
-                  className="text-lg font-medium text-gray-600 hover:text-blue-600 text-left"
+                  className="text-lg font-medium text-gray-600 hover:text-blue-600 text-left cursor-pointer"
                 >
                   Log In
                 </button>
@@ -164,7 +164,7 @@ const Navbar: React.FC<NavbarProps> = ({ onLogin, onSignup }) => {
                     setMenuOpen(false);
                     onSignup();
                   }}
-                  className="text-center bg-black text-white py-3 rounded-xl font-medium shadow-md transition"
+                  className="text-center bg-black text-white py-3 rounded-xl font-medium shadow-md transition cursor-pointer"
                 >
                   Get Started Free
                 </button>

@@ -1,13 +1,18 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   LANDING_FEATURE_ITEMS,
   LANDING_FEATURE_ROTATION_MS,
   LANDING_FEATURE_TRANSITION_MS,
 } from "../../data/landing";
+import featureVideo from '../../assets/RN FEATURE VIDEO.mp4';
+import { useEnterViewport } from '../../hooks/useEnterViewport';
 
 const FeaturesSection: React.FC = () => {
   const [activeFeature, setActiveFeature] = useState(0);
   const [cycleSeed, setCycleSeed] = useState(0);
+  const [videoLoaded, setVideoLoaded] = useState(false);
+  const mediaRef = useRef<HTMLDivElement | null>(null);
+  const shouldLoadVideo = useEnterViewport(mediaRef);
   // Auto-rotate features with deterministic timing.
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -38,28 +43,41 @@ const FeaturesSection: React.FC = () => {
       <div className="max-w-360 mx-auto px-6 relative z-10">
         
         {/* Interactive Showcase Layout */}
-        <div className="grid lg:grid-cols-12 gap-12 lg:gap-20 items-center">
+        <div className="grid items-center gap-12 lg:grid-cols-12 lg:gap-20 xl:gap-16 2xl:gap-14">
           
           {/* Left Column (Tall Media Window) */}
-          <div className="lg:col-span-7 relative order-2 lg:order-1 h-full min-h-125 flex items-center">
+          <div ref={mediaRef} className="relative order-2 flex min-h-72 items-center sm:min-h-88 lg:order-1 lg:col-span-7 lg:h-full lg:min-h-125 xl:col-span-8">
             {/* Restrained ambient depth behind the video */}
             <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[88%] h-[76%] rounded-full bg-black/12 blur-[72px] pointer-events-none -z-10"></div>
             
             {/* Glassmorphic Container */}
-            <div className="w-full h-full max-h-175 p-2 md:p-3 bg-white/80 backdrop-blur-xl rounded-4xl border border-black/10 shadow-[0_28px_70px_rgba(0,0,0,0.18)] relative z-10 flex flex-col">
-              <div className="relative w-full h-full bg-zinc-900 rounded-2xl overflow-hidden shadow-inner min-h-100">
-                
-                {/* Placeholder until loops are ready */}
-                <div className="absolute inset-0 flex items-center justify-center bg-zinc-900">
-                  <div className="flex flex-col items-center gap-4 opacity-20">
-                    <div className="w-16 h-16 bg-white/10 rounded-full flex items-center justify-center animate-pulse">
-                      {LANDING_FEATURE_ITEMS[activeFeature].icon}
+            <div className="relative z-10 flex h-full w-full max-h-80 flex-col rounded-4xl border border-black/10 bg-white/80 p-2 shadow-[0_28px_70px_rgba(0,0,0,0.18)] backdrop-blur-xl sm:max-h-96 md:p-3 lg:max-h-175 xl:-ml-4 xl:w-[108%] xl:max-w-none 2xl:-ml-6 2xl:w-[112%]">
+              <div className="relative h-full w-full overflow-hidden rounded-2xl bg-zinc-900 shadow-inner lg:min-h-100">
+                <video
+                  className={`h-full w-full object-cover transition-opacity duration-500 ${
+                    videoLoaded ? 'opacity-100' : 'opacity-0'
+                  }`}
+                  src={shouldLoadVideo ? featureVideo : undefined}
+                  autoPlay
+                  loop
+                  muted
+                  playsInline
+                  preload={shouldLoadVideo ? 'metadata' : 'none'}
+                  onLoadedData={() => setVideoLoaded(true)}
+                />
+
+                {!videoLoaded && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-zinc-900">
+                    <div className="flex flex-col items-center gap-4 opacity-20">
+                      <div className="w-16 h-16 bg-white/10 rounded-full flex items-center justify-center animate-pulse">
+                        {LANDING_FEATURE_ITEMS[activeFeature].icon}
+                      </div>
+                      <p className="text-[10px] uppercase tracking-widest text-white/50 font-mono">
+                        Preview Loading...
+                      </p>
                     </div>
-                    <p className="text-[10px] uppercase tracking-widest text-white/50 font-mono">
-                      Preview Loading...
-                    </p>
                   </div>
-                </div>
+                )}
 
                 {/* Subtle Overlay gradient */}
                 <div className="absolute inset-0 bg-linear-to-tr from-black/10 to-transparent pointer-events-none"></div>
@@ -68,7 +86,7 @@ const FeaturesSection: React.FC = () => {
           </div>
 
           {/* Right Column (Header + Compact Feature Texts) */}
-          <div className="lg:col-span-5 flex flex-col justify-center gap-8 order-1 lg:order-2">
+          <div className="order-1 flex flex-col justify-center gap-8 lg:order-2 lg:col-span-5 xl:col-span-4">
             
             {/* Header */}
             <div>

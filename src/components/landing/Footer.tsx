@@ -42,7 +42,7 @@ const Footer: React.FC = () => {
                 />
                 <button
                   type="button"
-                  className="h-10 w-12 rounded-full bg-white/12 text-white/80 hover:text-white hover:bg-white/20 transition-colors duration-300 inline-flex items-center justify-center"
+                  className="h-10 w-12 rounded-full bg-white/12 text-white/80 cursor-pointer hover:text-white hover:bg-white/20 transition-colors duration-300 inline-flex items-center justify-center"
                   aria-label="Submit email"
                 >
                   <FiArrowRight size={18} />
@@ -67,7 +67,7 @@ const Footer: React.FC = () => {
                 className="h-6 w-6 object-contain grayscale group-hover:grayscale-0 transition-all duration-500"
               />
               <span className="text-lg font-medium tracking-tight text-white/95">
-                Resume<span className="text-zinc-500">Now.</span>
+                Resumee<span className="text-zinc-500">Now.</span>
               </span>
             </div>
             <p className="text-white/60 font-light leading-relaxed text-sm max-w-sm">
@@ -122,7 +122,7 @@ const Footer: React.FC = () => {
             </ul>
           </div>
 
-          <div className="hidden md:block col-span-2 md:col-span-2">
+          <div className="col-span-1 md:col-span-2">
             <h4 className="text-[11px] uppercase tracking-[0.2em] mb-4 text-white/60">Legal</h4>
             <ul className="space-y-2.5">
               {LANDING_FOOTER_LEGAL_LINKS.map((item) => (
@@ -141,18 +141,14 @@ const Footer: React.FC = () => {
 
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3 pt-6 border-t border-white/10">
           <p className="text-white/45 text-xs">
-            &copy; {new Date().getFullYear()} ResumeNow Inc. All rights reserved.
+            &copy; {new Date().getFullYear()} ResumeeNow Inc. All rights reserved.
           </p>
-          <div className="hidden md:flex gap-5">
-            <a href="#" className="text-white/45 hover:text-white text-xs transition-colors">Sitemap</a>
-            <a href="#" className="text-white/45 hover:text-white text-xs transition-colors">Cookies</a>
-          </div>
         </div>
       </div>
 
       <div className="pointer-events-none absolute bottom-0 left-0 w-full overflow-hidden leading-none z-0 opacity-[0.07]">
         <h1 className="text-[17vw] font-extrabold text-white tracking-tight text-center whitespace-nowrap translate-y-[22%] select-none">
-          RESUMENOW
+          RESUMEENOW
         </h1>
       </div>
     </footer>

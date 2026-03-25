@@ -99,6 +99,7 @@ export interface UseBuilderDraftMutationsResult {
 
 export interface BuilderAiWorkflowModalProps {
   isGenerating: boolean;
+  isExportingCoverLetter: boolean;
   activeAiFlow: AiFlowFeature | null;
   tailorRole: string;
   tailorCompany: string;
@@ -128,7 +129,7 @@ export interface BuilderAiWorkflowModalProps {
   tailorPreview: {
     jobTitleAfter: string;
     summary?: { current: string; better: string };
-    skills?: { current: string; better: string };
+    skills?: { current: string; better: string; groups?: { label: string; items: string[] }[] };
     experienceImprovements: { id: string; current: string; better: string }[];
     experienceAdditions: { id: string; better: string }[];
     contactFix?: { current: string; better: string };
@@ -139,6 +140,7 @@ export interface BuilderAiWorkflowModalProps {
   onApplyAtsImprovements: () => void;
   onApplyAtsImprovement: (improvement: AtsAuditImprovement) => void;
   onGenerateCoverLetter: () => void;
+  onDownloadCoverLetterPdf: () => void;
   onCopyCoverLetter: () => void;
 }
 

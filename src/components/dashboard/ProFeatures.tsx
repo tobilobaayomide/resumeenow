@@ -49,7 +49,7 @@ const ProFeatures: React.FC = () => {
 
                     <div className="space-y-2.5">
                       <div className="flex items-center justify-between text-[11px] text-gray-300 font-bold uppercase tracking-wider">
-                        <span>AI Credits</span>
+                        <span>AI Used Today</span>
                         <span className="text-white">{usedCredits} / {monthlyCredits}</span>
                       </div>
                       <div className="h-1.5 rounded-full bg-gray-800 overflow-hidden">

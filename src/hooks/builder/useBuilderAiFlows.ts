@@ -1,39 +1,40 @@
+import { useState } from 'react';
 import { toast } from 'sonner';
 import type { CoverLetterTone } from '../../types/builder';
+import {
+  mergeGroupedSkillSuggestionsIntoSection,
+  mergeSkillNamesIntoSection,
+  parseAiSkills,
+} from '../../lib/aiResumeApply';
+import {
+  appendDescriptionBullet,
+  replaceDescriptionBullet,
+} from '../../lib/descriptionBullets';
 import {
   analyzeAtsCompleteness,
   generateCoverLetterText,
   generateTailoredSummary,
 } from '../../lib/gemini';
+import { sanitizeAiPlainText } from '../../lib/aiText';
+import { downloadCoverLetterAsPdf } from '../../lib/builder/coverLetterExport';
 import { useBuilderStore } from '../../store/builderStore';
 import { getActiveSkillItems, normalizeSkillsSection } from '../../types/resume';
 import { usePlan } from '../../context/usePlan';
 import type { AtsAuditImprovement } from '../../types/builder';
 
-const parseAiSkills = (value: string): string[] =>
-  value
-    .split(',')
-    .map((item) => item.trim())
-    .filter(Boolean);
-
-const applyAiSkillsList = (value: string) =>
-  normalizeSkillsSection({
-    mode: 'list',
-    list: parseAiSkills(value),
-    groups: [],
-  });
-
 const applyAtsSkillImprovement = (
   skills: import('../../types/resume').ResumeData['skills'],
   improvement: AtsAuditImprovement,
 ) => {
+  const betterSkill = sanitizeAiPlainText(improvement.better);
+
   if (skills.mode === 'grouped' && skills.groups.length > 0) {
     return normalizeSkillsSection({
       mode: 'grouped',
-      list: skills.list.map((item) => (item === improvement.current ? improvement.better : item)),
+      list: skills.list.map((item) => (item === improvement.current ? betterSkill : item)),
       groups: skills.groups.map((group) => ({
         ...group,
-        items: group.items.map((item) => (item === improvement.current ? improvement.better : item)),
+        items: group.items.map((item) => (item === improvement.current ? betterSkill : item)),
       })),
     });
   }
@@ -41,11 +42,47 @@ const applyAtsSkillImprovement = (
   return normalizeSkillsSection({
     ...skills,
     mode: 'list',
-    list: skills.list.map((item) => (item === improvement.current ? improvement.better : item)),
+    list: skills.list.map((item) => (item === improvement.current ? betterSkill : item)),
   });
 };
 
+const formatMissingFields = (fields: string[]): string => {
+  if (fields.length === 1) return fields[0];
+  if (fields.length === 2) return `${fields[0]} and ${fields[1]}`;
+  return `${fields.slice(0, -1).join(', ')}, and ${fields.at(-1)}`;
+};
+
+const validateRequiredFields = (
+  fields: Array<{ label: string; value: string }>,
+): boolean => {
+  const missingFields = fields
+    .filter(({ value }) => !value.trim())
+    .map(({ label }) => label);
+
+  if (missingFields.length === 0) return true;
+
+  toast.error(`Add ${formatMissingFields(missingFields)} first.`);
+  return false;
+};
+
+const buildCoverLetterFileName = (
+  resumeTitle: string,
+  fullName: string,
+): string => {
+  const fallbackTitle =
+    resumeTitle.trim() && resumeTitle.trim() !== 'Untitled Resume'
+      ? resumeTitle.trim()
+      : '';
+  const owner = fullName.trim() || fallbackTitle || 'Cover Letter';
+  return owner === 'Cover Letter' ? owner : `${owner} - Cover Letter`;
+};
+
+const getErrorMessage = (error: unknown, fallback: string): string =>
+  error instanceof Error && error.message.trim() ? error.message : fallback;
+
 export function useBuilderAiFlows() {
+  const [isExportingCoverLetter, setIsExportingCoverLetter] = useState(false);
+  const title = useBuilderStore((store) => store.title);
   const resumeData = useBuilderStore((store) => store.resumeData);
   const setResumeData = useBuilderStore((store) => store.setResumeData);
   const isGenerating = useBuilderStore((store) => store.isGenerating);
@@ -78,18 +115,20 @@ export function useBuilderAiFlows() {
   const discardTailoredPreview = useBuilderStore((store) => store.discardTailoredPreview);
   const tailorPreview = useBuilderStore((store) => store.tailorPreview);
 
-  const { requestAccess, consumeCredit, refreshCredits } = usePlan();
+  const { requestAccess, refreshCredits } = usePlan();
 
   const generateAiTailorPreview = async () => {
-    if (!tailorRole.trim() || !tailorJobDescription.trim()) {
-      toast.error('Add target role and job description first.');
+    if (!validateRequiredFields([
+      { label: 'target role', value: tailorRole },
+      { label: 'job description', value: tailorJobDescription },
+    ])) {
       return;
     }
 
     if (!requestAccess('ai_tailor')) return;
 
     setIsGenerating(true);
-    const loadingToast = toast.loading('Tailoring resume with Gemini AI...');
+    const loadingToast = toast.loading('Tailoring resume...');
 
     try {
       const tailored = await generateTailoredSummary(
@@ -120,11 +159,10 @@ export function useBuilderAiFlows() {
         { id: loadingToast },
       );
 
-      await consumeCredit();
       // Do NOT close flow yet, wait for confirming preview
     } catch (error) {
       console.error(error);
-      toast.error(String(error), { id: loadingToast });
+      toast.error(getErrorMessage(error, 'Failed to tailor resume.'), { id: loadingToast });
     } finally {
       setIsGenerating(false);
       await refreshCredits();
@@ -135,29 +173,104 @@ export function useBuilderAiFlows() {
     const p = tailorPreview;
     if (!p) return;
 
+    const experienceImprovement =
+      type === 'experience' && id && current
+        ? p.experienceImprovements.find((item) => item.id === id && item.current === current)
+        : null;
+    const experienceAddition =
+      type === 'addition' && id
+        ? p.experienceAdditions.find((item) => item.id === id)
+        : null;
+
+    const canApply =
+      (type === 'summary' && Boolean(p.summary)) ||
+      (type === 'skills' && Boolean(p.skills)) ||
+      (type === 'experience' && Boolean(experienceImprovement)) ||
+      (type === 'addition' && Boolean(experienceAddition));
+
+    if (!canApply) return;
+
+    let didApply = type === 'summary' || type === 'skills';
+
     setResumeData((prev) => {
       const next = { ...prev };
       if (type === 'summary' && p.summary) {
-        next.summary = p.summary.better;
+        next.summary = sanitizeAiPlainText(p.summary.better);
       } else if (type === 'skills' && p.skills) {
-        next.skills = applyAiSkillsList(p.skills.better);
-      } else if (type === 'experience' && id && current) {
-        const imp = p.experienceImprovements.find(i => i.id === id && i.current === current);
-        if (imp) {
-          next.experience = next.experience.map(e => 
-            e.id === id ? { ...e, description: e.description.replace(imp.current, imp.better) } : e
-          );
-        }
-      } else if (type === 'addition' && id) {
-        const add = p.experienceAdditions.find(a => a.id === id);
-        if (add) {
-          next.experience = next.experience.map(e => 
-            e.id === id ? { ...e, description: (e.description ? e.description + '\n' : '') + add.better } : e
-          );
-        }
+        next.skills =
+          next.skills.mode === 'grouped' && p.skills.groups?.length
+            ? mergeGroupedSkillSuggestionsIntoSection(next.skills, p.skills.groups)
+            : mergeSkillNamesIntoSection(
+                next.skills,
+                parseAiSkills(p.skills.better),
+              );
+      } else if (type === 'experience' && id && experienceImprovement) {
+        next.experience = next.experience.map((item) =>
+          item.id !== id
+            ? item
+            : (() => {
+                const nextDescription = replaceDescriptionBullet(
+                  item.description,
+                  experienceImprovement.current,
+                  sanitizeAiPlainText(experienceImprovement.better),
+                );
+
+                if (!nextDescription) return item;
+                didApply = true;
+                return {
+                  ...item,
+                  description: nextDescription,
+                };
+              })(),
+        );
+      } else if (type === 'addition' && id && experienceAddition) {
+        next.experience = next.experience.map((item) =>
+          item.id !== id
+            ? item
+            : (() => {
+                didApply = true;
+                return {
+                  ...item,
+                  description: appendDescriptionBullet(
+                    item.description,
+                    sanitizeAiPlainText(experienceAddition.better),
+                  ),
+                };
+              })(),
+        );
       }
       return next;
     });
+
+    if (!didApply) {
+      toast.info('This AI suggestion no longer matches your current bullet. Run Tailor again.');
+      return;
+    }
+
+    setTailorPreview({
+      ...p,
+      summary: type === 'summary' ? undefined : p.summary,
+      skills: type === 'skills' ? undefined : p.skills,
+      experienceImprovements:
+        type === 'experience' && experienceImprovement
+          ? p.experienceImprovements.filter(
+              (item) =>
+                !(
+                  item.id === experienceImprovement.id &&
+                  item.current === experienceImprovement.current
+                ),
+            )
+          : p.experienceImprovements,
+      experienceAdditions:
+        type === 'addition' && experienceAddition
+          ? p.experienceAdditions.filter(
+              (item) =>
+                !(item.id === experienceAddition.id && item.better === experienceAddition.better),
+            )
+          : p.experienceAdditions,
+      contactFix: p.contactFix,
+    });
+
     toast.success('Strategy applied to resume!');
   };
   
@@ -171,9 +284,39 @@ export function useBuilderAiFlows() {
     discardTailoredPreview();
   };
 
+  const downloadCoverLetterPdf = async () => {
+    if (!coverLetterDraft.trim()) {
+      toast.error('Generate a draft first.');
+      return;
+    }
+
+    setIsExportingCoverLetter(true);
+
+    try {
+      await downloadCoverLetterAsPdf(
+        buildCoverLetterFileName(
+          title,
+          resumeData.personalInfo.fullName,
+        ),
+        coverLetterDraft,
+        resumeData.personalInfo,
+        coverRole,
+        coverCompany,
+        coverHiringManager,
+      );
+    } catch (error) {
+      console.error(error);
+      toast.error('Failed to export cover letter PDF.');
+    } finally {
+      setIsExportingCoverLetter(false);
+    }
+  };
+
   const generateCoverLetter = async () => {
-    if (!coverRole.trim() || !coverCompany.trim()) {
-      toast.error('Add role and company to generate your draft.');
+    if (!validateRequiredFields([
+      { label: 'role', value: coverRole },
+      { label: 'company', value: coverCompany },
+    ])) {
       return;
     }
 
@@ -194,11 +337,10 @@ export function useBuilderAiFlows() {
       );
 
       setCoverLetterDraft(draft.trim());
-      await consumeCredit();
       toast.success('Cover letter generated.', { id: loadingToast });
     } catch (error) {
       console.error(error);
-      toast.error('Failed to draft cover letter.', { id: loadingToast });
+      toast.error(getErrorMessage(error, 'Failed to draft cover letter.'), { id: loadingToast });
     } finally {
       setIsGenerating(false);
       await refreshCredits();
@@ -206,8 +348,9 @@ export function useBuilderAiFlows() {
   };
 
   const runAtsAudit = async () => {
-    if (!atsJobDescription.trim()) {
-      toast.error('Paste the job description to run ATS audit.');
+    if (!validateRequiredFields([
+      { label: 'job description', value: atsJobDescription },
+    ])) {
       return;
     }
 
@@ -219,11 +362,10 @@ export function useBuilderAiFlows() {
     try {
       const result = await analyzeAtsCompleteness(resumeData, atsRole, atsJobDescription);
       setAtsResult(result);
-      await consumeCredit();
       toast.success('ATS audit complete.', { id: loadingToast });
     } catch (error) {
       console.error(error);
-      toast.error('Failed processing audit.', { id: loadingToast });
+      toast.error(getErrorMessage(error, 'Failed processing audit.'), { id: loadingToast });
     } finally {
       setIsGenerating(false);
       await refreshCredits();
@@ -255,34 +397,28 @@ export function useBuilderAiFlows() {
     coverHiringManager,
     coverTone,
     coverLetterDraft,
+    isExportingCoverLetter,
 
     onClose: closeAiFlows,
 
-    onTailorRoleChange: (value: string) =>
-      setTailorFields(value, tailorCompany, tailorJobDescription),
-    onTailorCompanyChange: (value: string) =>
-      setTailorFields(tailorRole, value, tailorJobDescription),
-    onTailorJobDescriptionChange: (value: string) =>
-      setTailorFields(tailorRole, tailorCompany, value),
+    onTailorRoleChange: (value: string) => setTailorFields(value, tailorCompany, tailorJobDescription),
+    onTailorCompanyChange: (value: string) => setTailorFields(tailorRole, value, tailorJobDescription),
+    onTailorJobDescriptionChange: (value: string) => setTailorFields(tailorRole, tailorCompany, value),
 
     onAtsRoleChange: (value: string) => setAtsFields(value, atsJobDescription),
     onAtsJobDescriptionChange: (value: string) => setAtsFields(atsRole, value),
 
-    onCoverRoleChange: (value: string) =>
-      setCoverFields(value, coverCompany, coverHiringManager, coverTone),
-    onCoverCompanyChange: (value: string) =>
-      setCoverFields(coverRole, value, coverHiringManager, coverTone),
-    onCoverHiringManagerChange: (value: string) =>
-      setCoverFields(coverRole, coverCompany, value, coverTone),
-    onCoverToneChange: (value: CoverLetterTone) =>
-      setCoverFields(coverRole, coverCompany, coverHiringManager, value),
+    onCoverRoleChange: (value: string) => setCoverFields(value, coverCompany, coverHiringManager, coverTone),
+    onCoverCompanyChange: (value: string) => setCoverFields(coverRole, value, coverHiringManager, coverTone),
+    onCoverHiringManagerChange: (value: string) => setCoverFields(coverRole, coverCompany, value, coverTone),
+    onCoverToneChange: (value: CoverLetterTone) => setCoverFields(coverRole, coverCompany, coverHiringManager, value),
 
     onApplyTailor: generateAiTailorPreview,
     onConfirmTailor: confirmAiTailorPreview,
     onDiscardTailor: discardAiTailorPreview,
     onApplyTailorFix: onApplyTailorFix,
     tailorPreview,
-    
+
     onRunAtsAudit: runAtsAudit,
     onApplyAtsKeywordHints: () => {
       if (!atsResult || !atsResult.missingKeywords?.length) {
@@ -301,31 +437,9 @@ export function useBuilderAiFlows() {
           return prev;
         }
         const additions = newSkills.slice(0, 6);
-        if (prev.skills.mode === 'grouped') {
-          const firstGroup = prev.skills.groups[0] || {
-            id: 'skills-group-1',
-            label: 'Suggested',
-            items: [],
-          };
-          const groups = prev.skills.groups.length ? prev.skills.groups : [firstGroup];
-          return {
-            ...prev,
-            skills: {
-              mode: 'grouped',
-              list: [...getActiveSkillItems(prev.skills), ...additions],
-              groups: groups.map((g, idx) =>
-                idx === 0 ? { ...g, items: [...g.items, ...additions] } : g,
-              ),
-            },
-          };
-        }
         return {
           ...prev,
-          skills: {
-            ...prev.skills,
-            mode: 'list',
-            list: [...prev.skills.list, ...additions],
-          },
+          skills: mergeSkillNamesIntoSection(prev.skills, additions),
         };
       });
       toast.success('Missing keywords added to skills.');
@@ -341,12 +455,20 @@ export function useBuilderAiFlows() {
         atsResult.improvements?.forEach((imp) => {
           if (imp.type === 'bullet' && imp.id) {
             nextContext.experience = nextContext.experience.map((exp) =>
-              exp.id === imp.id 
-                ? { ...exp, description: exp.description.replace(imp.current, imp.better) } 
-                : exp
+              exp.id !== imp.id
+                ? exp
+                : {
+                    ...exp,
+                    description:
+                      replaceDescriptionBullet(
+                        exp.description,
+                        imp.current,
+                        sanitizeAiPlainText(imp.better),
+                      ) || exp.description,
+                  },
             );
           } else if (imp.type === 'skill') {
-             nextContext.skills = applyAtsSkillImprovement(nextContext.skills, imp);
+            nextContext.skills = applyAtsSkillImprovement(nextContext.skills, imp);
           }
         });
         return nextContext;
@@ -359,9 +481,17 @@ export function useBuilderAiFlows() {
         const nextContext = { ...prev };
         if (imp.type === 'bullet' && imp.id) {
           nextContext.experience = nextContext.experience.map((exp) =>
-            exp.id === imp.id 
-              ? { ...exp, description: exp.description.replace(imp.current, imp.better) } 
-              : exp
+            exp.id !== imp.id
+              ? exp
+              : {
+                  ...exp,
+                  description:
+                    replaceDescriptionBullet(
+                      exp.description,
+                      imp.current,
+                      sanitizeAiPlainText(imp.better),
+                    ) || exp.description,
+                },
           );
         } else if (imp.type === 'skill') {
           nextContext.skills = applyAtsSkillImprovement(nextContext.skills, imp);
@@ -371,6 +501,7 @@ export function useBuilderAiFlows() {
       toast.success('Improvement applied!');
     },
     onGenerateCoverLetter: generateCoverLetter,
+    onDownloadCoverLetterPdf: downloadCoverLetterPdf,
     onCopyCoverLetter: () => {
       if (!coverLetterDraft) {
         toast.error('Generate a draft first.');

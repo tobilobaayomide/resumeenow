@@ -4,30 +4,54 @@ import { useNavigate } from 'react-router-dom';
 import Navbar from '../components/landing/Navbar';
 import HeroSection from '../components/landing/HeroSection';
 import FeaturesSection from '../components/landing/FeaturesSection';
-import PlansSection from '../components/landing/PlansSection';
 import TemplatesSection from '../components/landing/TemplatesSection';
 import StepsSection from '../components/landing/StepsSection';
-import TrustedSection from '../components/landing/TrustedSection';
 import CtaSection from '../components/landing/CtaSection';
 import Footer from '../components/landing/Footer';
-import type { TemplateId } from '../types/resume';
+import { TEMPLATE_IDS, type TemplateId } from '../types/resume';
 import type { AuthModalMode } from '../types';
 
 const AuthModal = lazy(() => import('../components/AuthModal'));
+const PENDING_TEMPLATE_STORAGE_KEY = 'resumeenow:pending-template';
+
+const readPendingTemplate = (): TemplateId | null => {
+  if (typeof window === 'undefined') return null;
+
+  const storedTemplateId = window.sessionStorage.getItem(PENDING_TEMPLATE_STORAGE_KEY);
+  if (!storedTemplateId) return null;
+
+  return TEMPLATE_IDS.includes(storedTemplateId as TemplateId)
+    ? (storedTemplateId as TemplateId)
+    : null;
+};
+
+const syncPendingTemplate = (templateId: TemplateId | null) => {
+  if (typeof window === 'undefined') return;
+
+  if (!templateId) {
+    window.sessionStorage.removeItem(PENDING_TEMPLATE_STORAGE_KEY);
+    return;
+  }
+
+  window.sessionStorage.setItem(PENDING_TEMPLATE_STORAGE_KEY, templateId);
+};
 
 const LandingPage: React.FC = () => {
   const [authOpen, setAuthOpen] = useState(false);
   const [authMode, setAuthMode] = useState<AuthModalMode>("login");
-  const [pendingTemplate, setPendingTemplate] = useState<TemplateId | null>(null);
+  const [pendingTemplate, setPendingTemplate] = useState<TemplateId | null>(() => readPendingTemplate());
   const { user } = useAuth();
   const navigate = useNavigate();
 
   // Redirect if logged in
   React.useEffect(() => {
     if (user) {
-      if (pendingTemplate) {
-        navigate(`/builder/new?template=${pendingTemplate}`);
+      const nextTemplate = pendingTemplate ?? readPendingTemplate();
+
+      if (nextTemplate) {
         setPendingTemplate(null);
+        syncPendingTemplate(null);
+        navigate(`/builder/new?template=${nextTemplate}`);
         return;
       }
       navigate("/dashboard");
@@ -45,6 +69,7 @@ const LandingPage: React.FC = () => {
       return;
     }
     setPendingTemplate(templateId);
+    syncPendingTemplate(templateId);
     openAuth('signup');
   };
 
@@ -56,10 +81,8 @@ const LandingPage: React.FC = () => {
       />
       <HeroSection />
       <FeaturesSection />
-      <PlansSection />
       <TemplatesSection onSelectTemplate={handleTemplateSelect} />
       <StepsSection />
-      <TrustedSection />
       <CtaSection
         onPrimaryClick={() => {
           if (user) {
@@ -74,9 +97,12 @@ const LandingPage: React.FC = () => {
         {authOpen ? (
           <AuthModal
             open={authOpen}
-            onClose={() => {
+            onClose={(options) => {
               setAuthOpen(false);
-              if (!user) setPendingTemplate(null);
+              if (!user && !options?.preservePendingTemplate) {
+                setPendingTemplate(null);
+                syncPendingTemplate(null);
+              }
             }}
             mode={authMode}
           />

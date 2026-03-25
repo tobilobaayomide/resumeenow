@@ -242,7 +242,7 @@ const BuilderHeader: React.FC<BuilderHeaderProps> = ({
       </div>
 
       {/* ── RIGHT: Actions ───────────────────────────────────────────────── */}
-      <div className="flex items-center gap-2.5 shrink-0">
+      <div className="flex items-center gap-5 shrink-0">
 
         {/* Template Selector (Tablet Only) */}
         <select
@@ -265,7 +265,6 @@ const BuilderHeader: React.FC<BuilderHeaderProps> = ({
           >
             <FiZap size={12} />
             <span className="hidden lg:inline">Tailor</span>
-            {!isPro && <FiLock size={10} className="text-indigo-300 opacity-60 hidden lg:block" />}
           </button>
 
           <div className="w-px h-4 bg-indigo-200/50 mx-0.5" />
@@ -277,7 +276,6 @@ const BuilderHeader: React.FC<BuilderHeaderProps> = ({
           >
             <FiFileText size={12} />
             <span className="hidden lg:inline">Cover Letter</span>
-            {!isPro && <FiLock size={10} className="text-indigo-300 opacity-60 hidden lg:block" />}
           </button>
 
           <div className="w-px h-4 bg-indigo-200/50 mx-0.5" />
@@ -289,7 +287,6 @@ const BuilderHeader: React.FC<BuilderHeaderProps> = ({
           >
             <FiCheck size={12} />
             <span className="hidden lg:inline">Audit</span>
-            {!isPro && <FiLock size={10} className="text-indigo-300 opacity-60 hidden lg:block" />}
           </button>
         </div>
 
@@ -320,10 +317,10 @@ const BuilderHeader: React.FC<BuilderHeaderProps> = ({
         {!isPro && (
           <div className="hidden xl:flex flex-col items-end mr-1">
             <div className="text-[9px] font-bold text-gray-400 tracking-wider uppercase">
-              Daily AI Trial
+              AI Used Today
             </div>
             <div className="text-[11px] font-black text-indigo-600 tabular-nums">
-              {monthlyCredits - usedCredits} / {monthlyCredits} <span className="text-[9px] font-bold opacity-60">Uses</span>
+              {usedCredits} / {monthlyCredits} <span className="text-[9px] font-bold opacity-60">Used</span>
             </div>
           </div>
         )}
@@ -332,7 +329,7 @@ const BuilderHeader: React.FC<BuilderHeaderProps> = ({
         {!isPro && (
           <button
             onClick={() => onProAction('priority_templates', 'Pro Waitlist')}
-            className="hidden sm:flex items-center gap-1.5 px-3.5 h-9 rounded-xl text-[11px] font-black uppercase tracking-wider bg-linear-to-r from-amber-200 to-yellow-400 text-yellow-900 transition-all hover:shadow-sm"
+            className="hidden items-center gap-1.5 px-3.5 h-9 rounded-xl text-[11px] font-black uppercase tracking-wider bg-linear-to-r from-amber-200 to-yellow-400 text-yellow-900 transition-all hover:shadow-sm"
           >
             <FiStar size={12} className="fill-yellow-600" />
             <span>Join Pro Waitlist</span>

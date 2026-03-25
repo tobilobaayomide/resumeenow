@@ -35,7 +35,7 @@ const CTASection: React.FC<CtaSectionProps> = ({ onPrimaryClick }) => {
             <div className="w-full md:w-auto md:min-w-[320px]">
               <button
                 onClick={onPrimaryClick}
-                className="group w-full md:w-auto h-14 md:h-16 px-7 md:px-10 rounded-full bg-[#0F1115] text-white inline-flex items-center justify-center gap-3 text-base md:text-lg font-semibold shadow-[0_12px_30px_rgba(15,17,21,0.28)] transition-[transform,box-shadow,background-color] duration-300 ease-out hover:-translate-y-px hover:bg-[#11141a] hover:shadow-[0_15px_36px_rgba(15,17,21,0.30)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/40 focus-visible:ring-offset-2 motion-reduce:transition-none motion-reduce:transform-none"
+                className="group w-full md:w-auto h-14 md:h-16 px-7 md:px-10 rounded-full bg-[#0F1115] cursor-pointer text-white inline-flex items-center justify-center gap-3 text-base md:text-lg font-semibold shadow-[0_12px_30px_rgba(15,17,21,0.28)] transition-[transform,box-shadow,background-color] duration-300 ease-out hover:-translate-y-px hover:bg-[#11141a] hover:shadow-[0_15px_36px_rgba(15,17,21,0.30)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/40 focus-visible:ring-offset-2 motion-reduce:transition-none motion-reduce:transform-none"
               >
                 <span>Start Building Now</span>
                 <span className="w-9 h-9 md:w-10.5 md:h-10.5 rounded-full bg-white/16 inline-flex items-center justify-center transition-transform duration-300 ease-out group-hover:translate-x-0.5 motion-reduce:transition-none motion-reduce:transform-none">

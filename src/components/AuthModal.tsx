@@ -1,11 +1,26 @@
 import React, { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { FiX, FiMail, FiLock, FiUser, FiEye, FiEyeOff } from "react-icons/fi";
-import { AiOutlineApple } from "react-icons/ai";
+import { FiX, FiMail, FiLock, FiUser, FiEye, FiEyeOff, FiLinkedin } from "react-icons/fi";
 import { FcGoogle } from "react-icons/fc";
 import { supabase } from "../lib/supabase";
 import { toast } from "sonner";
 import type { AuthModalMode, AuthModalProps, OAuthProvider } from "../types/ui";
+
+const OAUTH_PROVIDERS: ReadonlyArray<{
+  provider: OAuthProvider;
+  label: string;
+  icon: React.ComponentType<{ size?: number }>;
+}> = [
+  {
+    provider: "google",
+    label: "Google",
+    icon: FcGoogle,
+  },
+  {
+    provider: "linkedin_oidc",
+    label: "LinkedIn",
+    icon: FiLinkedin,
+  },
+];
 
 const AuthModal: React.FC<AuthModalProps> = ({ open, onClose, mode }) => {
   const [currentMode, setCurrentMode] = useState<AuthModalMode>(mode);
@@ -15,8 +30,6 @@ const AuthModal: React.FC<AuthModalProps> = ({ open, onClose, mode }) => {
   const [loading, setLoading] = useState(false);
   const [oauthLoading, setOauthLoading] = useState<OAuthProvider | null>(null);
   const [showPassword, setShowPassword] = useState(false);
-
-  const navigate = useNavigate();
 
   useEffect(() => {
     setCurrentMode(mode);
@@ -72,8 +85,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ open, onClose, mode }) => {
 
         if (data.session) {
           toast.success("Account created successfully!");
-          onClose();
-          navigate("/dashboard");
+          onClose({ preservePendingTemplate: true });
           return;
         }
 
@@ -86,8 +98,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ open, onClose, mode }) => {
         });
         if (error) throw error;
         toast.success("Successfully logged in!");
-        onClose();
-        navigate("/dashboard");
+        onClose({ preservePendingTemplate: true });
       }
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "An error occurred";
@@ -108,7 +119,8 @@ const AuthModal: React.FC<AuthModalProps> = ({ open, onClose, mode }) => {
       });
       if (error) throw error;
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : `Failed to login with ${provider}`;
+      const providerLabel = OAUTH_PROVIDERS.find((item) => item.provider === provider)?.label ?? provider;
+      const message = err instanceof Error ? err.message : `Failed to login with ${providerLabel}`;
       toast.error(message);
     } finally {
       setOauthLoading(null);
@@ -141,7 +153,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ open, onClose, mode }) => {
   const isBusy = loading || oauthLoading !== null;
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-100 flex items-center justify-center p-4">
       <div
         className="absolute inset-0 bg-black/55 backdrop-blur-sm transition-opacity duration-300"
         onClick={closeModal}
@@ -157,7 +169,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ open, onClose, mode }) => {
         <button
           type="button"
           aria-label="Close auth modal"
-          className="absolute top-4 right-4 p-2 rounded-full text-gray-400 hover:text-gray-900 hover:bg-gray-100 transition-all duration-200 z-10 disabled:opacity-50"
+          className="absolute top-4 right-4 p-2 cursor-pointer rounded-full text-gray-400 hover:text-gray-900 transition-all duration-200 z-10 disabled:opacity-50"
           onClick={closeModal}
           disabled={isBusy}
         >
@@ -170,7 +182,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ open, onClose, mode }) => {
               ResumeNow Access
             </p>
             <h2 id="auth-modal-title" className="text-2xl font-semibold text-gray-900 tracking-tight">
-              {currentMode === "login" ? "Welcome back" : "Create your account"}
+              {currentMode === "login" ? "Welcome Back" : "Create Your Account"}
             </h2>
             <p id="auth-modal-description" className="text-gray-500 mt-2 text-sm font-light">
               {currentMode === "login"
@@ -179,39 +191,33 @@ const AuthModal: React.FC<AuthModalProps> = ({ open, onClose, mode }) => {
             </p>
           </div>
 
-          <div className="grid grid-cols-2 gap-2.5 mb-5">
-            <button
-              onClick={() => handleOAuthLogin("google")}
-              type="button"
-              disabled={isBusy}
-              className="h-11 flex items-center justify-center gap-2 border border-gray-200 rounded-xl hover:bg-gray-50 hover:border-gray-300 transition-all duration-200 disabled:opacity-60 disabled:cursor-not-allowed"
-            >
-              <FcGoogle size={19} />
-              <span className="text-sm font-medium text-gray-700">
-                {oauthLoading === "google" ? "Connecting..." : "Google"}
-              </span>
-            </button>
-            <button
-              type="button"
-              onClick={() => handleOAuthLogin("apple")}
-              disabled={isBusy}
-              className="h-11 flex items-center justify-center gap-2 border border-gray-200 rounded-xl hover:bg-gray-50 hover:border-gray-300 transition-all duration-200 disabled:opacity-60 disabled:cursor-not-allowed"
-            >
-              <AiOutlineApple size={19} />
-              <span className="text-sm font-medium text-gray-700">
-                {oauthLoading === "apple" ? "Connecting..." : "Apple"}
-              </span>
-            </button>
-          </div>
+          <>
+            <div className="grid grid-cols-2 gap-2.5 mb-5">
+              {OAUTH_PROVIDERS.map(({ provider, label, icon: Icon }) => (
+                <button
+                  key={provider}
+                  type="button"
+                  onClick={() => handleOAuthLogin(provider)}
+                  disabled={isBusy}
+                  className="h-11 flex items-center justify-center cursor-pointer gap-2 border border-gray-200 rounded-xl hover:bg-gray-50 hover:border-gray-300 transition-all duration-200 disabled:opacity-60 disabled:cursor-not-allowed"
+                >
+                  <Icon size={19} />
+                  <span className="text-sm font-medium text-gray-700">
+                    {oauthLoading === provider ? "Connecting..." : label}
+                  </span>
+                </button>
+              ))}
+            </div>
 
-          <div className="relative mb-5">
-            <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-gray-100" />
+            <div className="relative mb-5">
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t border-gray-100" />
+              </div>
+              <div className="relative flex justify-center text-xs uppercase">
+                <span className="bg-white px-3 text-gray-400 font-medium tracking-wider">Or continue with email</span>
+              </div>
             </div>
-            <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-white px-3 text-gray-400 font-medium tracking-wider">Or continue with email</span>
-            </div>
-          </div>
+          </>
 
           <form key={currentMode} onSubmit={handleAuth} className="flex flex-col gap-3.5 animate-in fade-in duration-200">
             {currentMode === "signup" && (
@@ -266,7 +272,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ open, onClose, mode }) => {
               <button
                 type="button"
                 onClick={() => setShowPassword((prev) => !prev)}
-                className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-700 transition-colors"
+                className="absolute inset-y-0 right-0 pr-3 flex items-center cursor-pointer text-gray-400 hover:text-gray-700 transition-colors"
                 tabIndex={-1}
                 aria-label={showPassword ? "Hide password" : "Show password"}
               >
@@ -280,7 +286,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ open, onClose, mode }) => {
                   type="button"
                   onClick={handleForgotPassword}
                   disabled={isBusy}
-                  className="text-xs font-medium text-gray-500 hover:text-gray-900 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                  className="text-xs font-medium text-gray-500 hover:text-gray-900 cursor-pointer transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
                 >
                   Forgot password?
                 </button>
@@ -290,7 +296,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ open, onClose, mode }) => {
             <button
               type="submit"
               disabled={isBusy}
-              className="mt-1 bg-black hover:bg-zinc-900 text-white rounded-xl py-3.5 font-semibold text-sm transition-all duration-200 shadow-[0_14px_30px_rgba(0,0,0,0.24)] hover:-translate-y-0.5 flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed"
+              className="mt-1 bg-black hover:bg-zinc-900 text-white rounded-xl cursor-pointer py-3.5 font-semibold text-sm transition-all duration-200 shadow-[0_14px_30px_rgba(0,0,0,0.24)] hover:-translate-y-0.5 flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed"
             >
               {loading ? "Processing..." : (currentMode === "login" ? "Sign In" : "Create Account")}
             </button>
@@ -301,7 +307,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ open, onClose, mode }) => {
               {currentMode === "login" ? "Don't have an account?" : "Already have an account?"}
               <button
                 type="button"
-                className="ml-2 text-gray-900 hover:text-gray-600 font-semibold transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                className="ml-2 text-gray-900 hover:text-gray-600 cursor-pointer font-semibold transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
                 onClick={toggleMode}
                 disabled={isBusy}
               >

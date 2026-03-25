@@ -4,6 +4,8 @@ import UpgradeModal from '../components/ui/UpgradeModal';
 import { PlanContext, type PlanTier, type ProFeature } from './plan-context';
 import { useAuth } from './useAuth';
 
+const FREE_DAILY_CREDIT_LIMIT = 5;
+const PRO_CREDIT_LIMIT = 100;
 
 const showToast = (type: 'success' | 'error', message: string): void => {
     void import('sonner')
@@ -22,7 +24,7 @@ export const PlanProvider: React.FC<{ children: React.ReactNode }> = ({ children
   
   const [tier, setTier] = useState<PlanTier>('free');
   const [usedCredits, setUsedCredits] = useState<number>(0);
-  const [dynamicFreeLimit, setDynamicFreeLimit] = useState<number>(10);
+  const [dynamicFreeLimit, setDynamicFreeLimit] = useState<number>(FREE_DAILY_CREDIT_LIMIT);
 
   const [upgradeOpen, setUpgradeOpen] = useState(false);
   const [upgradeOwnerId, setUpgradeOwnerId] = useState<string | null>(null);
@@ -35,7 +37,7 @@ export const PlanProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return {
         tier: 'free' as PlanTier,
         usedCredits: 0,
-        dynamicFreeLimit: 10,
+        dynamicFreeLimit: FREE_DAILY_CREDIT_LIMIT,
       };
     }
 
@@ -52,8 +54,7 @@ export const PlanProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const today = new Date().toISOString().split('T')[0];
       const isNewDay = lastResetDate && lastResetDateStr !== "" && lastResetDate !== today;
 
-      const hasHadFirstReset = (lastResetDate !== null && lastResetDateStr !== "");
-      const calculatedLimit = hasHadFirstReset ? 5 : 10;
+      const calculatedLimit = FREE_DAILY_CREDIT_LIMIT;
       const effectiveCredits = isNewDay ? 0 : (usageRes.data?.ai_credits_used ?? 0);
 
       return {
@@ -89,7 +90,7 @@ export const PlanProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [applyPlanSnapshot, currentUserId, fetchPlanSnapshot]);
 
   const isPro = tier === 'pro';
-  const monthlyCredits = isPro ? 100 : dynamicFreeLimit;
+  const monthlyCredits = isPro ? PRO_CREDIT_LIMIT : dynamicFreeLimit;
 
   const hasAccess = (feature: ProFeature): boolean => {
     void feature;
@@ -110,16 +111,18 @@ export const PlanProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const requestAccess = (feature: ProFeature): boolean => {
+    if (!currentUserId) {
+      void feature;
+      showToast('error', 'Login required to use AI tools.');
+      return false;
+    }
     if (hasAccess(feature)) return true;
     openUpgrade(feature);
     return false;
   };
 
   const consumeCredit = async () => {
-    if (isPro || !currentUserId) return;
-    
-    // Optimistic UI update, followed by a true fetch to sync with DB
-    setUsedCredits(prev => prev + 1);
+    if (!currentUserId) return;
     const snapshot = await fetchPlanSnapshot(currentUserId);
     if (snapshot) {
       applyPlanSnapshot(snapshot);
