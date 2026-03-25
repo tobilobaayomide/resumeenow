@@ -11,10 +11,11 @@ Place your recorded product loops in this folder using these exact filenames:
 Recommended settings:
 
 - 5-8 seconds
-- 1280px width
+- 1920px width
 - 24fps
 - no audio
 - H.264 `.mp4` (`yuv420p`)
+- target visually clean UI capture quality; avoid aggressive compression
 
 Quick conversion command:
 

@@ -23,14 +23,14 @@ ffmpeg -y \
   -ss "$START" \
   -t "$DURATION" \
   -i "$INPUT" \
-  -vf "fps=24,scale=1280:-2:flags=lanczos" \
+  -vf "fps=24,scale=1920:-2:flags=lanczos" \
   -an \
   -c:v libx264 \
   -pix_fmt yuv420p \
   -profile:v high \
   -level 4.0 \
-  -crf 26 \
-  -preset veryfast \
+  -crf 20 \
+  -preset medium \
   -movflags +faststart \
   "$OUTPUT"
 
