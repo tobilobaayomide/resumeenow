@@ -1,10 +1,19 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage, type StateStorage } from 'zustand/middleware';
+import {
+  mergeGroupedSkillSuggestionsIntoSection,
+  mergeSkillNamesIntoSection,
+  parseAiSkills,
+} from '../lib/aiResumeApply';
+import { sanitizeAiPlainText } from '../lib/aiText';
+import {
+  appendDescriptionBullet,
+  replaceDescriptionBullet,
+} from '../lib/descriptionBullets';
 import type { AtsAuditResult, CoverLetterTone } from '../types/builder';
 import {
   DEFAULT_TEMPLATE_ID,
   INITIAL_RESUME_DATA,
-  normalizeSkillsSection,
   normalizeTemplateId,
   type ResumeData,
   type TemplateId,
@@ -33,7 +42,11 @@ type BuilderState = {
   tailorPreview: {
     jobTitleAfter: string;
     summary?: { current: string; better: string };
-    skills?: { current: string; better: string };
+    skills?: {
+      current: string;
+      better: string;
+      groups?: { label: string; items: string[] }[];
+    };
     experienceImprovements: { id: string; current: string; better: string }[];
     experienceAdditions: { id: string; better: string }[];
     contactFix?: { current: string; better: string };
@@ -66,12 +79,6 @@ type BuilderActions = {
 type BuilderStore = BuilderState & BuilderActions;
 
 const storageTimers: Record<string, ReturnType<typeof setTimeout>> = {};
-
-const parseAiSkills = (value: string): string[] =>
-  value
-    .split(',')
-    .map((item) => item.trim())
-    .filter(Boolean);
 
 /**
  * Custom storage that debounces writes to localStorage
@@ -200,31 +207,54 @@ export const useBuilderStore = create<BuilderStore>()(
         const p = state.tailorPreview;
 
         // Apply Job Title
-        nextData.personalInfo = { ...nextData.personalInfo, jobTitle: p.jobTitleAfter };
+        nextData.personalInfo = {
+          ...nextData.personalInfo,
+          jobTitle: sanitizeAiPlainText(p.jobTitleAfter),
+        };
 
         // Apply Summary
-        if (p.summary) nextData.summary = p.summary.better;
+        if (p.summary) nextData.summary = sanitizeAiPlainText(p.summary.better);
 
         // Apply Skills
         if (p.skills) {
-           nextData.skills = normalizeSkillsSection({
-             mode: 'list',
-             list: parseAiSkills(p.skills.better),
-             groups: [],
-           });
+           nextData.skills =
+             nextData.skills.mode === 'grouped' && p.skills.groups?.length
+               ? mergeGroupedSkillSuggestionsIntoSection(nextData.skills, p.skills.groups)
+               : mergeSkillNamesIntoSection(
+                   nextData.skills,
+                   parseAiSkills(p.skills.better),
+                 );
         }
 
         // Apply Experience Improvements
         p.experienceImprovements.forEach((imp) => {
            nextData.experience = nextData.experience.map(e => 
-             e.id === imp.id ? { ...e, description: e.description.replace(imp.current, imp.better) } : e
+             e.id === imp.id
+               ? {
+                   ...e,
+                   description:
+                     replaceDescriptionBullet(
+                       e.description,
+                       imp.current,
+                       sanitizeAiPlainText(imp.better),
+                     ) || e.description,
+                 }
+               : e
            );
         });
 
         // Apply Additions
         p.experienceAdditions.forEach((add) => {
            nextData.experience = nextData.experience.map(e => 
-             e.id === add.id ? { ...e, description: e.description + '\n' + add.better } : e
+             e.id === add.id
+               ? {
+                   ...e,
+                   description: appendDescriptionBullet(
+                     e.description,
+                     sanitizeAiPlainText(add.better),
+                   ),
+                 }
+               : e
            );
         });
 

@@ -1,6 +1,7 @@
 import React from "react";
 import {
   FiCopy,
+  FiDownload,
   FiX,
   FiZap,
   FiCheck,
@@ -13,6 +14,23 @@ import {
   FiInfo,
 } from "react-icons/fi";
 import type { BuilderAiWorkflowModalProps } from "../../../types/builder";
+
+const dedupeKeywords = (keywords: string[]) => {
+  const seen = new Set<string>();
+
+  return keywords.reduce<string[]>((result, keyword) => {
+    const cleanKeyword = keyword.trim();
+    const normalizedKeyword = cleanKeyword.toLowerCase();
+
+    if (!cleanKeyword || seen.has(normalizedKeyword)) {
+      return result;
+    }
+
+    seen.add(normalizedKeyword);
+    result.push(cleanKeyword);
+    return result;
+  }, []);
+};
 
 const BuilderAiWorkflowModal: React.FC<BuilderAiWorkflowModalProps> = ({
   activeAiFlow,
@@ -45,8 +63,10 @@ const BuilderAiWorkflowModal: React.FC<BuilderAiWorkflowModalProps> = ({
   onApplyAtsImprovements,
   onApplyTailorFix,
   onGenerateCoverLetter,
+  onDownloadCoverLetterPdf,
   onCopyCoverLetter,
   isGenerating,
+  isExportingCoverLetter,
   tailorPreview,
 }) => {
   if (!activeAiFlow) return null;
@@ -67,10 +87,93 @@ const BuilderAiWorkflowModal: React.FC<BuilderAiWorkflowModalProps> = ({
   };
 
   const activeConfig = headerConfig[activeAiFlow];
+  const keywordAlignment = tailorPreview?.keywordAlignment || {
+    matched: [],
+    injected: [],
+    stillMissing: [],
+  };
+  const matchedKeywords = dedupeKeywords(keywordAlignment.matched);
+  const matchedKeywordKeys = new Set(
+    matchedKeywords.map((keyword) => keyword.toLowerCase()),
+  );
+  const injectedKeywords = dedupeKeywords(
+    keywordAlignment.injected.filter(
+      (keyword) => !matchedKeywordKeys.has(keyword.trim().toLowerCase()),
+    ),
+  );
+  const coveredKeywordKeys = new Set(
+    [...matchedKeywords, ...injectedKeywords].map((keyword) =>
+      keyword.toLowerCase(),
+    ),
+  );
+  const missingKeywords = dedupeKeywords(
+    keywordAlignment.stillMissing.filter(
+      (keyword) => !coveredKeywordKeys.has(keyword.trim().toLowerCase()),
+    ),
+  );
+  const hasActionableTailorSuggestions = Boolean(
+    tailorPreview?.summary ||
+      tailorPreview?.skills ||
+      tailorPreview?.experienceImprovements.length ||
+      tailorPreview?.experienceAdditions.length ||
+      tailorPreview?.contactFix,
+  );
+  const hasKeywordInsights = Boolean(
+    matchedKeywords.length || injectedKeywords.length || missingKeywords.length,
+  );
+  const keywordCoverageSummary = [
+    matchedKeywords.length
+      ? `${matchedKeywords.length} already in your resume`
+      : null,
+    injectedKeywords.length
+      ? `${injectedKeywords.length} added in the AI rewrite`
+      : null,
+    missingKeywords.length ? `${missingKeywords.length} still missing` : null,
+  ]
+    .filter(Boolean)
+    .join(" / ");
+  const keywordSections = [
+    {
+      key: "matched",
+      title: "Already in resume",
+      description: "Terms the AI found in your current content.",
+      emptyLabel: "No strong resume matches were detected yet.",
+      items: matchedKeywords,
+      icon: <FiCheck size={12} className="text-emerald-600" />,
+      panelClass: "border-emerald-100 bg-emerald-50/70",
+      countClass: "bg-white text-emerald-700 border border-emerald-200",
+      chipClass:
+        "bg-white text-emerald-700 border border-emerald-200 shadow-[0_1px_0_rgba(16,185,129,0.08)]",
+    },
+    {
+      key: "injected",
+      title: "Added by AI",
+      description: "Keywords introduced in the suggested rewrite.",
+      emptyLabel: "The rewrite did not add extra role terms.",
+      items: injectedKeywords,
+      icon: <FiZap size={12} className="text-indigo-600" />,
+      panelClass: "border-indigo-100 bg-indigo-50/70",
+      countClass: "bg-white text-indigo-700 border border-indigo-200",
+      chipClass:
+        "bg-white text-indigo-700 border border-indigo-200 shadow-[0_1px_0_rgba(99,102,241,0.08)]",
+    },
+    {
+      key: "missing",
+      title: "Still missing",
+      description: "Important terms to work in naturally if they are true.",
+      emptyLabel: "No obvious keyword gaps were flagged.",
+      items: missingKeywords,
+      icon: <FiAlertCircle size={12} className="text-amber-600" />,
+      panelClass: "border-amber-100 bg-amber-50/70",
+      countClass: "bg-white text-amber-700 border border-amber-200",
+      chipClass:
+        "bg-white text-amber-700 border border-amber-200 shadow-[0_1px_0_rgba(245,158,11,0.08)]",
+    },
+  ];
 
   return (
     <div
-      className="fixed inset-0 z-[100] bg-slate-900/30 backdrop-blur-sm flex items-center justify-center p-4 sm:p-6 print:hidden animate-in fade-in duration-200"
+      className="fixed inset-0 z-100 bg-slate-900/30 backdrop-blur-sm flex items-center justify-center p-4 sm:p-6 print:hidden animate-in fade-in duration-200"
       onClick={(event) => {
         if (event.target === event.currentTarget) onClose();
       }}
@@ -190,13 +293,27 @@ const BuilderAiWorkflowModal: React.FC<BuilderAiWorkflowModalProps> = ({
                       <FiZap size={14} className="text-amber-500" />
                       <h4 className="text-[12px] font-black uppercase tracking-widest text-indigo-600">Tailor Strategy Board</h4>
                     </div>
-                    <button 
-                      onClick={onConfirmTailor}
-                      className="h-8 px-4 rounded-full bg-indigo-600 text-white text-[11px] font-black hover:bg-indigo-700 transition-all shadow-md shadow-indigo-100 flex items-center gap-2"
-                    >
-                      Apply All Suggested Fixes
-                    </button>
+                    {hasActionableTailorSuggestions && (
+                      <button 
+                        onClick={onConfirmTailor}
+                        className="h-8 px-4 rounded-full bg-indigo-600 text-white text-[11px] font-black hover:bg-indigo-700 transition-all shadow-md shadow-indigo-100 flex items-center gap-2"
+                      >
+                        Apply All Suggested Fixes
+                      </button>
+                    )}
                   </div>
+
+                  {!hasActionableTailorSuggestions && hasKeywordInsights && (
+                    <div className="rounded-2xl border border-indigo-100 bg-indigo-50 px-4 py-3 text-[12px] font-medium text-indigo-700">
+                      No direct text edits are pending. Review the keyword coverage below before you finalize the resume.
+                    </div>
+                  )}
+
+                  {!hasActionableTailorSuggestions && !hasKeywordInsights && (
+                    <div className="rounded-2xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-[12px] font-medium text-emerald-700">
+                      All visible tailor suggestions have been applied.
+                    </div>
+                  )}
 
                   {/* Summary Fix */}
                   {tailorPreview.summary && (
@@ -289,16 +406,67 @@ const BuilderAiWorkflowModal: React.FC<BuilderAiWorkflowModalProps> = ({
                   ))}
 
                   {/* Keyword Alignment */}
-                  <div className="p-4 rounded-2xl bg-gray-50 border border-gray-100 space-y-3">
-                     <h5 className="text-[10px] font-black text-gray-400 uppercase tracking-widest">ATS Keyword Alignment</h5>
-                     <div className="flex flex-wrap gap-2">
-                        {tailorPreview.keywordAlignment.matched.map(k => (
-                          <span key={k} className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 text-[10px] font-bold">● {k}</span>
+                  <div className="rounded-2xl border border-slate-200 bg-white overflow-hidden shadow-xs">
+                    <div className="p-4 space-y-4">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="space-y-1">
+                          <h5 className="text-[10px] font-black text-gray-400 uppercase tracking-widest">ATS Keyword Alignment</h5>
+                          <p className="text-[11.5px] text-gray-500 leading-relaxed">
+                            {keywordCoverageSummary || "The AI did not surface keyword coverage details for this role yet."}
+                          </p>
+                        </div>
+                        {hasKeywordInsights && (
+                          <span className="shrink-0 rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[10px] font-black uppercase tracking-wide text-slate-600">
+                            {matchedKeywords.length + injectedKeywords.length + missingKeywords.length} terms
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="grid gap-3 md:grid-cols-3">
+                        {keywordSections.map((section) => (
+                          <div
+                            key={section.key}
+                            className={`rounded-2xl border p-3 space-y-3 ${section.panelClass}`}
+                          >
+                            <div className="flex items-start justify-between gap-3">
+                              <div className="space-y-1">
+                                <div className="flex items-center gap-2">
+                                  {section.icon}
+                                  <p className="text-[11px] font-black text-gray-900">
+                                    {section.title}
+                                  </p>
+                                </div>
+                                <p className="text-[10.5px] leading-relaxed text-gray-500">
+                                  {section.description}
+                                </p>
+                              </div>
+                              <span
+                                className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-black ${section.countClass}`}
+                              >
+                                {section.items.length}
+                              </span>
+                            </div>
+
+                            {section.items.length > 0 ? (
+                              <div className="flex flex-wrap gap-2">
+                                {section.items.map((keyword) => (
+                                  <span
+                                    key={`${section.key}-${keyword}`}
+                                    className={`px-2 py-1 rounded-full text-[10px] font-bold ${section.chipClass}`}
+                                  >
+                                    {keyword}
+                                  </span>
+                                ))}
+                              </div>
+                            ) : (
+                              <p className="text-[10.5px] leading-relaxed text-gray-500">
+                                {section.emptyLabel}
+                              </p>
+                            )}
+                          </div>
                         ))}
-                        {tailorPreview.keywordAlignment.injected.map(k => (
-                          <span key={k} className="px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-700 text-[10px] font-bold">✨ {k}</span>
-                        ))}
-                     </div>
+                      </div>
+                    </div>
                   </div>
                 </div>
               )}
@@ -375,7 +543,7 @@ const BuilderAiWorkflowModal: React.FC<BuilderAiWorkflowModalProps> = ({
                   <div className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm overflow-hidden relative">
                     <div className="relative z-10 flex flex-col md:flex-row gap-8 items-center md:items-start">
                        {/* Circular Score */}
-                       <div className="relative flex-shrink-0">
+                       <div className="relative shrink-0">
                           <svg className="w-32 h-32 transform -rotate-90">
                              <circle cx="64" cy="64" r="58" stroke="currentColor" strokeWidth="6" fill="transparent" className="text-gray-50" />
                              <circle 
@@ -616,12 +784,22 @@ const BuilderAiWorkflowModal: React.FC<BuilderAiWorkflowModalProps> = ({
                 <div className="animate-in slide-in-from-bottom-2 fade-in duration-300 pt-2">
                   <label className="block text-[10.5px] font-bold text-gray-500 uppercase tracking-wide mb-2 justify-between items-end">
                     <span>Generated Draft</span>
-                    <button
-                      onClick={onCopyCoverLetter}
-                      className="flex items-center gap-1.5 text-[10px] text-blue-600 hover:text-blue-800"
-                    >
-                      <FiCopy size={11} /> Copy
-                    </button>
+                    <div className="flex items-center gap-3">
+                      <button
+                        onClick={onCopyCoverLetter}
+                        className="flex items-center gap-1.5 text-[10px] text-blue-600 hover:text-blue-800"
+                      >
+                        <FiCopy size={11} /> Copy
+                      </button>
+                      <button
+                        onClick={onDownloadCoverLetterPdf}
+                        disabled={isExportingCoverLetter}
+                        className="flex items-center gap-1.5 text-[10px] text-blue-600 hover:text-blue-800 disabled:cursor-not-allowed disabled:text-blue-300"
+                      >
+                        <FiDownload size={11} />
+                        {isExportingCoverLetter ? 'Preparing PDF...' : 'Download PDF'}
+                      </button>
+                    </div>
                   </label>
                   <textarea
                     value={coverLetterDraft}
@@ -680,13 +858,23 @@ const BuilderAiWorkflowModal: React.FC<BuilderAiWorkflowModalProps> = ({
           )}
 
           {activeAiFlow === "cover_letter" && coverLetterDraft && (
-            <button
-              onClick={onCopyCoverLetter}
-              className="h-10 px-6 rounded-xl bg-blue-600 text-white text-[13px] font-bold hover:bg-blue-700 hover:-translate-y-px shadow-sm transition-all flex items-center gap-2"
-            >
-              <FiCopy size={14} />
-              Copy to Clipboard
-            </button>
+            <>
+              <button
+                onClick={onCopyCoverLetter}
+                className="h-10 px-5 rounded-xl border border-blue-100 bg-blue-50 text-[13px] font-bold text-blue-700 hover:bg-blue-100 transition-all flex items-center gap-2"
+              >
+                <FiCopy size={14} />
+                Copy
+              </button>
+              <button
+                onClick={onDownloadCoverLetterPdf}
+                disabled={isExportingCoverLetter}
+                className="h-10 px-6 rounded-xl bg-blue-600 text-white text-[13px] font-bold hover:bg-blue-700 hover:-translate-y-px shadow-sm transition-all flex items-center gap-2 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0"
+              >
+                <FiDownload size={14} />
+                {isExportingCoverLetter ? "Preparing PDF..." : "Download PDF"}
+              </button>
+            </>
           )}
         </div>
       </div>
