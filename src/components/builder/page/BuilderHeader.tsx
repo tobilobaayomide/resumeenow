@@ -9,7 +9,6 @@ import {
   FiEye,
   FiFileText,
   FiLayout,
-  FiLock,
   FiStar,
   FiZap,
 } from 'react-icons/fi';
@@ -174,7 +173,6 @@ const BuilderHeader: React.FC<BuilderHeaderProps> = ({
           >
             <FiZap size={13} />
             <span>AI</span>
-            {!isPro && <FiLock size={10} className={isMobileAiMenuOpen ? 'text-white/70' : 'text-indigo-300'} />}
             <FiChevronDown size={12} className={isMobileAiMenuOpen ? 'rotate-180 transition-transform' : 'transition-transform'} />
           </button>
         </div>
@@ -465,7 +463,6 @@ const BuilderHeader: React.FC<BuilderHeaderProps> = ({
                       <span className="min-w-0 flex-1">
                         <span className="flex items-center gap-1.5 text-[13px] font-bold text-gray-900">
                           {item.label}
-                          {!isPro && <FiLock size={11} className="text-indigo-300" />}
                         </span>
                         <span className="mt-0.5 block text-[11px] leading-relaxed text-gray-500">
                           {item.description}
