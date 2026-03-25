@@ -86,8 +86,6 @@ const DashboardView: React.FC<DashboardViewProps> = ({
     <div className="min-h-screen bg-[#FDFDFD] flex font-sans text-[#1a1a1a] selection:bg-black selection:text-white">
       <Sidebar />
       <div className="flex-1 flex flex-col min-h-screen relative w-full overflow-hidden">
-        <div className="fixed inset-0 pointer-events-none opacity-[0.03] z-50 bg-[url('https://grainy-gradients.vercel.app/noise.svg')]"></div>
-
         <DashboardHeader
           dateLabel={dateLabel}
           searchQuery={searchQuery}
