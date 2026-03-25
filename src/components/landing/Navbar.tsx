@@ -38,9 +38,9 @@ const Navbar: React.FC<NavbarProps> = ({ onLogin, onSignup }) => {
             : "bg-transparent border-b border-transparent"
         }`}
       >
-        <div className="max-w-360 mx-auto md:py-10 h-20 flex items-center justify-between">
+        <div className="max-w-360 mx-auto md:py-10 h-20 px-8 flex items-center justify-between">
           {/* Logo */}
-         <div className="h-24 flex items-center px-8">
+         <div className="h-24 flex items-center">
                     <div 
                         className="flex items-center gap-3 cursor-pointer group opacity-90 hover:opacity-100 transition-opacity" 
                         onClick={() => navigate('/')}
@@ -106,7 +106,7 @@ const Navbar: React.FC<NavbarProps> = ({ onLogin, onSignup }) => {
 
           {/* Mobile Menu Button */}
           <button
-            className="md:hidden text-gray-700 focus:outline-none p-2 mr-5"
+            className="md:hidden text-gray-700 focus:outline-none p-2 "
             onClick={() => setMenuOpen(!menuOpen)}
             aria-label="Toggle menu"
           >

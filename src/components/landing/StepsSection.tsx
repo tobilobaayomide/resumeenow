@@ -1,15 +1,22 @@
 import React, { useEffect, useRef, useState } from "react";
 import {
+  LANDING_FALLBACK_DEMO_VIDEO_URL,
   LANDING_STEP_ITEMS,
   LANDING_STEP_ROTATION_MS,
 } from "../../data/landing";
+import { useEnterViewport } from '../../hooks/useEnterViewport';
 
 const SWIPE_THRESHOLD_PX = 42;
 
 const StepsSection: React.FC = () => {
   const [active, setActive] = useState(0);
   const [cycleSeed, setCycleSeed] = useState(0);
+  const [videoSource, setVideoSource] = useState(LANDING_STEP_ITEMS[0]?.video ?? LANDING_FALLBACK_DEMO_VIDEO_URL);
+  const [videoLoaded, setVideoLoaded] = useState(false);
   const touchStartXRef = useRef<number | null>(null);
+  const mediaRef = useRef<HTMLDivElement | null>(null);
+  const activeStep = LANDING_STEP_ITEMS[active];
+  const shouldLoadVideo = useEnterViewport(mediaRef);
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -20,6 +27,11 @@ const StepsSection: React.FC = () => {
       window.clearTimeout(timer);
     };
   }, [active, cycleSeed]);
+
+  useEffect(() => {
+    setVideoLoaded(false);
+    setVideoSource(activeStep?.video ?? LANDING_FALLBACK_DEMO_VIDEO_URL);
+  }, [activeStep]);
 
   const handleStepClick = (index: number) => {
     setActive(index);
@@ -51,6 +63,13 @@ const StepsSection: React.FC = () => {
     handleStepSwipe(deltaX < 0 ? 1 : -1);
   };
 
+  const handleVideoError = () => {
+    if (videoSource !== LANDING_FALLBACK_DEMO_VIDEO_URL) {
+      setVideoLoaded(false);
+      setVideoSource(LANDING_FALLBACK_DEMO_VIDEO_URL);
+    }
+  };
+
   return (
     <section className="py-24 bg-white overflow-hidden relative" id="steps">
       <style>{`
@@ -74,23 +93,41 @@ const StepsSection: React.FC = () => {
         </div>
 
         <div
-          className="relative w-full aspect-4/3 md:aspect-21/9 bg-white rounded-xl md:rounded-3xl overflow-hidden shadow-[0_28px_70px_rgba(0,0,0,0.16)] border border-black/10 mb-10 md:mb-14"
+          ref={mediaRef}
+          className="relative w-full min-h-54 sm:min-h-100 md:min-h-110 lg:min-h-172 xl:min-h-196 bg-white rounded-xl md:rounded-3xl overflow-hidden shadow-[0_28px_70px_rgba(0,0,0,0.16)] border border-black/10 mb-10 md:mb-14"
           onTouchStart={handleTouchStart}
           onTouchEnd={handleTouchEnd}
           style={{ touchAction: "pan-y" }}
         >
-          {/* Placeholder until loops are ready */}
-          <div className="absolute inset-0 flex items-center justify-center bg-zinc-900 overflow-hidden">
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.05)_0%,transparent_100%)] animate-pulse" />
-            <div className="flex flex-col items-center gap-4 opacity-25">
-              <span className="text-6xl font-black text-white/10 select-none">
-                {LANDING_STEP_ITEMS[active].number}
-              </span>
-              <p className="text-[10px] uppercase tracking-widest text-white/40 font-mono pb-2">
-                Visualizing "{LANDING_STEP_ITEMS[active].title}"
-              </p>
-            </div>
+          <div className="absolute inset-0 bg-zinc-900">
+            <video
+              key={videoSource}
+              className={`h-full w-full object-contain transition-opacity duration-500 ${
+                videoLoaded ? "opacity-100" : "opacity-0"
+              }`}
+              src={shouldLoadVideo ? videoSource : undefined}
+              autoPlay
+              loop
+              muted
+              playsInline
+              preload={shouldLoadVideo ? "metadata" : "none"}
+              onLoadedData={() => setVideoLoaded(true)}
+              onError={handleVideoError}
+            />
           </div>
+          {!videoLoaded && (
+            <div className="absolute inset-0 flex items-center justify-center bg-zinc-900 overflow-hidden">
+              <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.05)_0%,transparent_100%)] animate-pulse" />
+              <div className="flex flex-col items-center gap-4 opacity-25">
+                <span className="text-6xl font-black text-white/10 select-none">
+                  {activeStep.number}
+                </span>
+                <p className="text-[10px] uppercase tracking-widest text-white/40 font-mono pb-2">
+                  Visualizing "{activeStep.title}"
+                </p>
+              </div>
+            </div>
+          )}
           <div className="absolute inset-0 bg-linear-to-tr from-black/10 via-transparent to-transparent pointer-events-none" />
         </div>
 
@@ -106,13 +143,13 @@ const StepsSection: React.FC = () => {
               ></div>
             </div>
             <span className="block text-sm font-bold tracking-widest text-black mb-2 font-mono">
-              {LANDING_STEP_ITEMS[active].number} <span className="text-gray-400">/ 03</span>
+              {activeStep.number} <span className="text-gray-400">/ 03</span>
             </span>
             <h3 className="text-2xl text-gray-900 mb-2 font-medium tracking-[-0.01em]">
-              {LANDING_STEP_ITEMS[active].title}
+              {activeStep.title}
             </h3>
             <p className="text-gray-600 leading-relaxed font-light">
-              {LANDING_STEP_ITEMS[active].description}
+              {activeStep.description}
             </p>
           </div>
         </div>
@@ -123,7 +160,7 @@ const StepsSection: React.FC = () => {
               type="button"
               onClick={() => handleStepClick(idx)}
               className={`
-                relative  border p-5 pt-8 text-left transition-all duration-300
+                relative  border p-5 pt-8 text-left transition-all duration-300 cursor-pointer
                 ${active === idx
                   ? "opacity-100 bg-white border-black/15 shadow-[0_12px_26px_rgba(0,0,0,0.08)]"
                   : "opacity-75 border-transparent hover:opacity-100 hover:border-black/10 hover:bg-zinc-50/40"}

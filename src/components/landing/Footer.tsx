@@ -42,7 +42,7 @@ const Footer: React.FC = () => {
                 />
                 <button
                   type="button"
-                  className="h-10 w-12 rounded-full bg-white/12 text-white/80 hover:text-white hover:bg-white/20 transition-colors duration-300 inline-flex items-center justify-center"
+                  className="h-10 w-12 rounded-full bg-white/12 text-white/80 cursor-pointer hover:text-white hover:bg-white/20 transition-colors duration-300 inline-flex items-center justify-center"
                   aria-label="Submit email"
                 >
                   <FiArrowRight size={18} />
@@ -122,7 +122,7 @@ const Footer: React.FC = () => {
             </ul>
           </div>
 
-          <div className="hidden md:block col-span-2 md:col-span-2">
+          <div className="col-span-1 md:col-span-2">
             <h4 className="text-[11px] uppercase tracking-[0.2em] mb-4 text-white/60">Legal</h4>
             <ul className="space-y-2.5">
               {LANDING_FOOTER_LEGAL_LINKS.map((item) => (
@@ -143,10 +143,6 @@ const Footer: React.FC = () => {
           <p className="text-white/45 text-xs">
             &copy; {new Date().getFullYear()} ResumeeNow Inc. All rights reserved.
           </p>
-          <div className="hidden md:flex gap-5">
-            <a href="#" className="text-white/45 hover:text-white text-xs transition-colors">Sitemap</a>
-            <a href="#" className="text-white/45 hover:text-white text-xs transition-colors">Cookies</a>
-          </div>
         </div>
       </div>
 

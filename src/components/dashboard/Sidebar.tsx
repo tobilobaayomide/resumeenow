@@ -36,7 +36,7 @@ const Sidebar: React.FC = () => {
         return (
             <button
                 onClick={() => navigate(item.path)}
-                className={`group w-full flex items-center gap-3 px-3 py-2.5 text-sm font-medium transition-all duration-200 rounded-xl border ${
+                className={`group w-full flex items-center gap-3 px-3 py-2.5 text-sm font-medium transition-all cursor-pointer duration-200 rounded-xl border ${
                     active 
                         ? 'text-white bg-white/6 border-white/10 shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]' 
                         : 'text-zinc-500 border-transparent hover:text-zinc-200 hover:bg-white/3'
@@ -159,7 +159,7 @@ const Sidebar: React.FC = () => {
 
                         <button 
                             onClick={handleSignOut} 
-                            className="text-zinc-600 hover:text-red-400 p-1.5 rounded-md hover:bg-neutral-900 transition-all"
+                            className="text-zinc-600 hover:text-red-400 p-1.5 rounded-md cursor-pointer hover:bg-neutral-900 transition-all"
                             title="Sign out"
                             aria-label="Sign out"
                         >

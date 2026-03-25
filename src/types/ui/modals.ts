@@ -2,11 +2,11 @@ import type { ProFeature } from '../context';
 
 export type AuthModalMode = 'login' | 'signup';
 
-export type OAuthProvider = 'google' | 'github';
+export type OAuthProvider = 'google' | 'linkedin_oidc';
 
 export interface AuthModalProps {
   open: boolean;
-  onClose: () => void;
+  onClose: (options?: { preservePendingTemplate?: boolean }) => void;
   mode: AuthModalMode;
 }
 
