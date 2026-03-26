@@ -1,6 +1,14 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage, type StateStorage } from 'zustand/middleware';
 import {
+  EMPTY_BUILDER_AI_HIGHLIGHTS,
+  getFirstBuilderAiHighlightFocus,
+  hasBuilderAiHighlights,
+  mergeBuilderAiHighlights,
+  normalizeBuilderAiHighlights,
+  removeBuilderAiHighlight,
+} from '../lib/builder/aiHighlights';
+import {
   mergeGroupedSkillSuggestionsIntoSection,
   mergeSkillNamesIntoSection,
   parseAiSkills,
@@ -10,7 +18,12 @@ import {
   appendDescriptionBullet,
   replaceDescriptionBullet,
 } from '../lib/descriptionBullets';
-import type { AtsAuditResult, CoverLetterTone } from '../types/builder';
+import type {
+  AtsAuditResult,
+  BuilderAiHighlightFocusTarget,
+  BuilderAiHighlights,
+  CoverLetterTone,
+} from '../types/builder';
 import {
   DEFAULT_TEMPLATE_ID,
   INITIAL_RESUME_DATA,
@@ -39,6 +52,9 @@ type BuilderState = {
   atsRole: string;
   atsJobDescription: string;
   atsResult: AtsAuditResult | null;
+  recentAiHighlights: BuilderAiHighlights;
+  aiHighlightFocus: BuilderAiHighlightFocusTarget | null;
+  aiHighlightFocusNonce: number;
   tailorPreview: {
     jobTitleAfter: string;
     summary?: { current: string; better: string };
@@ -71,6 +87,13 @@ type BuilderActions = {
   setCoverLetterDraft: (draft: string) => void;
   setAtsFields: (role: string, jd: string) => void;
   setAtsResult: (result: AtsAuditResult | null) => void;
+  markAiHighlights: (
+    highlights: Partial<BuilderAiHighlights>,
+    focus?: BuilderAiHighlightFocusTarget | null,
+  ) => void;
+  clearAiHighlights: () => void;
+  clearAiHighlight: (target: BuilderAiHighlightFocusTarget) => void;
+  requestAiHighlightFocus: (target?: BuilderAiHighlightFocusTarget | null) => void;
   setTailorPreview: (preview: BuilderState['tailorPreview']) => void;
   confirmTailoredPreview: () => void;
   discardTailoredPreview: () => void;
@@ -127,6 +150,9 @@ export const useBuilderStore = create<BuilderStore>()(
       atsRole: '',
       atsJobDescription: '',
       atsResult: null,
+      recentAiHighlights: EMPTY_BUILDER_AI_HIGHLIGHTS,
+      aiHighlightFocus: null,
+      aiHighlightFocusNonce: 0,
       tailorPreview: null,
       setResumeData: (updater) =>
         set((state) => ({
@@ -148,6 +174,9 @@ export const useBuilderStore = create<BuilderStore>()(
           resumeData: data,
           templateId: templateId ? normalizeTemplateId(templateId) : state.templateId,
           title: title ?? state.title,
+          recentAiHighlights: EMPTY_BUILDER_AI_HIGHLIGHTS,
+          aiHighlightFocus: null,
+          aiHighlightFocusNonce: 0,
         })),
       reset: () =>
         set(() => ({
@@ -169,6 +198,9 @@ export const useBuilderStore = create<BuilderStore>()(
           atsRole: '',
           atsJobDescription: '',
           atsResult: null,
+          recentAiHighlights: EMPTY_BUILDER_AI_HIGHLIGHTS,
+          aiHighlightFocus: null,
+          aiHighlightFocusNonce: 0,
           tailorPreview: null,
         })),
       setIsGenerating: (value) => set({ isGenerating: value }),
@@ -199,6 +231,62 @@ export const useBuilderStore = create<BuilderStore>()(
       setCoverLetterDraft: (draft) => set({ coverLetterDraft: draft }),
       setAtsFields: (role, jd) => set({ atsRole: role, atsJobDescription: jd }),
       setAtsResult: (result) => set({ atsResult: result }),
+      markAiHighlights: (highlights, focus) =>
+        set((state) => {
+          const freshHighlights = normalizeBuilderAiHighlights(highlights);
+          const recentAiHighlights = mergeBuilderAiHighlights(
+            state.recentAiHighlights,
+            freshHighlights,
+          );
+          const nextFocus =
+            focus ??
+            getFirstBuilderAiHighlightFocus(
+              hasBuilderAiHighlights(freshHighlights)
+                ? freshHighlights
+                : recentAiHighlights,
+            );
+
+          return {
+            recentAiHighlights,
+            aiHighlightFocus: nextFocus,
+            aiHighlightFocusNonce: nextFocus
+              ? state.aiHighlightFocusNonce + 1
+              : state.aiHighlightFocusNonce,
+          };
+        }),
+      clearAiHighlights: () =>
+        set(() => ({
+          recentAiHighlights: EMPTY_BUILDER_AI_HIGHLIGHTS,
+          aiHighlightFocus: null,
+        })),
+      clearAiHighlight: (target) =>
+        set((state) => {
+          const recentAiHighlights = removeBuilderAiHighlight(
+            state.recentAiHighlights,
+            target,
+          );
+
+          return {
+            recentAiHighlights,
+            aiHighlightFocus: hasBuilderAiHighlights(recentAiHighlights)
+              ? state.aiHighlightFocus
+              : null,
+          };
+        }),
+      requestAiHighlightFocus: (target) =>
+        set((state) => {
+          const aiHighlightFocus =
+            target ?? getFirstBuilderAiHighlightFocus(state.recentAiHighlights);
+
+          if (!aiHighlightFocus) {
+            return state;
+          }
+
+          return {
+            aiHighlightFocus,
+            aiHighlightFocusNonce: state.aiHighlightFocusNonce + 1,
+          };
+        }),
       setTailorPreview: (preview) => set({ tailorPreview: preview }),
       confirmTailoredPreview: () => set((state) => {
         if (!state.tailorPreview) return state;
