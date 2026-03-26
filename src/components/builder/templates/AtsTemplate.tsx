@@ -6,6 +6,12 @@ import {
   getVisiblePersonalLinks,
   toExternalLinkHref,
 } from "../../../domain/resume";
+import {
+  previewHighlightInlineClassName,
+  previewHighlightSectionClassName,
+} from "./highlightStyles";
+import HighlightedSkillTokens from "./HighlightedSkillTokens";
+import { isBuilderAiTextHighlighted } from "../../../lib/builder/aiHighlights";
 import { toDescriptionBullets } from "./utils";
 
 const INK = "#111111";
@@ -74,7 +80,15 @@ const DateRange: React.FC<{ startDate?: string; endDate?: string }> = ({
   );
 };
 
-const BulletList: React.FC<{ id: string; bullets: string[] }> = ({ id, bullets }) => (
+const BulletList: React.FC<{
+  id: string;
+  bullets: string[];
+  highlightedBullets?: string[];
+}> = ({
+  id,
+  bullets,
+  highlightedBullets = [],
+}) => (
   <ul
     style={{
       marginTop: 6,
@@ -93,6 +107,14 @@ const BulletList: React.FC<{ id: string; bullets: string[] }> = ({ id, bullets }
           lineHeight: 1.65,
           textAlign: "justify",
           marginTop: i === 0 ? 0 : 3,
+          ...(isBuilderAiTextHighlighted(highlightedBullets, line)
+            ? {
+                backgroundColor: "rgba(254, 243, 199, 0.85)",
+                border: "1px solid rgba(245, 158, 11, 0.28)",
+                borderRadius: 6,
+                padding: "2px 4px",
+              }
+            : {}),
         }}
       >
         {line}
@@ -110,6 +132,8 @@ const EntryBlock: React.FC<{
   description?: string;
   link?: string;
   sectionTitle?: React.ReactNode;
+  highlightedBullets?: string[];
+  ['data-ai-highlight-anchor']?: string;
 }> = ({
   id,
   title,
@@ -119,11 +143,16 @@ const EntryBlock: React.FC<{
   description,
   link,
   sectionTitle,
+  highlightedBullets,
+  "data-ai-highlight-anchor": aiHighlightAnchor,
 }) => {
   const bullets = toDescriptionBullets(description || "");
 
   return (
-    <div style={{ marginBottom: 12 }}>
+    <div
+      data-ai-highlight-anchor={aiHighlightAnchor}
+      style={{ marginBottom: 12 }}
+    >
       <div data-no-split="true">
         {sectionTitle}
         <div
@@ -182,7 +211,11 @@ const EntryBlock: React.FC<{
       </div>
 
       {bullets.length > 0 ? (
-        <BulletList id={id} bullets={bullets} />
+        <BulletList
+          id={id}
+          bullets={bullets}
+          highlightedBullets={highlightedBullets}
+        />
       ) : description ? (
         <p
           data-break-point="true"
@@ -224,7 +257,11 @@ const BulletSection: React.FC<{
   );
 };
 
-const AtsTemplate: React.FC<BuilderTemplateComponentProps> = ({ data, contentRef }) => {
+const AtsTemplate: React.FC<BuilderTemplateComponentProps> = ({
+  data,
+  contentRef,
+  aiHighlights,
+}) => {
   const {
     personalInfo,
     summary,
@@ -243,6 +280,8 @@ const AtsTemplate: React.FC<BuilderTemplateComponentProps> = ({ data, contentRef
   const groupedSkills = skills.groups.filter((g) => g.items.length > 0);
   const shouldRenderGroupedSkills =
     skills.mode === "grouped" && groupedSkills.length > 0;
+  const isSummaryHighlighted = Boolean(aiHighlights?.summary);
+  const isSkillsHighlighted = (aiHighlights?.skills?.length ?? 0) > 0;
 
   return (
     <div
@@ -343,7 +382,12 @@ const AtsTemplate: React.FC<BuilderTemplateComponentProps> = ({ data, contentRef
       </div>
 
       {summary ? (
-        <section data-break-point="true" style={{ marginTop: 18 }}>
+        <section
+          data-break-point="true"
+          data-ai-highlight-anchor="summary"
+          className={isSummaryHighlighted ? previewHighlightSectionClassName : undefined}
+          style={{ marginTop: 18 }}
+        >
           <SectionTitle>Summary</SectionTitle>
           <p
             data-break-point="true"
@@ -361,7 +405,12 @@ const AtsTemplate: React.FC<BuilderTemplateComponentProps> = ({ data, contentRef
       ) : null}
 
       {activeSkills.length > 0 ? (
-        <section data-break-point="true" style={{ marginTop: 18 }}>
+        <section
+          data-break-point="true"
+          data-ai-highlight-anchor="skills"
+          className={isSkillsHighlighted ? previewHighlightSectionClassName : undefined}
+          style={{ marginTop: 18 }}
+        >
           <SectionTitle>Technical Skills</SectionTitle>
           {shouldRenderGroupedSkills ? (
             <div style={{ display: "grid", gap: 4 }}>
@@ -380,7 +429,10 @@ const AtsTemplate: React.FC<BuilderTemplateComponentProps> = ({ data, contentRef
                   <span style={{ fontWeight: 700, color: INK }}>
                     {group.label || "Skills"}:
                   </span>{" "}
-                  {group.items.join(", ")}
+                  <HighlightedSkillTokens
+                    skills={group.items}
+                    highlightedSkills={aiHighlights?.skills ?? []}
+                  />
                 </p>
               ))}
             </div>
@@ -395,7 +447,11 @@ const AtsTemplate: React.FC<BuilderTemplateComponentProps> = ({ data, contentRef
                 margin: 0,
               }}
             >
-              {activeSkills.join(", ")}
+              <HighlightedSkillTokens
+                skills={activeSkills}
+                highlightedSkills={aiHighlights?.skills ?? []}
+                highlightedClassName={previewHighlightInlineClassName}
+              />
             </p>
           )}
         </section>
@@ -407,6 +463,8 @@ const AtsTemplate: React.FC<BuilderTemplateComponentProps> = ({ data, contentRef
             <EntryBlock
               key={item.id}
               id={item.id}
+              data-ai-highlight-anchor={`experience-${item.id}`}
+              highlightedBullets={aiHighlights?.experience[item.id]}
               title={item.role}
               subtitle={item.company}
               startDate={item.startDate}

@@ -6,6 +6,12 @@ import {
   getVisiblePersonalLinks,
   toExternalLinkHref,
 } from "../../../domain/resume";
+import {
+  previewHighlightInlineClassName,
+  previewHighlightSectionClassName,
+} from "./highlightStyles";
+import HighlightedSkillTokens from "./HighlightedSkillTokens";
+import { isBuilderAiTextHighlighted } from "../../../lib/builder/aiHighlights";
 import { toDescriptionBullets } from "./utils";
 
 const INK = "#111110";
@@ -80,8 +86,17 @@ const EntryRow: React.FC<{
   header: React.ReactNode;
   children?: React.ReactNode;
   first?: boolean;
-}> = ({ start, end, header, children, first = false }) => (
+  ['data-ai-highlight-anchor']?: string;
+}> = ({
+  start,
+  end,
+  header,
+  children,
+  first = false,
+  "data-ai-highlight-anchor": aiHighlightAnchor,
+}) => (
   <div
+    data-ai-highlight-anchor={aiHighlightAnchor}
     className="flex pt-3"
     style={first ? undefined : { borderTop: `1px solid ${RULE}` }}
   >
@@ -93,16 +108,25 @@ const EntryRow: React.FC<{
   </div>
 );
 
-const BulletList: React.FC<{ id: string; bullets: string[] }> = ({
+const BulletList: React.FC<{
+  id: string;
+  bullets: string[];
+  highlightedBullets?: string[];
+}> = ({
   id,
   bullets,
+  highlightedBullets = [],
 }) => (
   <ul className="mt-2 space-y-1 pl-4 list-disc list-outside">
     {bullets.map((line, i) => (
       <li
         key={`${id}-b-${i}`}
         data-break-point="true"
-        className="text-[11.5px] leading-[1.65] text-justify"
+        className={`text-[11.5px] leading-[1.65] text-justify ${
+          isBuilderAiTextHighlighted(highlightedBullets, line)
+            ? previewHighlightInlineClassName
+            : ""
+        }`}
         style={{ color: BODY_TEXT, fontFamily: MONO }}
       >
         {line}
@@ -121,6 +145,7 @@ const ContentBand: React.FC<{ children: React.ReactNode }> = ({ children }) => (
 const MonoTemplate: React.FC<BuilderTemplateComponentProps> = ({
   data,
   contentRef,
+  aiHighlights,
 }) => {
   const {
     personalInfo,
@@ -140,6 +165,8 @@ const MonoTemplate: React.FC<BuilderTemplateComponentProps> = ({
   const groupedSkills = skills.groups.filter((g) => g.items.length > 0);
   const shouldRenderGroupedSkills =
     skills.mode === "grouped" && groupedSkills.length > 0;
+  const isSummaryHighlighted = Boolean(aiHighlights?.summary);
+  const isSkillsHighlighted = (aiHighlights?.skills?.length ?? 0) > 0;
 
   return (
     <div
@@ -213,7 +240,11 @@ const MonoTemplate: React.FC<BuilderTemplateComponentProps> = ({
 
       <div className="space-y-6 px-8 py-6">
         {summary ? (
-          <section data-break-point="true">
+          <section
+            data-break-point="true"
+            data-ai-highlight-anchor="summary"
+            className={isSummaryHighlighted ? previewHighlightSectionClassName : undefined}
+          >
             <SectionHeading index={1}>Profile</SectionHeading>
             <ContentBand>
               <p
@@ -229,7 +260,11 @@ const MonoTemplate: React.FC<BuilderTemplateComponentProps> = ({
 
 
    {activeSkills.length > 0 ? (
-          <section data-break-point="true">
+          <section
+            data-break-point="true"
+            data-ai-highlight-anchor="skills"
+            className={isSkillsHighlighted ? previewHighlightSectionClassName : undefined}
+          >
             <SectionHeading index={2}>Skills</SectionHeading>
             <ContentBand>
               {shouldRenderGroupedSkills ? (
@@ -244,7 +279,10 @@ const MonoTemplate: React.FC<BuilderTemplateComponentProps> = ({
                       <span className="font-bold" style={{ color: INK }}>
                         {group.label}:
                       </span>{" "}
-                      {group.items.join(", ")}
+                      <HighlightedSkillTokens
+                        skills={group.items}
+                        highlightedSkills={aiHighlights?.skills ?? []}
+                      />
                     </p>
                   ))}
                 </div>
@@ -254,7 +292,10 @@ const MonoTemplate: React.FC<BuilderTemplateComponentProps> = ({
                   className="text-[11.5px] leading-[1.7] -ml-20 text-justify"
                   style={{ color: BODY_TEXT }}
                 >
-                  {activeSkills.join(", ")}
+                  <HighlightedSkillTokens
+                    skills={activeSkills}
+                    highlightedSkills={aiHighlights?.skills ?? []}
+                  />
                 </p>
               )}
             </ContentBand>
@@ -270,6 +311,7 @@ const MonoTemplate: React.FC<BuilderTemplateComponentProps> = ({
               {experience.map((exp, i) => (
                 <EntryRow
                   key={exp.id}
+                  data-ai-highlight-anchor={`experience-${exp.id}`}
                   start={exp.startDate}
                   end={exp.endDate}
                   first={i === 0}
@@ -294,10 +336,14 @@ const MonoTemplate: React.FC<BuilderTemplateComponentProps> = ({
                 >
                   {exp.description
                     ? (() => {
-                        const bullets = toDescriptionBullets(exp.description);
-                        return bullets.length > 0 ? (
-                          <BulletList id={exp.id} bullets={bullets} />
-                        ) : (
+                      const bullets = toDescriptionBullets(exp.description);
+                      return bullets.length > 0 ? (
+                        <BulletList
+                          id={exp.id}
+                          bullets={bullets}
+                          highlightedBullets={aiHighlights?.experience[exp.id]}
+                        />
+                      ) : (
                           <p
                             data-break-point="true"
                             className="mt-2 text-[11.5px] leading-[1.7] text-justify whitespace-pre-line"
