@@ -16,6 +16,8 @@ import {
   EditorVolunteeringSection,
 } from './sections';
 import { useEditorPanelState } from './useEditorPanelState';
+import { getBuilderAiHighlightAnchor } from '../../../lib/builder/aiHighlights';
+import { useBuilderStore } from '../../../store/builderStore';
 
 const MIN_WIDTH = 550;
 const MAX_WIDTH = 700;
@@ -30,6 +32,8 @@ const EditorPanel: React.FC = () => {
   const startX = useRef(0);
   const startWidth = useRef(DEFAULT_WIDTH);
   const panelScrollRef = useRef<HTMLDivElement | null>(null);
+  const aiHighlightFocus = useBuilderStore((store) => store.aiHighlightFocus);
+  const aiHighlightFocusNonce = useBuilderStore((store) => store.aiHighlightFocusNonce);
 
   const state = useEditorPanelState(() => {
     if (panelScrollRef.current) panelScrollRef.current.scrollTop = 0;
@@ -52,6 +56,22 @@ const EditorPanel: React.FC = () => {
       document.body.style.cursor = '';
     }
   }, [isDesktop]);
+
+  useEffect(() => {
+    if (!aiHighlightFocus || !panelScrollRef.current) return;
+
+    let frameId = 0;
+    frameId = window.requestAnimationFrame(() => {
+      const anchor = getBuilderAiHighlightAnchor(aiHighlightFocus);
+      const target = panelScrollRef.current?.querySelector<HTMLElement>(
+        `[data-ai-highlight-anchor="${anchor}"]`,
+      );
+
+      target?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    });
+
+    return () => window.cancelAnimationFrame(frameId);
+  }, [aiHighlightFocus, aiHighlightFocusNonce, openSection, state.resolvedActiveExperienceId]);
 
   const onMouseDown = useCallback(
     (event: React.MouseEvent) => {

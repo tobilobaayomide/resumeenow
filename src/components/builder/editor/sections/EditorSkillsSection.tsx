@@ -1,5 +1,6 @@
 import React from "react";
 import { FiList, FiPlus, FiX, FiInfo, FiTag, FiFolder } from "react-icons/fi";
+import { isBuilderAiTextHighlighted } from "../../../../lib/builder/aiHighlights";
 import { getActiveSkillItems } from "../../../../types/resume";
 import { useBuilderStore } from "../../../../store/builderStore";
 import type { EditorPanelState } from "../useEditorPanelState";
@@ -18,6 +19,7 @@ const EditorSkillsSection: React.FC<EditorSkillsSectionProps> = ({
 }) => {
   const data = useBuilderStore((store) => store.resumeData);
   const activeSkillCount = getActiveSkillItems(data.skills).length;
+  const highlightedSkills = state.recentAiHighlights.skills;
 
   return (
     <Section
@@ -67,7 +69,10 @@ const EditorSkillsSection: React.FC<EditorSkillsSectionProps> = ({
           </button>
         </div>
 
-        <div className="animate-in fade-in duration-300">
+        <div
+          data-ai-highlight-anchor="skills"
+          className="animate-in fade-in duration-300"
+        >
           {data.skills.mode === "list" ? (
             <div className="min-h-25 flex flex-col gap-2 bg-gray-50/50 border border-dashed border-gray-200 rounded-xl p-3">
               {data.skills.list.length === 0 ? (
@@ -78,7 +83,11 @@ const EditorSkillsSection: React.FC<EditorSkillsSectionProps> = ({
                 data.skills.list.map((skill, index) => (
                   <div
                     key={`skill-${index}`}
-                    className="group flex items-center gap-2 bg-white border border-gray-200 px-2.5 py-1.5 rounded-lg text-[11px] font-medium text-gray-700 shadow-sm transition-all hover:border-gray-300"
+                    className={`group flex items-center gap-2 bg-white px-2.5 py-1.5 rounded-lg text-[11px] font-medium text-gray-700 shadow-sm transition-all hover:border-gray-300 ${
+                      isBuilderAiTextHighlighted(highlightedSkills, skill)
+                        ? "border border-amber-200 bg-amber-50/80 shadow-[0_14px_32px_-24px_rgba(217,119,6,0.85)]"
+                        : "border border-gray-200"
+                    }`}
                   >
                     <input
                       type="text"
@@ -157,7 +166,11 @@ const EditorSkillsSection: React.FC<EditorSkillsSectionProps> = ({
                       group.items.map((skill, index) => (
                         <div
                           key={`${group.id}-${index}`}
-                          className="group flex items-center gap-2 bg-white border border-gray-200 px-2.5 py-1.5 rounded-lg text-[11px] font-medium text-gray-700 shadow-sm transition-all hover:border-gray-300"
+                          className={`group flex items-center gap-2 bg-white px-2.5 py-1.5 rounded-lg text-[11px] font-medium text-gray-700 shadow-sm transition-all hover:border-gray-300 ${
+                            isBuilderAiTextHighlighted(highlightedSkills, skill)
+                              ? "border border-amber-200 bg-amber-50/80 shadow-[0_14px_32px_-24px_rgba(217,119,6,0.85)]"
+                              : "border border-gray-200"
+                          }`}
                         >
                           <input
                             type="text"
@@ -219,7 +232,7 @@ const EditorSkillsSection: React.FC<EditorSkillsSectionProps> = ({
           )}
         </div>
 
-        <div className="pt-2 border-t border-gray-100">
+        <div className="pt-2 border-t border-gray-100 transition-colors duration-300">
           <div className="flex gap-2 p-1 bg-gray-50 border border-gray-200 rounded-xl focus-within:bg-white focus-within:ring-4 focus-within:ring-gray-50 focus-within:border-gray-300 transition-all duration-200">
             {data.skills.mode === "grouped" &&
               data.skills.groups.length > 0 && (

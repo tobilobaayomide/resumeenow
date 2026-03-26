@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import type { EditorSectionTabId } from '../../../types/builder';
 import type {
   ResumeSkillGroup,
@@ -9,22 +9,27 @@ import type {
   ResumeProjectItem,
 } from '../../../types/resume';
 import { getActiveSkillItems } from '../../../types/resume';
+import { getBuilderAiExperienceHighlights } from '../../../lib/builder/aiHighlights';
 import { hasValueIgnoreCase } from './utils';
 import { useBuilderStore } from '../../../store/builderStore';
 import { useBuilderDraftMutations } from '../../../hooks/builder/useBuilderDraftMutations';
 
 export const useEditorPanelState = (onSectionToggle?: (section: EditorSectionTabId) => void) => {
   const data = useBuilderStore((store) => store.resumeData);
+  const recentAiHighlights = useBuilderStore((store) => store.recentAiHighlights);
+  const aiHighlightFocus = useBuilderStore((store) => store.aiHighlightFocus);
+  const aiHighlightFocusNonce = useBuilderStore((store) => store.aiHighlightFocusNonce);
+  const clearAiHighlight = useBuilderStore((store) => store.clearAiHighlight);
   const {
     onPersonalInfoChange,
     onLinksChange,
-    onSummaryChange,
-    onExperienceChange,
+    onSummaryChange: onDraftSummaryChange,
+    onExperienceChange: onDraftExperienceChange,
     onEducationChange,
     onVolunteeringChange,
     onProjectsChange,
     onCertificationsChange,
-    onSkillsChange,
+    onSkillsChange: onDraftSkillsChange,
     onLanguagesChange,
     onAchievementsChange,
   }: ReturnType<typeof useBuilderDraftMutations> = useBuilderDraftMutations();
@@ -59,9 +64,26 @@ export const useEditorPanelState = (onSectionToggle?: (section: EditorSectionTab
   const resolvedActiveProjectId = resolveActiveId(activeProjectId, data.projects);
   const resolvedActiveSkillGroupId = resolveActiveId(activeSkillGroupId, data.skills.groups);
 
+  useEffect(() => {
+    if (!aiHighlightFocus) return;
+
+    setOpenSection(aiHighlightFocus.section);
+
+    if (aiHighlightFocus.section === 'experience' && aiHighlightFocus.experienceId) {
+      setActiveExperienceId(aiHighlightFocus.experienceId);
+    }
+  }, [aiHighlightFocus, aiHighlightFocusNonce]);
+
+  const onSummaryChange = (summary: string) => {
+    if (recentAiHighlights.summary) {
+      clearAiHighlight({ section: 'summary' });
+    }
+    onDraftSummaryChange(summary);
+  };
+
   const addExperience = () => {
     const nextId = `exp-${Date.now()}`;
-    onExperienceChange([
+    onDraftExperienceChange([
       ...data.experience,
       {
         id: nextId,
@@ -75,14 +97,22 @@ export const useEditorPanelState = (onSectionToggle?: (section: EditorSectionTab
     setActiveExperienceId(nextId);
   };
 
-  const updateExperience = (id: string, field: keyof ResumeExperienceItem, value: string) =>
-    onExperienceChange(
+  const updateExperience = (id: string, field: keyof ResumeExperienceItem, value: string) => {
+    if (field === 'description' && getBuilderAiExperienceHighlights(recentAiHighlights, id).length > 0) {
+      clearAiHighlight({ section: 'experience', experienceId: id });
+    }
+
+    onDraftExperienceChange(
       data.experience.map((item) => (item.id === id ? { ...item, [field]: value } : item)),
     );
+  };
 
   const removeExperience = (id: string) => {
     const next = data.experience.filter((item) => item.id !== id);
-    onExperienceChange(next);
+    if (getBuilderAiExperienceHighlights(recentAiHighlights, id).length > 0) {
+      clearAiHighlight({ section: 'experience', experienceId: id });
+    }
+    onDraftExperienceChange(next);
     if (resolvedActiveExperienceId === id) {
       setActiveExperienceId(next[0]?.id ?? null);
     }
@@ -227,7 +257,7 @@ export const useEditorPanelState = (onSectionToggle?: (section: EditorSectionTab
           : group,
       );
 
-      onSkillsChange({
+      onDraftSkillsChange({
         mode: 'grouped',
         list: getActiveSkillItems({
           ...data.skills,
@@ -240,7 +270,7 @@ export const useEditorPanelState = (onSectionToggle?: (section: EditorSectionTab
       return;
     }
 
-    onSkillsChange({
+    onDraftSkillsChange({
       ...data.skills,
       mode: 'list',
       list: [...data.skills.list, trimmedSkill],
@@ -249,6 +279,10 @@ export const useEditorPanelState = (onSectionToggle?: (section: EditorSectionTab
   };
 
   const removeSkill = (skill: string, groupId?: string) => {
+    if (skill.trim()) {
+      clearAiHighlight({ section: 'skills', skill });
+    }
+
     if (data.skills.mode === 'grouped') {
       const nextGroups = data.skills.groups.map((group) => {
         if (groupId && group.id !== groupId) return group;
@@ -258,7 +292,7 @@ export const useEditorPanelState = (onSectionToggle?: (section: EditorSectionTab
         };
       });
 
-      onSkillsChange({
+      onDraftSkillsChange({
         mode: 'grouped',
         list: getActiveSkillItems({
           ...data.skills,
@@ -270,7 +304,7 @@ export const useEditorPanelState = (onSectionToggle?: (section: EditorSectionTab
       return;
     }
 
-    onSkillsChange({
+    onDraftSkillsChange({
       ...data.skills,
       mode: 'list',
       list: data.skills.list.filter((existingSkill) => existingSkill !== skill),
@@ -278,6 +312,15 @@ export const useEditorPanelState = (onSectionToggle?: (section: EditorSectionTab
   };
 
   const removeSkillAtIndex = (index: number, groupId?: string) => {
+    const removedSkill =
+      data.skills.mode === 'grouped'
+        ? data.skills.groups.find((group) => !groupId || group.id === groupId)?.items[index] ?? ''
+        : data.skills.list[index] ?? '';
+
+    if (removedSkill.trim()) {
+      clearAiHighlight({ section: 'skills', skill: removedSkill });
+    }
+
     if (data.skills.mode === 'grouped') {
       const nextGroups = data.skills.groups.map((group) => {
         if (groupId && group.id !== groupId) return group;
@@ -288,7 +331,7 @@ export const useEditorPanelState = (onSectionToggle?: (section: EditorSectionTab
         };
       });
 
-      onSkillsChange({
+      onDraftSkillsChange({
         mode: 'grouped',
         list: getActiveSkillItems({
           ...data.skills,
@@ -300,7 +343,7 @@ export const useEditorPanelState = (onSectionToggle?: (section: EditorSectionTab
       return;
     }
 
-    onSkillsChange({
+    onDraftSkillsChange({
       ...data.skills,
       mode: 'list',
       list: data.skills.list.filter((_, skillIndex) => skillIndex !== index),
@@ -308,6 +351,15 @@ export const useEditorPanelState = (onSectionToggle?: (section: EditorSectionTab
   };
 
   const updateSkill = (index: number, value: string, groupId?: string) => {
+    const currentSkill =
+      data.skills.mode === 'grouped'
+        ? data.skills.groups.find((group) => !groupId || group.id === groupId)?.items[index] ?? ''
+        : data.skills.list[index] ?? '';
+
+    if (currentSkill.trim()) {
+      clearAiHighlight({ section: 'skills', skill: currentSkill });
+    }
+
     if (data.skills.mode === 'grouped') {
       const nextGroups = data.skills.groups.map((group) => {
         if (groupId && group.id !== groupId) return group;
@@ -318,7 +370,7 @@ export const useEditorPanelState = (onSectionToggle?: (section: EditorSectionTab
         };
       });
 
-      onSkillsChange({
+      onDraftSkillsChange({
         mode: 'grouped',
         list: getActiveSkillItems({
           ...data.skills,
@@ -330,7 +382,7 @@ export const useEditorPanelState = (onSectionToggle?: (section: EditorSectionTab
       return;
     }
 
-    onSkillsChange({
+    onDraftSkillsChange({
       ...data.skills,
       mode: 'list',
       list: data.skills.list.map((skill, skillIndex) => (skillIndex === index ? value : skill)),
@@ -354,7 +406,7 @@ export const useEditorPanelState = (onSectionToggle?: (section: EditorSectionTab
               ]
             : [];
 
-      onSkillsChange({
+      onDraftSkillsChange({
         mode: 'grouped',
         list: getActiveSkillItems({
           mode: 'grouped',
@@ -367,7 +419,7 @@ export const useEditorPanelState = (onSectionToggle?: (section: EditorSectionTab
       return;
     }
 
-    onSkillsChange({
+    onDraftSkillsChange({
       mode: 'list',
       list: getActiveSkillItems(data.skills),
       groups: data.skills.groups,
@@ -393,7 +445,7 @@ export const useEditorPanelState = (onSectionToggle?: (section: EditorSectionTab
     };
     const nextGroups = [...data.skills.groups, nextGroup];
 
-    onSkillsChange({
+    onDraftSkillsChange({
       mode: 'grouped',
       list: getActiveSkillItems({
         ...data.skills,
@@ -410,7 +462,7 @@ export const useEditorPanelState = (onSectionToggle?: (section: EditorSectionTab
   const removeSkillGroup = (groupId: string) => {
     const nextGroups = data.skills.groups.filter((group) => group.id !== groupId);
 
-    onSkillsChange({
+    onDraftSkillsChange({
       mode: 'grouped',
       list: getActiveSkillItems({
         ...data.skills,
@@ -430,7 +482,7 @@ export const useEditorPanelState = (onSectionToggle?: (section: EditorSectionTab
       group.id === groupId ? { ...group, label } : group,
     );
 
-    onSkillsChange({
+    onDraftSkillsChange({
       ...data.skills,
       mode: 'grouped',
       list: getActiveSkillItems({
@@ -531,6 +583,7 @@ export const useEditorPanelState = (onSectionToggle?: (section: EditorSectionTab
 
   return {
     data,
+    recentAiHighlights,
     openSection,
     toggle,
     onPersonalInfoChange,
