@@ -38,7 +38,6 @@ export const LANDING_FEATURE_ITEMS: LandingFeatureItem[] = [
     description:
       "Import an existing PDF and map core sections into your editor so you can start with real data, not a blank page.",
     icon: LANDING_CUSTOM_ICONS.AI,
-    media: "/loops/feature-upload.mp4",
   },
   {
     id: 1,
@@ -46,7 +45,6 @@ export const LANDING_FEATURE_ITEMS: LandingFeatureItem[] = [
     description:
       "Edit summary, experience, projects, links, and more while preview updates in real time across template styles.",
     icon: LANDING_CUSTOM_ICONS.Layout,
-    media: "/loops/feature-editor.mp4",
   },
   {
     id: 2,
@@ -54,7 +52,6 @@ export const LANDING_FEATURE_ITEMS: LandingFeatureItem[] = [
     description:
       "Run AI Tailor, ATS Audit, and Cover Letter workflows directly in your editing flow to ship faster.",
     icon: LANDING_CUSTOM_ICONS.ATS,
-    media: "/loops/feature-ai.mp4",
   },
   {
     id: 3,
@@ -62,6 +59,5 @@ export const LANDING_FEATURE_ITEMS: LandingFeatureItem[] = [
     description:
       "Start free, then unlock Pro tools when ready with clear upgrade prompts and dedicated Pro workspace controls.",
     icon: LANDING_CUSTOM_ICONS.Export,
-    media: "/loops/feature-pro.mp4",
   },
 ];
