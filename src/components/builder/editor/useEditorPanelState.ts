@@ -67,11 +67,17 @@ export const useEditorPanelState = (onSectionToggle?: (section: EditorSectionTab
   useEffect(() => {
     if (!aiHighlightFocus) return;
 
-    setOpenSection(aiHighlightFocus.section);
+    const frameId = window.requestAnimationFrame(() => {
+      setOpenSection(aiHighlightFocus.section);
 
-    if (aiHighlightFocus.section === 'experience' && aiHighlightFocus.experienceId) {
-      setActiveExperienceId(aiHighlightFocus.experienceId);
-    }
+      if (aiHighlightFocus.section === 'experience' && aiHighlightFocus.experienceId) {
+        setActiveExperienceId(aiHighlightFocus.experienceId);
+      }
+    });
+
+    return () => {
+      window.cancelAnimationFrame(frameId);
+    };
   }, [aiHighlightFocus, aiHighlightFocusNonce]);
 
   const onSummaryChange = (summary: string) => {

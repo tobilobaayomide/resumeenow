@@ -629,7 +629,7 @@ export function useBuilderAiFlows() {
       openAtsAudit();
       return;
     }
-    console.log(feature, label);
+    toast.info(`${label} flow will be wired next.`);
   };
 
   return { handleProAction, aiModalProps };

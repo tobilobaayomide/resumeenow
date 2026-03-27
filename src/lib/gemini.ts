@@ -1,16 +1,30 @@
 import { findMatchingDescriptionBullet } from './descriptionBullets';
 import { supabase } from './supabase';
+import {
+  parseAtsAuditResult,
+  parseTailoredSummaryResult,
+  type TailoredSummaryResult,
+} from '../schemas/integrations/ai';
+import { reportRuntimeValidationIssue } from './observability/runtimeValidation';
 import { sanitizeAiKeywordList, sanitizeAiPlainText } from './aiText';
 import { getActiveSkillItems } from '../types/resume';
 import { parseAiGroupedSkills } from './aiResumeApply';
+import { getValidAccessToken } from './auth/accessToken';
+import { createRequestScheduler, createTimedLruCache } from './ai/requestControl';
 import type { ResumeData } from '../types/resume';
-import type { AtsAuditImprovement, AtsAuditResult } from '../types/builder';
+import type { AtsAuditResult } from '../types/builder';
 
 // ─── Cache ────────────────────────────────────────────────────────────────────
-const responseCache = new Map<string, { value: string; timestamp: number }>();
 const CACHE_TTL_MS = 10 * 60 * 1000;
-const ACCESS_TOKEN_REFRESH_BUFFER_MS = 60 * 1000;
-export const clearGeminiCache = () => responseCache.clear();
+const MAX_CACHE_ENTRIES = 50;
+const MAX_CONCURRENT = 2;
+
+const responseCache = createTimedLruCache<string>({
+  ttlMs: CACHE_TTL_MS,
+  maxEntries: MAX_CACHE_ENTRIES,
+});
+const requestScheduler = createRequestScheduler(MAX_CONCURRENT);
+const inFlightRequests = new Map<string, Promise<string>>();
 
 const normalizeErrorMessage = (message: string): string =>
   message.replace(/^(Error:\s*)+/i, '').trim();
@@ -37,48 +51,18 @@ const handleError = (error: unknown): never => {
   if (message.includes('Daily AI limit reached.')) {
     throw new Error('Daily AI limit reached. Try again after 00:00 UTC.');
   }
+  if (message.includes('Another AI request is already running.')) {
+    throw new Error('Another AI request is already running. Please wait for it to finish.');
+  }
+  if (message.includes("You're sending AI requests too quickly.")) {
+    throw new Error(message);
+  }
   console.error('Gemini Error:', error);
   throw new Error(message || 'AI Provider Failed. See console for details.');
 };
 
 // ─── Retry delays ─────────────────────────────────────────────────────────────
 const RETRY_DELAYS = [5000, 15000, 45000];
-
-const getValidAccessToken = async (): Promise<string> => {
-  const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
-  if (sessionError) {
-    throw sessionError;
-  }
-
-  let session = sessionData.session;
-  const expiresSoon =
-    !session?.access_token ||
-    (typeof session.expires_at === 'number' &&
-      session.expires_at * 1000 <= Date.now() + ACCESS_TOKEN_REFRESH_BUFFER_MS);
-
-  if (expiresSoon) {
-    const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
-    if (refreshError) {
-      throw refreshError;
-    }
-    session = refreshData.session;
-  }
-
-  if (!session?.access_token) {
-    throw new Error('Please sign in again to use AI tools.');
-  }
-
-  const { data: userData, error: userError } = await supabase.auth.getUser(session.access_token);
-  if (userError || !userData.user) {
-    const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
-    if (refreshError || !refreshData.session?.access_token) {
-      throw new Error('Please sign in again to use AI tools.');
-    }
-    session = refreshData.session;
-  }
-
-  return session.access_token;
-};
 
 const callWithRetry = async (
   prompt: string,
@@ -87,7 +71,7 @@ const callWithRetry = async (
   hasRefreshedSession = false,
 ): Promise<string> => {
   try {
-    const accessToken = await getValidAccessToken();
+    const accessToken = await getValidAccessToken('Please sign in again to use AI tools.');
     const { data, error, response } = await supabase.functions.invoke('gemini-proxy', {
       body: { prompt, expectJson },
       headers: {
@@ -122,9 +106,11 @@ const callWithRetry = async (
       !hasRefreshedSession &&
       (message.includes('Invalid JWT') || message.includes('invalid JWT') || message.includes('auth token'))
     ) {
-      const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
-      if (!refreshError && refreshData.session) {
+      try {
+        await getValidAccessToken('Please sign in again to use AI tools.');
         return callWithRetry(prompt, expectJson, retries, true);
+      } catch {
+        // Fall through to the shared error handling below.
       }
     }
     if (message.includes('429') && retries > 0) {
@@ -137,30 +123,39 @@ const callWithRetry = async (
   }
 };
 
-// ─── Concurrency guard + cache layer ─────────────────────────────────────────
-let activeRequests = 0;
-const MAX_CONCURRENT = 2;
-
 const callGemini = async (
   prompt: string,
   cacheKey: string,
   expectJson = false,
 ): Promise<string> => {
   const cached = responseCache.get(cacheKey);
-  if (cached && Date.now() - cached.timestamp < CACHE_TTL_MS) {
-    console.log('Using cached AI response');
-    return cached.value;
+  if (cached) {
+    return cached;
   }
-  if (activeRequests >= MAX_CONCURRENT) {
-    throw new Error('Another AI request is in progress. Please wait a moment.');
+
+  const inFlightRequest = inFlightRequests.get(cacheKey);
+  if (inFlightRequest) {
+    return inFlightRequest;
   }
-  activeRequests++;
-  try {
+
+  const request = requestScheduler.run(async () => {
+    const queuedCached = responseCache.get(cacheKey);
+    if (queuedCached) {
+      return queuedCached;
+    }
+
     const text = await callWithRetry(prompt, expectJson);
-    responseCache.set(cacheKey, { value: text, timestamp: Date.now() });
+    responseCache.set(cacheKey, text);
     return text;
+  });
+
+  inFlightRequests.set(cacheKey, request);
+  try {
+    return await request;
   } finally {
-    activeRequests--;
+    if (inFlightRequests.get(cacheKey) === request) {
+      inFlightRequests.delete(cacheKey);
+    }
   }
 };
 
@@ -227,20 +222,6 @@ const hashString = (str: string): string => {
   h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507) ^ Math.imul(h2 ^ (h2 >>> 13), 3266489909);
   h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^ Math.imul(h1 ^ (h1 >>> 13), 3266489909);
   return (4294967296 * (2097151 & h2) + (h1 >>> 0)).toString(36);
-};
-
-type TailoredSummaryResult = {
-  jobTitleAfter: string;
-  summary?: { current: string; better: string };
-  skills?: {
-    current: string;
-    better: string;
-    groups?: { label: string; items: string[] }[];
-  };
-  experienceImprovements: { id: string; current: string; better: string }[];
-  experienceAdditions: { id: string; better: string }[];
-  contactFix?: { current: string; better: string };
-  keywordAlignment: { matched: string[]; injected: string[]; stillMissing: string[] };
 };
 
 const buildSkillsContext = (resumeData: ResumeData): string => {
@@ -402,13 +383,26 @@ RULES:
     `${skillsContext}\n${experienceText}`,
   )}`;
   const cached = responseCache.get(cacheKey);
-  if (cached && Date.now() - cached.timestamp < CACHE_TTL_MS) {
-    return JSON.parse(cached.value);
+  if (cached) {
+    try {
+      return parseTailoredSummaryResult(JSON.parse(cached));
+    } catch (error) {
+      reportRuntimeValidationIssue({
+        key: `gemini.tailor.invalid-cache:${cacheKey}`,
+        source: 'gemini.tailor.cache',
+        action: 'Discarded an invalid cached tailor response.',
+        details: {
+          cacheKey,
+        },
+        error,
+      });
+      responseCache.delete(cacheKey);
+    }
   }
 
   try {
     const resultText = await callGemini(prompt, cacheKey, true);
-    const parsed = JSON.parse(resultText) as Partial<TailoredSummaryResult>;
+    const parsed = parseTailoredSummaryResult(JSON.parse(resultText));
     const experienceDescriptions = new Map(
       resumeData.experience.map((item) => [item.id, item.description]),
     );
@@ -418,7 +412,7 @@ RULES:
       experienceAdditions: parsed.experienceAdditions || [],
     }, experienceDescriptions);
 
-    responseCache.set(cacheKey, { value: JSON.stringify(sanitized), timestamp: Date.now() });
+    responseCache.set(cacheKey, JSON.stringify(sanitized));
     return sanitized;
   } catch (error: unknown) {
     console.error('Tailor Error:', error);
@@ -545,26 +539,7 @@ RULES for improvements:
 
   const resultText = await callGemini(prompt, cacheKey, true);
   try {
-    const parsed = JSON.parse(resultText);
-    return {
-      score: parsed.score || 0,
-      keywordCoverage: parsed.keywordCoverage || 0,
-      matchedCount: parsed.matchedCount || 0,
-      keywordCount: parsed.keywordCount || 0,
-      quantifiedBulletCount: parsed.quantifiedBulletCount || 0,
-      breakdown: parsed.breakdown || [],
-      matchedKeywords: parsed.matchedKeywords || [],
-      missingKeywords: parsed.missingKeywords || [],
-      keywordDensity: parsed.keywordDensity || [],
-      improvements: ((parsed.improvements || []) as AtsAuditImprovement[]).map((imp) => ({
-        id: imp.id || undefined,
-        type: imp.type,
-        current: imp.current,
-        better: imp.better
-      })),
-      criticalMistake: parsed.criticalMistake || undefined,
-      suggestions: parsed.suggestions || [],
-    };
+    return parseAtsAuditResult(JSON.parse(resultText));
   } catch (e) {
     console.error('JSON Parse Error', e);
     return {

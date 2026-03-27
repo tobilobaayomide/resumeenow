@@ -26,6 +26,17 @@ const buildJsonResponse = (payload: Record<string, unknown>, status: number, cor
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
 
+const buildBurstRateLimitMessage = (retryAfterSeconds: unknown): string => {
+  const retryAfter =
+    typeof retryAfterSeconds === "number" && Number.isFinite(retryAfterSeconds)
+      ? Math.max(1, Math.ceil(retryAfterSeconds))
+      : null;
+
+  return retryAfter
+    ? `You're sending AI requests too quickly. Please wait ${retryAfter}s and try again.`
+    : "You're sending AI requests too quickly. Please wait a moment and try again.";
+};
+
 const extractProviderMessage = async (response: Response): Promise<string> => {
   try {
     const payload = await response.clone().json();
@@ -103,82 +114,116 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    const { data: usageGate, error: usageGateError } = await supabaseClient
-      .rpc("consume_ai_credit", { user_id_param: user.id })
+    const { data: rateGate, error: rateGateError } = await supabaseClient
+      .rpc("reserve_ai_request_slot", { user_id_param: user.id })
       .single();
 
-    if (usageGateError || !usageGate) {
-      throw new HttpError(500, "Failed to reserve AI usage.", {
-        error: "USAGE_GATE_FAILED",
-        details: usageGateError?.message || "Unknown error",
+    if (rateGateError || !rateGate) {
+      throw new HttpError(500, "Failed to reserve AI request slot.", {
+        error: "RATE_GATE_FAILED",
+        details: rateGateError?.message || "Unknown error",
       });
     }
 
-    const isPro = usageGate.plan_tier === "pro";
-    let shouldRefundCredit = Boolean(usageGate.counted);
+    if (!rateGate.allowed) {
+      const isConcurrentLimit = rateGate.reason === "concurrent_limit";
 
-    // 2. Enforce Limit
-    if (!usageGate.allowed) {
       return buildJsonResponse({
-        error: "PAYMENT_REQUIRED",
-        message: "Daily AI limit reached. Try again after 00:00 UTC.",
-        usedCredits: usageGate.used_credits,
-        creditLimit: usageGate.credit_limit,
-      }, 402, corsHeaders);
+        error: isConcurrentLimit ? "CONCURRENT_LIMIT" : "RATE_LIMITED",
+        message: isConcurrentLimit
+          ? "Another AI request is already running. Please wait for it to finish."
+          : buildBurstRateLimitMessage(rateGate.retry_after_seconds),
+        retryAfterSeconds: rateGate.retry_after_seconds,
+        concurrentLimit: rateGate.concurrent_limit,
+        burstLimit: rateGate.burst_limit,
+        windowSeconds: rateGate.window_seconds,
+      }, 429, corsHeaders);
     }
 
-    // 3. Call Gemini with the credit already reserved server-side.
+    let shouldRefundCredit = false;
+
     try {
-      const res = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            contents: [{ parts: [{ text: prompt }] }],
-            generationConfig: {
-              temperature: 0.3,
-              ...(expectJson ? { responseMimeType: "application/json" } : {}),
-            },
-          }),
-        }
-      );
+      const { data: usageGate, error: usageGateError } = await supabaseClient
+        .rpc("consume_ai_credit", { user_id_param: user.id })
+        .single();
 
-      if (!res.ok) {
-        const providerMessage = await extractProviderMessage(res);
-        throw new HttpError(res.status === 429 ? 429 : 502, providerMessage, {
-          error: "AI_PROVIDER_ERROR",
-          providerStatus: res.status,
+      if (usageGateError || !usageGate) {
+        throw new HttpError(500, "Failed to reserve AI usage.", {
+          error: "USAGE_GATE_FAILED",
+          details: usageGateError?.message || "Unknown error",
         });
       }
 
-      const data = await res.json();
-      const text = data.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
+      shouldRefundCredit = Boolean(usageGate.counted);
 
-      if (!text.trim()) {
-        throw new HttpError(502, "AI provider returned an empty response.", {
-          error: "AI_PROVIDER_EMPTY",
-        });
-      }
-
-      shouldRefundCredit = false;
-
-      return buildJsonResponse({
-        text,
-        usage: {
+      if (!usageGate.allowed) {
+        return buildJsonResponse({
+          error: "PAYMENT_REQUIRED",
+          message: "Daily AI limit reached. Try again after 00:00 UTC.",
           usedCredits: usageGate.used_credits,
           creditLimit: usageGate.credit_limit,
-          planTier: usageGate.plan_tier,
-        },
-      }, 200, corsHeaders);
-    } catch (providerError) {
-      if (!isPro && shouldRefundCredit) {
-        const { error: refundError } = await supabaseClient.rpc("refund_ai_credit", { user_id_param: user.id });
-        if (refundError) {
-          console.error("Failed to refund AI credit:", refundError);
-        }
+        }, 402, corsHeaders);
       }
-      throw providerError;
+
+      try {
+        const res = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              contents: [{ parts: [{ text: prompt }] }],
+              generationConfig: {
+                temperature: 0.3,
+                ...(expectJson ? { responseMimeType: "application/json" } : {}),
+              },
+            }),
+          }
+        );
+
+        if (!res.ok) {
+          const providerMessage = await extractProviderMessage(res);
+          throw new HttpError(res.status === 429 ? 429 : 502, providerMessage, {
+            error: "AI_PROVIDER_ERROR",
+            providerStatus: res.status,
+          });
+        }
+
+        const data = await res.json();
+        const text = data.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
+
+        if (!text.trim()) {
+          throw new HttpError(502, "AI provider returned an empty response.", {
+            error: "AI_PROVIDER_EMPTY",
+          });
+        }
+
+        shouldRefundCredit = false;
+
+        return buildJsonResponse({
+          text,
+          usage: {
+            usedCredits: usageGate.used_credits,
+            creditLimit: usageGate.credit_limit,
+            planTier: usageGate.plan_tier,
+          },
+        }, 200, corsHeaders);
+      } catch (providerError) {
+        if (shouldRefundCredit) {
+          const { error: refundError } = await supabaseClient.rpc("refund_ai_credit", { user_id_param: user.id });
+          if (refundError) {
+            console.error("Failed to refund AI credit:", refundError);
+          }
+        }
+        throw providerError;
+      }
+    } finally {
+      const { error: releaseError } = await supabaseClient.rpc("release_ai_request_slot", {
+        user_id_param: user.id,
+      });
+      if (releaseError) {
+        console.error("Failed to release AI request slot:", releaseError);
+      }
     }
   } catch (err) {
     if (err instanceof HttpError) {
