@@ -5,7 +5,7 @@
       "memory": 1024,
       "maxDuration": 60
     },
-    "api/export-pdf.js": {
+    "api/export-pdf.ts": {
       "memory": 2048,
       "maxDuration": 60
     }
