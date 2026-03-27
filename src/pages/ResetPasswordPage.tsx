@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { FiCheck, FiLock } from "react-icons/fi";
 import { toast } from "sonner";
 import { supabase } from "../lib/supabase";
+import Seo from "../components/seo/Seo";
 
 const ResetPasswordPage: React.FC = () => {
   const navigate = useNavigate();
@@ -79,6 +80,12 @@ const ResetPasswordPage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-white flex items-center justify-center px-6 py-12">
+      <Seo
+        title="Reset Password | ResumeeNow"
+        description="Reset your ResumeeNow account password and regain access to your resume workspace."
+        path="/reset-password"
+        robots="noindex,nofollow"
+      />
       <div className="w-full max-w-md rounded-3xl border border-black/10 bg-white p-7 md:p-8 shadow-[0_24px_70px_rgba(0,0,0,0.14)]">
         <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-black/45 mb-2">
           ResumeNow Access

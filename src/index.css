@@ -10,6 +10,30 @@ body {
     font-synthesis: none;
 }
 
+@keyframes landing-progress-fill {
+  from {
+    transform: scaleX(0);
+  }
+
+  to {
+    transform: scaleX(1);
+  }
+}
+
+.landing-progress-fill {
+  transform-origin: left center;
+  animation-name: landing-progress-fill;
+  animation-timing-function: linear;
+  animation-fill-mode: forwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .landing-progress-fill {
+    animation: none !important;
+    transform: none !important;
+  }
+}
+
 @media (max-width: 767px) {
   input,
   select,

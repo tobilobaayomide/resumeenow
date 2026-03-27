@@ -1,5 +1,5 @@
 import React from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { FiTwitter, FiLinkedin, FiInstagram, FiGithub, FiArrowRight } from 'react-icons/fi';
 import {
   LANDING_FOOTER_COMPANY_LINKS,
@@ -9,7 +9,6 @@ import {
 } from '../../data/landing';
 
 const Footer: React.FC = () => {
-  const navigate = useNavigate();
   const socialIconMap = {
     twitter: FiTwitter,
     linkedin: FiLinkedin,
@@ -57,19 +56,20 @@ const Footer: React.FC = () => {
 
         <div className="grid grid-cols-1 md:grid-cols-12 gap-y-10 gap-x-8 mb-10 md:mb-16">
           <div className="col-span-1 md:col-span-5 flex flex-col gap-6 md:pr-14">
-            <div
+            <Link
+              to="/"
+              aria-label="ResumeeNow home"
               className="flex items-center gap-3 cursor-pointer group opacity-90 hover:opacity-100 transition-opacity"
-              onClick={() => navigate('/')}
             >
               <img
                 src="/resumeenowlogo.png"
-                alt="Logo"
+                alt="ResumeeNow logo"
                 className="h-6 w-6 object-contain grayscale group-hover:grayscale-0 transition-all duration-500"
               />
               <span className="text-lg font-medium tracking-tight text-white/95">
                 Resumee<span className="text-zinc-500">Now.</span>
               </span>
-            </div>
+            </Link>
             <p className="text-white/60 font-light leading-relaxed text-sm max-w-sm">
               Resume building, AI optimization, and export workflows in one focused workspace.
             </p>

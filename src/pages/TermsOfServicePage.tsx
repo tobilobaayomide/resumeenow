@@ -6,6 +6,7 @@ const TermsOfServicePage = () => {
     <LegalPageLayout
       title="Terms of Service"
       summary="These terms govern access to ResumeeNow and explain the rules for using the website, account system, resume workspace, exports, and AI-assisted tools."
+      path="/terms"
     >
       <section className="space-y-3">
         <p className="text-xs font-semibold uppercase tracking-[0.2em] text-black/45">

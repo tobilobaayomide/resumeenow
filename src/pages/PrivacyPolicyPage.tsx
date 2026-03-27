@@ -6,6 +6,7 @@ const PrivacyPolicyPage = () => {
     <LegalPageLayout
       title="Privacy Policy"
       summary="This page explains what information ResumeeNow collects, how it is used, and the choices available to people who create accounts, import resumes, and sign in with providers like Google."
+      path="/privacy"
     >
       <section className="space-y-3">
         <p className="text-xs font-semibold uppercase tracking-[0.2em] text-black/45">

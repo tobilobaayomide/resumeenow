@@ -9,6 +9,14 @@ export default defineConfig({
     rollupOptions: {
       output: {
         manualChunks(id) {
+          if (id.includes('vite/preload-helper')) {
+            return 'vite-preload-helper';
+          }
+
+          if (id.includes('/src/lib/supabase.ts')) {
+            return 'supabase-client';
+          }
+
           if (id.includes('node_modules/pdfjs-dist')) {
             return 'pdfjs';
           }

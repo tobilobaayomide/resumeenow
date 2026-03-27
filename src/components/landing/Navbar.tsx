@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { FiMenu, FiX, FiUser } from "react-icons/fi";
 import { useAuth } from "../../context/useAuth";
 import { LANDING_NAV_ITEMS } from "../../data/landing";
@@ -9,7 +9,6 @@ const Navbar: React.FC<NavbarProps> = ({ onLogin, onSignup }) => {
   const [menuOpen, setMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const { user, signOut } = useAuth();
-  const navigate = useNavigate();
 
   useEffect(() => {
     const handleScroll = () => {
@@ -41,19 +40,20 @@ const Navbar: React.FC<NavbarProps> = ({ onLogin, onSignup }) => {
         <div className="max-w-360 mx-auto md:py-10 h-20 px-8 flex items-center justify-between">
           {/* Logo */}
          <div className="h-24 flex items-center">
-                    <div 
+                    <Link
+                        to="/"
+                        aria-label="ResumeeNow home"
                         className="flex items-center gap-3 cursor-pointer group opacity-90 hover:opacity-100 transition-opacity" 
-                        onClick={() => navigate('/')}
                     >
                          <img
                             src="/resumeenowlogo.png"
-                            alt="Logo"
+                            alt="ResumeeNow logo"
                             className="h-6 w-6 object-contain grayscale group-hover:grayscale-0 transition-all duration-500"
                         />
                         <span className="text-lg font-medium tracking-tight text-black/90">
                            Resumee<span className="text-zinc-500">Now.</span>
                         </span>
-                    </div>
+                    </Link>
                 </div>
 
 
