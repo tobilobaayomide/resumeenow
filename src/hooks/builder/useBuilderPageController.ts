@@ -2,17 +2,14 @@ import { useEffect, useState, useMemo, type Dispatch, type SetStateAction } from
 import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../context/useAuth';
 import { usePlan } from '../../context/usePlan';
+import { reportRuntimeValidationIssue } from '../../lib/observability/runtimeValidation';
+import { parseBuilderLocationState } from '../../schemas/builder/locationState';
 import type { BuilderPageMobileView, UseBuilderPageControllerResult } from '../../types/builder';
-import type { ResumeData, TemplateId } from '../../types/resume';
+import type { TemplateId } from '../../types/resume';
 import { useBuilderAiFlows } from './useBuilderAiFlows';
 import { useBuilderPersistence } from './useBuilderPersistence';
 import { useBuilderProfileImport } from './useBuilderProfileImport';
 import { useBuilderStore } from '../../store/builderStore';
-
-interface BuilderLocationState {
-  importedResumeData?: ResumeData;
-  importedTitle?: string;
-}
 
 export const useBuilderPageController = (): UseBuilderPageControllerResult => {
   const { id } = useParams<{ id: string }>();
@@ -20,7 +17,7 @@ export const useBuilderPageController = (): UseBuilderPageControllerResult => {
   const location = useLocation();
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { isPro, openUpgrade, monthlyCredits, usedCredits } = usePlan();
+  const { isPro, dailyCreditLimit, planStatus, usedCredits } = usePlan();
 
   const templateId = useBuilderStore((store) => store.templateId);
   const title = useBuilderStore((store) => store.title);
@@ -45,7 +42,29 @@ export const useBuilderPageController = (): UseBuilderPageControllerResult => {
   const [mobileView, setMobileView] = useState<BuilderPageMobileView>('editor');
   const [isEditorCollapsed, setIsEditorCollapsed] = useState(false);
 
-  const locationState = location.state as BuilderLocationState | null;
+  const locationState = useMemo(
+    () => parseBuilderLocationState(location.state),
+    [location.state],
+  );
+
+  useEffect(() => {
+    if (
+      location.state === undefined ||
+      location.state === null ||
+      locationState !== null
+    ) {
+      return;
+    }
+
+    reportRuntimeValidationIssue({
+      key: `builder.location.invalid-state:${location.pathname}`,
+      source: 'builder.location',
+      action: 'Ignored invalid builder route state.',
+      details: {
+        pathname: location.pathname,
+      },
+    });
+  }, [location.pathname, location.state, locationState]);
 
   const {
     isSaving,
@@ -92,10 +111,11 @@ export const useBuilderPageController = (): UseBuilderPageControllerResult => {
     mobileView,
     isEditorCollapsed,
     isPro,
+    planStatus,
     isImporting,
     isSaving,
     isAutosaving,
-    monthlyCredits,
+    dailyCreditLimit,
     usedCredits,
     onBackToDashboard: handleBackToDashboard,
     onTitleChange: setTitleDispatch,
@@ -103,7 +123,6 @@ export const useBuilderPageController = (): UseBuilderPageControllerResult => {
     onMobileViewChange: setMobileView,
     onProAction: handleProAction,
     onToggleEditorCollapse: () => setIsEditorCollapsed((prev) => !prev),
-    onUpgrade: openUpgrade,
     onImportProfile: handleImportProfile,
     onDownload: handleDownload,
     onSave: () => {
@@ -116,17 +135,17 @@ export const useBuilderPageController = (): UseBuilderPageControllerResult => {
     mobileView,
     isEditorCollapsed,
     isPro,
+    planStatus,
     isImporting,
     isSaving,
     isAutosaving,
-    monthlyCredits,
+    dailyCreditLimit,
     usedCredits,
     handleBackToDashboard,
     setTitleDispatch,
     setTemplateIdDispatch,
     setMobileView,
     handleProAction,
-    openUpgrade,
     handleImportProfile,
     handleDownload,
     saveResume

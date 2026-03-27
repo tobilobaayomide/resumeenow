@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { persist, createJSONStorage, type StateStorage } from 'zustand/middleware';
+import { persist, createJSONStorage } from 'zustand/middleware';
 import {
   EMPTY_BUILDER_AI_HIGHLIGHTS,
   getFirstBuilderAiHighlightFocus,
@@ -31,6 +31,14 @@ import {
   type ResumeData,
   type TemplateId,
 } from '../types/resume';
+import { parseBuilderPersistedState } from '../schemas/builder/persistedState';
+import { reportRuntimeValidationIssue } from '../lib/observability/runtimeValidation';
+import {
+  BUILDER_PERSIST_VERSION,
+  BUILDER_STORAGE_NAME,
+  migrateBuilderPersistedState,
+} from './builderPersistence';
+import { createDebouncedStateStorage } from '../lib/storage/debouncedStateStorage';
 
 type BuilderState = {
   resumeData: ResumeData;
@@ -101,32 +109,44 @@ type BuilderActions = {
 
 type BuilderStore = BuilderState & BuilderActions;
 
-const storageTimers: Record<string, ReturnType<typeof setTimeout>> = {};
+const mergePersistedBuilderState = (
+  persistedState: unknown,
+  currentState: BuilderStore,
+): BuilderStore => {
+  const parsedPersistedState = parseBuilderPersistedState(persistedState);
 
-/**
- * Custom storage that debounces writes to localStorage
- * to prevent performance degradation during frequent state updates (typing).
- */
-const debouncedLocalStorage: StateStorage = {
-  getItem: (name) => {
-    return localStorage.getItem(name);
-  },
-  setItem: (name, value) => {
-    if (storageTimers[name]) {
-      clearTimeout(storageTimers[name]);
+  if (!parsedPersistedState) {
+    if (persistedState !== undefined && persistedState !== null) {
+      reportRuntimeValidationIssue({
+        key: 'builder.persist.invalid-merge',
+        source: 'builder.persist',
+        action: 'Ignored invalid persisted builder state during hydration merge.',
+        details: {
+          storageName: BUILDER_STORAGE_NAME,
+        },
+      });
     }
-    storageTimers[name] = setTimeout(() => {
-      localStorage.setItem(name, value);
-      delete storageTimers[name];
-    }, 1000); // 1s debounce for persistence
+
+    return currentState;
+  }
+
+  return {
+    ...currentState,
+    ...parsedPersistedState,
+  };
+};
+
+const debouncedLocalStorage = createDebouncedStateStorage({
+  delayMs: 1000,
+  storage: {
+    getItem: (name) => localStorage.getItem(name),
+    setItem: (name, value) => localStorage.setItem(name, value),
+    removeItem: (name) => localStorage.removeItem(name),
   },
-  removeItem: (name) => {
-    if (storageTimers[name]) {
-      clearTimeout(storageTimers[name]);
-      delete storageTimers[name];
-    }
-    localStorage.removeItem(name);
-  },
+});
+
+export const flushBuilderStorageWrites = () => {
+  debouncedLocalStorage.flushAll();
 };
 
 export const useBuilderStore = create<BuilderStore>()(
@@ -351,8 +371,11 @@ export const useBuilderStore = create<BuilderStore>()(
       discardTailoredPreview: () => set({ tailorPreview: null }),
     }),
     {
-      name: 'resumeenow:builder',
+      name: BUILDER_STORAGE_NAME,
       storage: createJSONStorage(() => debouncedLocalStorage),
+      version: BUILDER_PERSIST_VERSION,
+      migrate: migrateBuilderPersistedState,
+      merge: mergePersistedBuilderState,
       partialize: (state) => ({
         resumeData: state.resumeData,
         templateId: state.templateId,
