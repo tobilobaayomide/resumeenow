@@ -8,6 +8,7 @@ import { usePrefersReducedMotion } from '../../hooks/usePrefersReducedMotion';
 import { useEnterViewport } from '../../hooks/useEnterViewport';
 
 const SWIPE_THRESHOLD_PX = 42;
+const STEPS_MEDIA_ROOT_MARGIN = '320px 0px';
 
 const StepsSection: React.FC = () => {
   const [active, setActive] = useState(0);
@@ -18,7 +19,7 @@ const StepsSection: React.FC = () => {
   const mediaRef = useRef<HTMLDivElement | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const activeStep = LANDING_STEP_ITEMS[active];
-  const shouldLoadVideo = useEnterViewport(mediaRef, '0px 0px');
+  const shouldLoadVideo = useEnterViewport(mediaRef, STEPS_MEDIA_ROOT_MARGIN);
   const prefersReducedMotion = usePrefersReducedMotion();
   const isPageVisible = usePageVisibility();
   const activeVideoSource =
@@ -131,7 +132,7 @@ const StepsSection: React.FC = () => {
                   loop={shouldAnimate}
                   muted
                   playsInline
-                  preload="metadata"
+                  preload={shouldLoadVideo ? 'auto' : 'none'}
                   onLoadStart={() => setLoadedVideoSource(null)}
                   onLoadedData={() => setLoadedVideoSource(activeVideoSource)}
                   onError={() => markVideoError(activeStep.video)}
