@@ -7,6 +7,12 @@ import {
   getVisiblePersonalLinks,
   toExternalLinkHref,
 } from "../../../domain/resume";
+import {
+  previewHighlightInlineClassName,
+  previewHighlightSectionClassName,
+} from "./highlightStyles";
+import HighlightedSkillTokens from "./HighlightedSkillTokens";
+import { isBuilderAiTextHighlighted } from "../../../lib/builder/aiHighlights";
 import { toDescriptionBullets } from "./utils";
 
 const ACCENT = "#1a1a2e";
@@ -40,21 +46,34 @@ const DateBadge: React.FC<{ children: React.ReactNode }> = ({ children }) => (
   </span>
 );
 
-const Entry: React.FC<{ children: React.ReactNode; noSplit?: boolean }> = ({
+const Entry: React.FC<{
+  children: React.ReactNode;
+  noSplit?: boolean;
+  className?: string;
+  ['data-ai-highlight-anchor']?: string;
+}> = ({
   children,
   noSplit,
+  className,
+  "data-ai-highlight-anchor": aiHighlightAnchor,
 }) => (
   <div
     data-no-split={noSplit ? "true" : undefined}
-    className="pl-0 border-l-2 border-transparent"
+    data-ai-highlight-anchor={aiHighlightAnchor}
+    className={`pl-0 border-l-2 border-transparent ${className ?? ""}`.trim()}
   >
     {children}
   </div>
 );
 
-const SkillPill: React.FC<{ label: string }> = ({ label }) => (
+const SkillPill: React.FC<{ label: string; className?: string }> = ({
+  label,
+  className,
+}) => (
   <span
-    className="text-[10px] font-semibold px-2.5 py-0.75 rounded-[3px] tracking-[0.03em]"
+    className={`text-[10px] font-semibold px-2.5 py-0.75 rounded-[3px] tracking-[0.03em] ${
+      className ?? ""
+    }`.trim()}
     style={{
       color: ACCENT,
       background: "rgba(26,26,46,0.06)",
@@ -65,16 +84,25 @@ const SkillPill: React.FC<{ label: string }> = ({ label }) => (
   </span>
 );
 
-const BulletList: React.FC<{ id: string; bullets: string[] }> = ({
+const BulletList: React.FC<{
+  id: string;
+  bullets: string[];
+  highlightedBullets?: string[];
+}> = ({
   id,
   bullets,
+  highlightedBullets = [],
 }) => (
   <ul className="mt-2 space-y-1 list-disc list-outside pl-4">
     {bullets.map((line, i) => (
       <li
         key={`${id}-b-${i}`}
         data-break-point="true"
-        className="text-[11px] text-gray-600 leading-relaxed text-justify"
+        className={`text-[11px] text-gray-600 leading-relaxed text-justify ${
+          isBuilderAiTextHighlighted(highlightedBullets, line)
+            ? previewHighlightInlineClassName
+            : ""
+        }`}
       >
         {line}
       </li>
@@ -85,6 +113,7 @@ const BulletList: React.FC<{ id: string; bullets: string[] }> = ({
 const StudioTemplate: React.FC<BuilderTemplateComponentProps> = ({
   data,
   contentRef,
+  aiHighlights,
 }) => {
   const {
     personalInfo,
@@ -104,6 +133,8 @@ const StudioTemplate: React.FC<BuilderTemplateComponentProps> = ({
   const groupedSkills = skills.groups.filter((g) => g.items.length > 0);
   const shouldRenderGroupedSkills =
     skills.mode === "grouped" && groupedSkills.length > 0;
+  const isSummaryHighlighted = Boolean(aiHighlights?.summary);
+  const isSkillsHighlighted = (aiHighlights?.skills?.length ?? 0) > 0;
 
   return (
     <div
@@ -173,7 +204,10 @@ const StudioTemplate: React.FC<BuilderTemplateComponentProps> = ({
 
       <div className="px-8 py-6 space-y-6">
         {summary && (
-          <section>
+          <section
+            data-ai-highlight-anchor="summary"
+            className={isSummaryHighlighted ? previewHighlightSectionClassName : undefined}
+          >
             <SectionHeading>Profile</SectionHeading>
             <p
               data-break-point="true"
@@ -189,7 +223,11 @@ const StudioTemplate: React.FC<BuilderTemplateComponentProps> = ({
             <SectionHeading>Experience</SectionHeading>
             <div className="space-y-5">
               {experience.map((exp) => (
-                <Entry key={exp.id} noSplit>
+                <Entry
+                  key={exp.id}
+                  noSplit
+                  data-ai-highlight-anchor={`experience-${exp.id}`}
+                >
                   <div className="flex items-baseline justify-between gap-4">
                     <h3
                       style={{ color: ACCENT }}
@@ -209,7 +247,11 @@ const StudioTemplate: React.FC<BuilderTemplateComponentProps> = ({
                     (() => {
                       const bullets = toDescriptionBullets(exp.description);
                       return bullets.length > 0 ? (
-                        <BulletList id={exp.id} bullets={bullets} />
+                        <BulletList
+                          id={exp.id}
+                          bullets={bullets}
+                          highlightedBullets={aiHighlights?.experience[exp.id]}
+                        />
                       ) : (
                         <p
                           data-break-point="true"
@@ -309,7 +351,10 @@ const StudioTemplate: React.FC<BuilderTemplateComponentProps> = ({
         )}
 
         {activeSkills.length > 0 && (
-          <section>
+          <section
+            data-ai-highlight-anchor="skills"
+            className={isSkillsHighlighted ? previewHighlightSectionClassName : undefined}
+          >
             <SectionHeading>Skills</SectionHeading>
             {shouldRenderGroupedSkills ? (
               <div className="space-y-1.5">
@@ -322,14 +367,25 @@ const StudioTemplate: React.FC<BuilderTemplateComponentProps> = ({
                     <span style={{ color: ACCENT }} className="font-bold">
                       {group.label}:
                     </span>{" "}
-                    {group.items.join(", ")}
+                    <HighlightedSkillTokens
+                      skills={group.items}
+                      highlightedSkills={aiHighlights?.skills ?? []}
+                    />
                   </p>
                 ))}
               </div>
             ) : (
               <div data-break-point="true" className="flex flex-wrap gap-1.5">
                 {activeSkills.map((skill) => (
-                  <SkillPill key={skill} label={skill} />
+                  <SkillPill
+                    key={skill}
+                    label={skill}
+                    className={
+                      isBuilderAiTextHighlighted(aiHighlights?.skills ?? [], skill)
+                        ? previewHighlightInlineClassName
+                        : undefined
+                    }
+                  />
                 ))}
               </div>
             )}

@@ -47,8 +47,6 @@ const Settings: React.FC = () => {
       <Sidebar />
 
       <div className="flex-1 flex flex-col min-h-screen relative overflow-hidden w-full">
-        <div className="fixed inset-0 pointer-events-none opacity-[0.02] z-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')]" />
-
         <SettingsHeader />
 
         <main className="flex-1 px-4 md:px-8 lg:px-12 py-8 md:py-10 overflow-y-auto pb-32">

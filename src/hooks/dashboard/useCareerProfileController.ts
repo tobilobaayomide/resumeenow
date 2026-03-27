@@ -1,8 +1,10 @@
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useMemo, useState } from 'react';
 import type { KeyboardEvent } from 'react';
 import { toast } from 'sonner';
 import { EMPTY_CAREER_PROFILE } from '../../data/dashboard';
 import {
+  areCareerProfilesEqual,
   createEmptyEducationItem,
   createEmptyExperienceItem,
   getCareerProfileCompletionItems,
@@ -10,58 +12,68 @@ import {
   getHydratedCareerProfile,
 } from '../../lib/dashboard/careerProfile';
 import { getErrorMessage } from '../../lib/errors';
-import { supabase } from '../../lib/supabase';
+import {
+  fetchProfileRecord,
+  getProfileQueryKey,
+  PROFILE_QUERY_STALE_TIME,
+  upsertProfileRecord,
+} from '../../lib/queries/profile';
+import { parseCareerProfileUpdate } from '../../schemas/integrations/profile';
 import type { CareerProfileState, UseCareerProfileControllerArgs, UseCareerProfileControllerResult } from '../../types/dashboard';
 
 export const useCareerProfileController = ({
   user,
 }: UseCareerProfileControllerArgs): UseCareerProfileControllerResult => {
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
+  const userId = user?.id ?? null;
+  const queryClient = useQueryClient();
   const [isEditing, setIsEditing] = useState(false);
-  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
-  const [savedProfile, setSavedProfile] = useState<CareerProfileState | null>(null);
+  const [draftProfile, setDraftProfile] = useState<CareerProfileState | null>(null);
   const [activeModal, setActiveModal] = useState<'experience' | 'education' | null>(null);
   const [newExp, setNewExp] = useState(() => createEmptyExperienceItem());
   const [newEdu, setNewEdu] = useState(() => createEmptyEducationItem());
   const [newSkill, setNewSkill] = useState('');
-  const [profile, setProfile] = useState<CareerProfileState>(EMPTY_CAREER_PROFILE);
+  const profileQueryKey = getProfileQueryKey(userId);
+
+  const profileQuery = useQuery({
+    queryKey: profileQueryKey,
+    queryFn: async () => fetchProfileRecord(userId as string),
+    enabled: userId !== null,
+    staleTime: PROFILE_QUERY_STALE_TIME,
+    refetchOnWindowFocus: false,
+  });
 
   useEffect(() => {
-    if (!user) return;
+    if (profileQuery.isError) {
+      toast.error('Failed to load profile.');
+    }
+  }, [profileQuery.error, profileQuery.isError]);
 
-    const fetchProfile = async () => {
-      try {
-        setLoading(true);
-        const { data } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', user.id)
-          .maybeSingle();
+  const serverProfile =
+    user == null
+      ? EMPTY_CAREER_PROFILE
+      : profileQuery.data
+        ? getHydratedCareerProfile(profileQuery.data, user)
+        : getFallbackCareerProfile(user);
+  const profile = draftProfile ?? serverProfile;
+  const hasUnsavedChanges =
+    draftProfile !== null && !areCareerProfilesEqual(draftProfile, serverProfile);
 
-        const nextProfile = data
-          ? getHydratedCareerProfile(data, user)
-          : getFallbackCareerProfile(user);
+  const updateDraftProfile = (
+    updater: (current: CareerProfileState) => CareerProfileState,
+  ) => {
+    setDraftProfile((currentDraft) => {
+      const nextProfile = updater(currentDraft ?? serverProfile);
+      return areCareerProfilesEqual(nextProfile, serverProfile) ? null : nextProfile;
+    });
+  };
 
-        setProfile(nextProfile);
-        setSavedProfile(nextProfile);
-        setHasUnsavedChanges(false);
-        setIsEditing(false);
-      } catch {
-        toast.error('Failed to load profile.');
-      } finally {
-        setLoading(false);
+  const saveProfileMutation = useMutation({
+    mutationFn: async (updatedProfile: CareerProfileState) => {
+      if (!user) {
+        throw new Error('Login required.');
       }
-    };
 
-    void fetchProfile();
-  }, [user]);
-
-  const handleSave = async (updatedProfile: CareerProfileState = profile, showToast = true) => {
-    if (!user) return;
-    setSaving(true);
-    try {
-      const updates = {
+      const updates = parseCareerProfileUpdate({
         id: user.id,
         full_name: updatedProfile.full_name,
         headline: updatedProfile.headline,
@@ -73,33 +85,33 @@ export const useCareerProfileController = ({
         education: updatedProfile.education,
         skills: updatedProfile.skills,
         updated_at: new Date().toISOString(),
+      });
+
+      const savedProfileRecord = await upsertProfileRecord(user.id, updates);
+      return {
+        savedProfileRecord,
       };
-      const { error } = await supabase.from('profiles').upsert(updates).select();
-      if (error) throw error;
-      setSavedProfile(updatedProfile);
-      setHasUnsavedChanges(false);
+    },
+    onSuccess: ({ savedProfileRecord }) => {
+      queryClient.setQueryData(profileQueryKey, savedProfileRecord);
+      setDraftProfile(null);
       setIsEditing(false);
-      if (showToast) toast.success('Profile saved successfully!');
-    } catch (error: unknown) {
+      toast.success('Profile saved successfully!');
+    },
+    onError: (error: unknown) => {
       toast.error(`Error saving: ${getErrorMessage(error)}`);
-    } finally {
-      setSaving(false);
-    }
-  };
+    },
+  });
 
   const changeField = <K extends keyof CareerProfileState>(
     field: K,
     value: CareerProfileState[K],
   ) => {
-    setProfile((prev) => ({ ...prev, [field]: value }));
-    setHasUnsavedChanges(true);
+    updateDraftProfile((current) => ({ ...current, [field]: value }));
   };
 
   const discardChanges = () => {
-    if (savedProfile) {
-      setProfile(savedProfile);
-    }
-    setHasUnsavedChanges(false);
+    setDraftProfile(null);
     setIsEditing(false);
     setActiveModal(null);
     setNewSkill('');
@@ -111,12 +123,10 @@ export const useCareerProfileController = ({
   const missingItems = completionItems.filter((item) => !item.done).slice(0, 3);
 
   const addExperience = () => {
-    const updatedProfile = {
-      ...profile,
-      experience: [...profile.experience, { ...newExp, id: Date.now().toString() }],
-    };
-    setProfile(updatedProfile);
-    setHasUnsavedChanges(true);
+    updateDraftProfile((current) => ({
+      ...current,
+      experience: [...current.experience, { ...newExp, id: Date.now().toString() }],
+    }));
     toast.success('Experience added. Save changes to apply.');
     setActiveModal(null);
     setNewExp(createEmptyExperienceItem());
@@ -127,12 +137,10 @@ export const useCareerProfileController = ({
       action: {
         label: 'Delete',
         onClick: () => {
-          const updatedProfile = {
-            ...profile,
-            experience: profile.experience.filter((item) => item.id !== id),
-          };
-          setProfile(updatedProfile);
-          setHasUnsavedChanges(true);
+          updateDraftProfile((current) => ({
+            ...current,
+            experience: current.experience.filter((item) => item.id !== id),
+          }));
           toast.success('Role removed. Save changes to apply.');
         },
       },
@@ -144,12 +152,10 @@ export const useCareerProfileController = ({
   };
 
   const addEducation = () => {
-    const updatedProfile = {
-      ...profile,
-      education: [...profile.education, { ...newEdu, id: Date.now().toString() }],
-    };
-    setProfile(updatedProfile);
-    setHasUnsavedChanges(true);
+    updateDraftProfile((current) => ({
+      ...current,
+      education: [...current.education, { ...newEdu, id: Date.now().toString() }],
+    }));
     toast.success('Education added. Save changes to apply.');
     setActiveModal(null);
     setNewEdu(createEmptyEducationItem());
@@ -160,12 +166,10 @@ export const useCareerProfileController = ({
       action: {
         label: 'Delete',
         onClick: () => {
-          const updatedProfile = {
-            ...profile,
-            education: profile.education.filter((item) => item.id !== id),
-          };
-          setProfile(updatedProfile);
-          setHasUnsavedChanges(true);
+          updateDraftProfile((current) => ({
+            ...current,
+            education: current.education.filter((item) => item.id !== id),
+          }));
           toast.success('Education removed. Save changes to apply.');
         },
       },
@@ -187,24 +191,23 @@ export const useCareerProfileController = ({
       return;
     }
 
-    const updatedProfile = { ...profile, skills: [...profile.skills, normalizedSkill] };
-    setProfile(updatedProfile);
-    setHasUnsavedChanges(true);
+    updateDraftProfile((current) => ({
+      ...current,
+      skills: [...current.skills, normalizedSkill],
+    }));
     setNewSkill('');
   };
 
   const deleteSkill = (skillToDelete: string) => {
-    const updatedProfile = {
-      ...profile,
-      skills: profile.skills.filter((skill) => skill !== skillToDelete),
-    };
-    setProfile(updatedProfile);
-    setHasUnsavedChanges(true);
+    updateDraftProfile((current) => ({
+      ...current,
+      skills: current.skills.filter((skill) => skill !== skillToDelete),
+    }));
   };
 
   return {
-    loading,
-    saving,
+    loading: userId !== null && profileQuery.isPending && profileQuery.data === undefined,
+    saving: saveProfileMutation.isPending,
     isEditing,
     hasUnsavedChanges,
     profile,
@@ -219,7 +222,11 @@ export const useCareerProfileController = ({
     setNewSkill,
     startEditing: () => setIsEditing(true),
     discardChanges,
-    saveProfile: () => void handleSave(profile, true),
+    saveProfile: () => {
+      void saveProfileMutation.mutateAsync(profile).catch(() => {
+        // Error toast is handled by the mutation.
+      });
+    },
     changeField,
     openExperienceModal: () => setActiveModal('experience'),
     openEducationModal: () => setActiveModal('education'),

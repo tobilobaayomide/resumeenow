@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import TemplateRenderer from "../templates/TemplateRenderer";
 import type { ResumeData } from "../../../domain/resume";
 import type { TemplateId } from "../../../domain/templates";
+import type { BuilderAiHighlights } from "../../../types/builder";
 
 export const PAGE_WIDTH_PX = 794;
 export const PAGE_HEIGHT_PX = 1123;
@@ -86,6 +87,7 @@ const calculatePageBreaks = (
 interface HtmlTemplateDocumentProps {
   data: ResumeData;
   templateId: TemplateId;
+  aiHighlights?: BuilderAiHighlights;
   zoom?: number;
   pageGap?: number;
   withShadow?: boolean;
@@ -96,6 +98,7 @@ interface HtmlTemplateDocumentProps {
 export const HtmlTemplateDocument: React.FC<HtmlTemplateDocumentProps> = ({
   data,
   templateId,
+  aiHighlights,
   zoom = 1,
   pageGap = DEFAULT_PAGE_GAP_PX,
   withShadow = true,
@@ -167,7 +170,7 @@ export const HtmlTemplateDocument: React.FC<HtmlTemplateDocumentProps> = ({
         fonts.removeEventListener("loadingerror", handleFontsSettled);
       }
     };
-  }, [data, templateId]);
+  }, [data, templateId, aiHighlights]);
 
   const totalPages =
     typeof pageLimit === "number"
@@ -185,6 +188,7 @@ export const HtmlTemplateDocument: React.FC<HtmlTemplateDocumentProps> = ({
     <>
       <div
         aria-hidden="true"
+        data-preview-measurement="true"
         className="pointer-events-none absolute print:hidden"
         style={{
           width: PAGE_WIDTH_PX,
@@ -196,7 +200,11 @@ export const HtmlTemplateDocument: React.FC<HtmlTemplateDocumentProps> = ({
         }}
       >
         <div ref={measureRef}>
-          <TemplateRenderer templateId={templateId} data={data} />
+          <TemplateRenderer
+            templateId={templateId}
+            data={data}
+            aiHighlights={aiHighlights}
+          />
         </div>
       </div>
 
@@ -271,7 +279,11 @@ export const HtmlTemplateDocument: React.FC<HtmlTemplateDocumentProps> = ({
                       }}
                     >
                       <div style={{ marginTop: `-${pageStart}px` }}>
-                        <TemplateRenderer templateId={templateId} data={data} />
+                        <TemplateRenderer
+                          templateId={templateId}
+                          data={data}
+                          aiHighlights={aiHighlights}
+                        />
                       </div>
                     </div>
 

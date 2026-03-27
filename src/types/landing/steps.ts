@@ -3,4 +3,5 @@ export interface LandingStepItem {
   title: string;
   description: string;
   video: string;
+  poster?: string;
 }

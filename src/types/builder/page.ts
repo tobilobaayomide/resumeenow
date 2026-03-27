@@ -8,7 +8,7 @@ import type {
   TemplateId,
 } from '../resume';
 import type { AiFlowFeature } from '../../domain/workflows';
-import type { ProFeature } from '../context';
+import type { PlanStatus, ProFeature } from '../context';
 
 export type BuilderPageMobileView = 'editor' | 'preview';
 
@@ -58,10 +58,11 @@ export interface BuilderHeaderProps {
   mobileView: BuilderPageMobileView;
   isEditorCollapsed: boolean;
   isPro: boolean;
+  planStatus: PlanStatus;
   isImporting: boolean;
   isSaving: boolean;
   isAutosaving: boolean;
-  monthlyCredits: number;
+  dailyCreditLimit: number;
   usedCredits: number;
   onBackToDashboard: () => void;
   onTitleChange: (value: string) => void;
@@ -69,7 +70,6 @@ export interface BuilderHeaderProps {
   onMobileViewChange: (view: BuilderPageMobileView) => void;
   onProAction: (feature: ProFeature, label: string) => void;
   onToggleEditorCollapse: () => void;
-  onUpgrade: () => void;
   onImportProfile: () => void;
   onDownload: () => void;
   onSave: () => void;

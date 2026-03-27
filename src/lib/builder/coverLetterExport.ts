@@ -74,15 +74,24 @@ interface LayoutStyle {
 
 let measurementContext: CanvasRenderingContext2D | null = null;
 
+const stripUnsupportedPdfCharacters = (value: string): string =>
+  Array.from(value)
+    .filter((character) => {
+      const code = character.charCodeAt(0);
+      return code === 0x09 || code === 0x0a || code === 0x0d || (code >= 0x20 && code <= 0x7e);
+    })
+    .join('');
+
 const normalizePdfText = (value: string): string =>
-  value
-    .replace(
+  stripUnsupportedPdfCharacters(
+    value
+      .replace(
       /[\u00a0\u2013\u2014\u2018\u2019\u201c\u201d\u2022\u2026]/g,
       (character) => PDF_TEXT_REPLACEMENTS[character] ?? ' ',
     )
     .normalize('NFKD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .replace(/[^\x09\x0a\x0d\x20-\x7e]/g, '');
+    .replace(/[\u0300-\u036f]/g, ''),
+  );
 
 const splitCoverLetterParagraphs = (coverLetterText: string): string[] =>
   coverLetterText

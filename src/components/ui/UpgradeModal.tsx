@@ -14,16 +14,26 @@ const FEATURE_LABELS: Record<ProFeature, string> = {
 const UpgradeModal: React.FC<UpgradeModalProps> = ({
   open,
   feature,
+  joined,
+  joining,
   onClose,
   onUpgrade,
 }) => {
   if (!open) return null;
 
   const featureLabel = feature ? FEATURE_LABELS[feature] : "Premium Workflow";
+  const ctaLabel = joining
+    ? 'Joining...'
+    : joined
+      ? 'Already Joined'
+      : 'Join Pro Waitlist';
+  const bodyCopy = joined
+    ? `You're already on the Pro waitlist for ${featureLabel}. We will notify you when billing and early access open up.`
+    : `This premium capability is currently in development. Join the waitlist for our Pro plan to get early access to ${featureLabel} and a full suite of intelligent tools when they launch.`;
 
   return (
     <div
-      className="fixed inset-0 z-[100] bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4 sm:p-6 animate-in fade-in duration-200"
+      className="fixed inset-0 z-100 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4 sm:p-6 animate-in fade-in duration-200"
       onClick={(event) => {
         if (event.target === event.currentTarget) onClose();
       }}
@@ -51,9 +61,7 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({
 
         <div className="p-6 bg-white space-y-6">
           <p className="text-[14px] text-gray-600 leading-relaxed font-medium">
-            This premium capability is currently in development. Join the waitlist for our Pro plan to
-            get early access to {featureLabel} and a full suite of
-            intelligent tools when they launch.
+            {bodyCopy}
           </p>
 
           <div className="bg-amber-50/50 border border-amber-100/50 rounded-2xl p-5">
@@ -62,7 +70,7 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({
             </p>
             <ul className="space-y-3">
               {[
-                "Unlimited AI generation & tailoring",
+                "100 AI workflow runs per day",
                 "Deep ATS keyword optimization",
                 "Priority access to premium templates",
                 "Advanced cover letter drafting",
@@ -83,9 +91,10 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({
         <div className="px-6 py-5 bg-gray-50/80 border-t border-gray-100 flex flex-row-reverse gap-3 items-center">
           <button
             onClick={onUpgrade}
-            className="sm:w-auto flex-1 h-11 rounded-xl bg-gray-900 text-white text-[13.5px] font-bold hover:bg-gray-800 transition-all shadow-md flex items-center justify-center gap-2"
+            disabled={joined || joining}
+            className="sm:w-auto flex-1 h-11 rounded-xl bg-gray-900 text-white text-[13.5px] font-bold hover:bg-gray-800 transition-all shadow-md flex items-center justify-center gap-2 disabled:cursor-not-allowed disabled:bg-gray-300 disabled:text-gray-600"
           >
-            Join Pro Waitlist
+            {ctaLabel}
           </button>
           <button
             onClick={onClose}

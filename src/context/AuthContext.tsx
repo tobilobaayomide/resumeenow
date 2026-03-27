@@ -1,10 +1,20 @@
-import React, { useEffect, useState } from 'react';
-import type { Session, User } from '@supabase/supabase-js';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import type { User } from '@supabase/supabase-js';
 import { AuthContext } from './auth-context';
+
+const areUsersEquivalent = (left: User | null, right: User | null): boolean => {
+  if (left === right) return true;
+  if (!left || !right) return left === right;
+
+  return (
+    left.id === right.id &&
+    left.email === right.email &&
+    JSON.stringify(left.user_metadata ?? null) === JSON.stringify(right.user_metadata ?? null)
+  );
+};
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
-  const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -20,15 +30,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
         if (!mounted) return;
 
-        setSession(activeSession);
-        setUser(activeSession?.user ?? null);
+        setUser((currentUser) => {
+          const nextUser = activeSession?.user ?? null;
+          return areUsersEquivalent(currentUser, nextUser) ? currentUser : nextUser;
+        });
         setLoading(false);
 
         const {
           data: { subscription },
         } = supabase.auth.onAuthStateChange((_event, nextSession) => {
-          setSession(nextSession);
-          setUser(nextSession?.user ?? null);
+          setUser((currentUser) => {
+            const nextUser = nextSession?.user ?? null;
+            return areUsersEquivalent(currentUser, nextUser) ? currentUser : nextUser;
+          });
           setLoading(false);
         });
 
@@ -48,14 +62,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
   }, []);
 
-  const signOut = async () => {
+  const signOut = useCallback(async () => {
     const { supabase } = await import('../lib/supabase');
     await supabase.auth.signOut();
-  };
+  }, []);
+
+  const value = useMemo(
+    () => ({ user, loading, signOut }),
+    [loading, signOut, user],
+  );
 
   return (
-    <AuthContext.Provider value={{ user, session, loading, signOut }}>
-      {!loading && children}
+    <AuthContext.Provider value={value}>
+      {children}
     </AuthContext.Provider>
   );
 };

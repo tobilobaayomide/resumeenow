@@ -1,24 +1,37 @@
 import React, { useEffect, useRef, useState } from "react";
 import {
-  LANDING_FALLBACK_DEMO_VIDEO_URL,
   LANDING_STEP_ITEMS,
   LANDING_STEP_ROTATION_MS,
 } from "../../data/landing";
+import { usePageVisibility } from '../../hooks/usePageVisibility';
+import { usePrefersReducedMotion } from '../../hooks/usePrefersReducedMotion';
 import { useEnterViewport } from '../../hooks/useEnterViewport';
 
 const SWIPE_THRESHOLD_PX = 42;
+const STEPS_MEDIA_ROOT_MARGIN = '320px 0px';
 
 const StepsSection: React.FC = () => {
   const [active, setActive] = useState(0);
   const [cycleSeed, setCycleSeed] = useState(0);
-  const [videoSource, setVideoSource] = useState(LANDING_STEP_ITEMS[0]?.video ?? LANDING_FALLBACK_DEMO_VIDEO_URL);
-  const [videoLoaded, setVideoLoaded] = useState(false);
+  const [failedVideos, setFailedVideos] = useState<Record<string, boolean>>({});
+  const [loadedVideoSource, setLoadedVideoSource] = useState<string | null>(null);
   const touchStartXRef = useRef<number | null>(null);
   const mediaRef = useRef<HTMLDivElement | null>(null);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
   const activeStep = LANDING_STEP_ITEMS[active];
-  const shouldLoadVideo = useEnterViewport(mediaRef);
+  const shouldLoadVideo = useEnterViewport(mediaRef, STEPS_MEDIA_ROOT_MARGIN);
+  const prefersReducedMotion = usePrefersReducedMotion();
+  const isPageVisible = usePageVisibility();
+  const activeVideoSource =
+    activeStep && !failedVideos[activeStep.video]
+      ? activeStep.video
+      : null;
+  const isActiveVideoLoaded = activeVideoSource !== null && loadedVideoSource === activeVideoSource;
+  const shouldAnimate = shouldLoadVideo && isPageVisible && !prefersReducedMotion;
 
   useEffect(() => {
+    if (!shouldAnimate) return;
+
     const timer = window.setTimeout(() => {
       setActive((prevActive) => (prevActive + 1) % LANDING_STEP_ITEMS.length);
     }, LANDING_STEP_ROTATION_MS);
@@ -26,12 +39,22 @@ const StepsSection: React.FC = () => {
     return () => {
       window.clearTimeout(timer);
     };
-  }, [active, cycleSeed]);
+  }, [active, cycleSeed, shouldAnimate]);
 
   useEffect(() => {
-    setVideoLoaded(false);
-    setVideoSource(activeStep?.video ?? LANDING_FALLBACK_DEMO_VIDEO_URL);
-  }, [activeStep]);
+    const video = videoRef.current;
+    if (!video || !shouldLoadVideo || !activeVideoSource) return;
+
+    if (shouldAnimate) {
+      const playback = video.play();
+      if (playback instanceof Promise) {
+        void playback.catch(() => {});
+      }
+      return;
+    }
+
+    video.pause();
+  }, [activeVideoSource, shouldAnimate, shouldLoadVideo]);
 
   const handleStepClick = (index: number) => {
     setActive(index);
@@ -63,21 +86,15 @@ const StepsSection: React.FC = () => {
     handleStepSwipe(deltaX < 0 ? 1 : -1);
   };
 
-  const handleVideoError = () => {
-    if (videoSource !== LANDING_FALLBACK_DEMO_VIDEO_URL) {
-      setVideoLoaded(false);
-      setVideoSource(LANDING_FALLBACK_DEMO_VIDEO_URL);
-    }
+  const markVideoError = (source: string) => {
+    setFailedVideos((current) => {
+      if (current[source]) return current;
+      return { ...current, [source]: true };
+    });
   };
 
   return (
     <section className="py-24 bg-white overflow-hidden relative" id="steps">
-      <style>{`
-        @keyframes stepLoaderFill {
-          from { width: 0%; }
-          to { width: 100%; }
-        }
-      `}</style>
       <div className="pointer-events-none absolute inset-0">
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_left,rgba(0,0,0,0.06))]" />
       </div>
@@ -99,48 +116,47 @@ const StepsSection: React.FC = () => {
           onTouchEnd={handleTouchEnd}
           style={{ touchAction: "pan-y" }}
         >
-          <div className="absolute inset-0 bg-zinc-900">
-            <video
-              key={videoSource}
-              className={`h-full w-full object-contain transition-opacity duration-500 ${
-                videoLoaded ? "opacity-100" : "opacity-0"
-              }`}
-              src={shouldLoadVideo ? videoSource : undefined}
-              autoPlay
-              loop
-              muted
-              playsInline
-              preload={shouldLoadVideo ? "metadata" : "none"}
-              onLoadedData={() => setVideoLoaded(true)}
-              onError={handleVideoError}
-            />
-          </div>
-          {!videoLoaded && (
-            <div className="absolute inset-0 flex items-center justify-center bg-zinc-900 overflow-hidden">
-              <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.05)_0%,transparent_100%)] animate-pulse" />
-              <div className="flex flex-col items-center gap-4 opacity-25">
-                <span className="text-6xl font-black text-white/10 select-none">
-                  {activeStep.number}
-                </span>
-                <p className="text-[10px] uppercase tracking-widest text-white/40 font-mono pb-2">
-                  Visualizing "{activeStep.title}"
-                </p>
-              </div>
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,#f4f0e7_0%,#ece9e1_52%,#dfdbd2_100%)]">
+            <div className="absolute inset-0 flex items-center justify-center">
+              {shouldLoadVideo && activeVideoSource ? (
+                <video
+                  ref={videoRef}
+                  key={activeVideoSource}
+                  className={`absolute max-h-full max-w-full h-auto w-auto transition-opacity duration-500 motion-reduce:transition-none ${
+                    isActiveVideoLoaded ? "opacity-100" : "opacity-0"
+                  }`}
+                  aria-label={`${activeStep.title} demo video`}
+                  src={activeVideoSource}
+                  poster={activeStep.poster}
+                  autoPlay={shouldAnimate}
+                  loop={shouldAnimate}
+                  muted
+                  playsInline
+                  preload={shouldLoadVideo ? 'auto' : 'none'}
+                  onLoadStart={() => setLoadedVideoSource(null)}
+                  onLoadedData={() => setLoadedVideoSource(activeVideoSource)}
+                  onError={() => markVideoError(activeStep.video)}
+                />
+              ) : null}
+
+          
             </div>
-          )}
+          </div>
           <div className="absolute inset-0 bg-linear-to-tr from-black/10 via-transparent to-transparent pointer-events-none" />
         </div>
 
         <div className="block md:hidden min-h-40">
           <div className="relative pt-6">
             <div className="absolute top-0 left-0 w-full h-0.5 bg-gray-200">
-              <div
-                className="h-full bg-black"
-                style={{
-                  animation: `stepLoaderFill ${LANDING_STEP_ROTATION_MS}ms linear forwards`,
-                }}
-                key={`mobile-${active}-${cycleSeed}`}
-              ></div>
+              {!prefersReducedMotion && (
+                <div
+                  className="h-full bg-black landing-progress-fill"
+                  style={{
+                    animationDuration: `${LANDING_STEP_ROTATION_MS}ms`,
+                  }}
+                  key={`mobile-${active}-${cycleSeed}`}
+                ></div>
+              )}
             </div>
             <span className="block text-sm font-bold tracking-widest text-black mb-2 font-mono">
               {activeStep.number} <span className="text-gray-400">/ 03</span>
@@ -160,19 +176,20 @@ const StepsSection: React.FC = () => {
               type="button"
               onClick={() => handleStepClick(idx)}
               className={`
-                relative  border p-5 pt-8 text-left transition-all duration-300 cursor-pointer
+                relative border p-5 pt-8 text-left transition-all duration-300 cursor-pointer motion-reduce:transition-none
                 ${active === idx
                   ? "opacity-100 bg-white border-black/15 shadow-[0_12px_26px_rgba(0,0,0,0.08)]"
                   : "opacity-75 border-transparent hover:opacity-100 hover:border-black/10 hover:bg-zinc-50/40"}
               `}
               aria-label={`View step ${step.number}: ${step.title}`}
+              aria-pressed={active === idx}
             >
               <div className="absolute top-0 left-0 w-full h-0.5 bg-gray-200">
-                {active === idx && (
+                {active === idx && !prefersReducedMotion && (
                   <div
-                    className="h-full bg-black"
+                    className="h-full bg-black landing-progress-fill"
                     style={{
-                      animation: `stepLoaderFill ${LANDING_STEP_ROTATION_MS}ms linear forwards`,
+                      animationDuration: `${LANDING_STEP_ROTATION_MS}ms`,
                     }}
                     key={`desktop-${active}-${cycleSeed}`}
                   ></div>
@@ -192,10 +209,16 @@ const StepsSection: React.FC = () => {
         </div>
 
         <div className="flex md:hidden justify-center gap-2 mt-8">
-          {LANDING_STEP_ITEMS.map((_, i) => (
-            <div
-              key={i}
-              className={`h-1.5 rounded-full transition-all duration-300 ${active === i ? "w-8 bg-black" : "w-1.5 bg-gray-300"}`}
+          {LANDING_STEP_ITEMS.map((step, index) => (
+            <button
+              key={step.number}
+              type="button"
+              onClick={() => handleStepClick(index)}
+              aria-label={`Show step ${step.number}: ${step.title}`}
+              aria-pressed={active === index}
+              className={`h-1.5 rounded-full transition-all duration-300 motion-reduce:transition-none ${
+                active === index ? "w-8 bg-black" : "w-4 bg-gray-300"
+              }`}
             />
           ))}
         </div>

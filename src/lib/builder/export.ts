@@ -4,7 +4,7 @@ import { toast } from 'sonner';
 import type { ResumeData } from '../../domain/resume/types';
 import type { TemplateId } from '../../domain/templates';
 import { HtmlTemplateDocument } from '../../components/builder/preview/HtmlTemplateDocument';
-import { supabase } from '../supabase';
+import { getValidAccessToken } from '../auth/accessToken';
 
 const PRINT_HOST_ID = 'resume-print-host';
 const PDF_EXPORT_ENDPOINT = '/api/export-pdf';
@@ -31,25 +31,12 @@ const triggerBlobDownload = (blob: Blob, fileName: string): void => {
   window.setTimeout(() => URL.revokeObjectURL(url), 30_000);
 };
 
-const getAccessToken = async (): Promise<string> => {
-  const {
-    data: { session },
-    error,
-  } = await supabase.auth.getSession();
-
-  if (error || !session?.access_token) {
-    throw new Error('Please sign in again to continue.');
-  }
-
-  return session.access_token;
-};
-
 const requestPdfExport = async (
   fileName: string,
   data: ResumeData,
   templateId: TemplateId,
 ): Promise<Blob> => {
-  const accessToken = await getAccessToken();
+  const accessToken = await getValidAccessToken('Please sign in again to continue.');
   const response = await fetch(PDF_EXPORT_ENDPOINT, {
     method: 'POST',
     headers: {

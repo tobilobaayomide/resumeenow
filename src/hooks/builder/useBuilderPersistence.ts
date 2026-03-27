@@ -1,26 +1,27 @@
+import { useQueryClient } from '@tanstack/react-query';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { User } from '@supabase/supabase-js';
 import type { NavigateFunction } from 'react-router-dom';
 import { toast } from 'sonner';
 import { AUTOSAVE_DELAY_MS, clampSummary, serializeDraft } from '../../lib/builder/page';
 import { getErrorMessage } from '../../lib/errors';
+import { reportRuntimeValidationIssue } from '../../lib/observability/runtimeValidation';
+import { getResumesQueryKey } from '../../lib/queries/resumes';
+import type { BuilderLocationState } from '../../schemas/builder/locationState';
+import {
+  parseResumeData,
+  safeParseResumeRecord,
+} from '../../schemas/domain/resume';
 import { supabase } from '../../lib/supabase';
 import {
   INITIAL_RESUME_DATA,
-  normalizeResumeData,
-  normalizeResumeRecord,
   normalizeTemplateId,
   type ResumeData,
   type TemplateId,
 } from '../../types/resume';
 import { downloadResumeAsPdf } from '../../lib/builder/export';
 import { recordPdfExport } from '../../lib/dashboard/exportStatus';
-import { useBuilderStore } from '../../store/builderStore';
-
-interface BuilderLocationState {
-  importedResumeData?: ResumeData;
-  importedTitle?: string;
-}
+import { flushBuilderStorageWrites, useBuilderStore } from '../../store/builderStore';
 
 interface UseBuilderPersistenceArgs {
   id: string | undefined;
@@ -54,6 +55,7 @@ export const useBuilderPersistence = ({
   const setResumeData = useBuilderStore((store) => store.setResumeData);
   const setTemplateId = useBuilderStore((store) => store.setTemplateId);
   const setTitle = useBuilderStore((store) => store.setTitle);
+  const queryClient = useQueryClient();
 
   const [isSaving, setIsSaving] = useState(false);
   const [isAutosaving, setIsAutosaving] = useState(false);
@@ -105,7 +107,7 @@ export const useBuilderPersistence = ({
     const importedTitle = locationState?.importedTitle;
     const nextTitle = queryTitle || importedTitle || 'Untitled Resume';
     const nextData = locationState?.importedResumeData
-      ? normalizeResumeData(locationState.importedResumeData)
+      ? parseResumeData(locationState.importedResumeData)
       : INITIAL_RESUME_DATA;
 
     setLoadedResumeState(
@@ -136,8 +138,17 @@ export const useBuilderPersistence = ({
           return;
         }
 
-        const resume = normalizeResumeRecord(data);
-        if (!resume) {
+        const resume = safeParseResumeRecord(data);
+        if (!resume.success) {
+          reportRuntimeValidationIssue({
+            key: `builder.resume.invalid-row:${user.id}:${id}`,
+            source: 'builder.resume',
+            action: 'Rejected an invalid resume row while hydrating the builder.',
+            details: {
+              userId: user.id,
+              resumeId: id,
+            },
+          });
           toast.error("Couldn't parse that resume.");
           navigate('/dashboard');
           return;
@@ -145,12 +156,12 @@ export const useBuilderPersistence = ({
 
         setLoadedResumeState(
           {
-            ...resume.content,
-            summary: clampSummary(resume.content.summary),
+            ...resume.data.content,
+            summary: clampSummary(resume.data.content.summary),
           },
-          resume.template_id,
-          resume.title || 'Untitled Resume',
-          resume.updated_at,
+          resume.data.template_id,
+          resume.data.title || 'Untitled Resume',
+          resume.data.updated_at,
         );
         hasHydratedInitialState.current = true;
       };
@@ -200,8 +211,12 @@ export const useBuilderPersistence = ({
   }, [handleDownload, hasHandledAutoDownload, searchParams]);
 
   useEffect(() => {
+    if (!isDirty) {
+      return undefined;
+    }
+
     const handleBeforeUnload = (event: BeforeUnloadEvent) => {
-      if (!isDirty) return;
+      flushBuilderStorageWrites();
       event.preventDefault();
       event.returnValue = '';
     };
@@ -209,6 +224,26 @@ export const useBuilderPersistence = ({
     window.addEventListener('beforeunload', handleBeforeUnload);
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
   }, [isDirty]);
+
+  useEffect(() => {
+    const handlePageHide = () => {
+      flushBuilderStorageWrites();
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'hidden') {
+        flushBuilderStorageWrites();
+      }
+    };
+
+    window.addEventListener('pagehide', handlePageHide);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      window.removeEventListener('pagehide', handlePageHide);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, []);
 
   const saveResume = useCallback(
     async ({ silent = false }: { silent?: boolean } = {}) => {
@@ -241,16 +276,30 @@ export const useBuilderPersistence = ({
 
           if (error) throw error;
 
-          const createdResume = normalizeResumeRecord(data);
-          if (!createdResume) throw new Error('Failed to parse created resume.');
+          const createdResume = safeParseResumeRecord(data);
+          if (!createdResume.success) {
+            reportRuntimeValidationIssue({
+              key: `builder.resume.create.invalid-row:${user.id}`,
+              source: 'builder.resume.create',
+              action: 'Received an invalid resume row after builder create.',
+              details: {
+                userId: user.id,
+              },
+            });
+            throw new Error('Failed to parse created resume.');
+          }
 
           setSavedSnapshot(
             serializeDraft(payload.title, payload.template_id, payload.content),
           );
-          setLastSavedAt(createdResume.updated_at || payload.updated_at);
+          setLastSavedAt(createdResume.data.updated_at || payload.updated_at);
           setIsDirty(false);
+          void queryClient.invalidateQueries({
+            queryKey: getResumesQueryKey(user.id),
+            exact: true,
+          });
           if (!silent) toast.success('Resume created successfully!');
-          navigate(`/builder/${createdResume.id}?template=${createdResume.template_id}`, {
+          navigate(`/builder/${createdResume.data.id}?template=${createdResume.data.template_id}`, {
             replace: true,
           });
           return;
@@ -266,6 +315,10 @@ export const useBuilderPersistence = ({
         setSavedSnapshot(serializeDraft(payload.title, payload.template_id, payload.content));
         setLastSavedAt(payload.updated_at);
         setIsDirty(false);
+        void queryClient.invalidateQueries({
+          queryKey: getResumesQueryKey(user.id),
+          exact: true,
+        });
         if (!silent) toast.success('Resume saved successfully!');
       } catch (error: unknown) {
         toast.error(
@@ -281,7 +334,7 @@ export const useBuilderPersistence = ({
         }
       }
     },
-    [id, isNew, navigate, resumeData, templateId, title, user],
+    [id, isNew, navigate, queryClient, resumeData, templateId, title, user],
   );
 
   useEffect(() => {

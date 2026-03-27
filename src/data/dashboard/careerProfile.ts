@@ -1,7 +1,7 @@
 import type {
   CareerProfileCompletionItem,
   CareerProfileState,
-} from '../../types/dashboard';
+} from '../../types/dashboard/careerProfile.js';
 
 export const EMPTY_CAREER_PROFILE: CareerProfileState = {
   full_name: '',

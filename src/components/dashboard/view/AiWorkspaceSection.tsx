@@ -21,9 +21,13 @@ const PRO_ACTIONS: ProActionCard[] = AI_WORKFLOW_ITEMS.map((item) => ({
 
 const AiWorkspaceSection: React.FC<AiWorkspaceSectionProps> = ({
   isPro,
+  planStatus,
   onUnlockPro,
   onProAction,
 }) => {
+  const showFreeTierPlanUi = planStatus === 'ready' && !isPro;
+  const showPlanSyncState = planStatus !== 'ready';
+
   return (
     <div className="mb-12">
       
@@ -32,7 +36,7 @@ const AiWorkspaceSection: React.FC<AiWorkspaceSectionProps> = ({
         <h3 className="text-[11.5px] font-black uppercase tracking-[0.2em] text-gray-400">
           AI Workspace
         </h3>
-        {!isPro && (
+        {showFreeTierPlanUi && (
           <button
             onClick={onUnlockPro}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-50 text-amber-700 text-[11px] font-bold hover:bg-amber-100 transition-colors"
@@ -40,6 +44,12 @@ const AiWorkspaceSection: React.FC<AiWorkspaceSectionProps> = ({
             <FiLock size={10} />
             Unlock Pro
           </button>
+        )}
+        {showPlanSyncState && (
+          <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gray-100 text-gray-600 text-[11px] font-bold">
+            <FiZap size={10} />
+            {planStatus === 'loading' ? 'Checking plan' : 'Plan unavailable'}
+          </span>
         )}
       </div>
 
@@ -62,7 +72,7 @@ const AiWorkspaceSection: React.FC<AiWorkspaceSectionProps> = ({
                 </span>
 
                 {/* Pro Lock Indicator */}
-                {!isPro && (
+                {showFreeTierPlanUi && (
                   <span className="flex items-center gap-1 text-[9.5px] font-bold uppercase tracking-widest text-amber-600 bg-amber-50 px-2 py-1 rounded-md">
                     <FiLock size={10} />
                     Pro

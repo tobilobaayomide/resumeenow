@@ -9,8 +9,41 @@ import {
 } from '../../data/dashboard';
 
 const ProFeatures: React.FC = () => {
-  const { isPro, tier, openUpgrade, monthlyCredits, usedCredits } = usePlan();
-  const creditPercent = monthlyCredits > 0 ? Math.min((usedCredits / monthlyCredits) * 100, 100) : 0;
+  const {
+    isPro,
+    isProWaitlistJoined,
+    planStatus,
+    tier,
+    openUpgrade,
+    dailyCreditLimit,
+    retryPlan,
+    usedCredits,
+  } = usePlan();
+  const isPlanReady = planStatus === 'ready';
+  const isPlanUnavailable = planStatus === 'unavailable';
+  const showFreeTierPlanUi = isPlanReady && !isPro;
+  const creditPercent =
+    isPlanReady && dailyCreditLimit > 0 ? Math.min((usedCredits / dailyCreditLimit) * 100, 100) : 0;
+  const tierLabel =
+    planStatus === 'loading'
+      ? 'Checking plan'
+      : planStatus === 'unavailable'
+        ? 'Plan unavailable'
+        : `${tier} Plan`;
+  const usageLabel =
+    planStatus === 'loading'
+      ? 'Checking AI usage...'
+      : planStatus === 'unavailable'
+        ? 'Usage unavailable'
+        : `${usedCredits} / ${dailyCreditLimit}`;
+  const featureStatusLabel =
+    planStatus === 'loading'
+      ? 'Checking'
+      : planStatus === 'unavailable'
+        ? 'Sync needed'
+        : isPro
+          ? 'Enabled'
+          : 'Locked';
 
 
   return (
@@ -26,7 +59,7 @@ const ProFeatures: React.FC = () => {
               <div className="relative px-8 md:px-10 py-10 md:py-12 flex flex-col md:flex-row md:items-center justify-between gap-8 md:gap-12">
                 <div className="flex-1">
                   <p className="text-[10.5px] font-bold uppercase tracking-[0.2em] text-gray-400 mb-3 flex items-center gap-2">
-                    <FiStar className={isPro ? "text-amber-400" : "text-gray-400"} size={12} />
+                    <FiStar className={isPlanReady && isPro ? "text-amber-400" : isPlanUnavailable ? 'text-rose-300' : "text-gray-400"} size={12} />
                     Pro Workspace
                   </p>
                   <h1 className="text-[28px] md:text-[34px] font-bold tracking-tight text-white mb-2 leading-tight">
@@ -41,16 +74,20 @@ const ProFeatures: React.FC = () => {
                   <div className="flex flex-col gap-4">
                     <div className="flex items-center justify-between">
                       <span className={`inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-[10px] font-bold uppercase tracking-widest border ${
-                        isPro ? 'bg-amber-500/20 border-amber-400/30 text-amber-300' : 'bg-white/10 border-white/10 text-gray-300'
+                        isPlanReady && isPro
+                          ? 'bg-amber-500/20 border-amber-400/30 text-amber-300'
+                          : isPlanUnavailable
+                            ? 'bg-rose-500/10 border-rose-300/20 text-rose-200'
+                            : 'bg-white/10 border-white/10 text-gray-300'
                       }`}>
-                        {tier} Plan
+                        {tierLabel}
                       </span>
                     </div>
 
                     <div className="space-y-2.5">
                       <div className="flex items-center justify-between text-[11px] text-gray-300 font-bold uppercase tracking-wider">
                         <span>AI Used Today</span>
-                        <span className="text-white">{usedCredits} / {monthlyCredits}</span>
+                        <span className="text-white">{usageLabel}</span>
                       </div>
                       <div className="h-1.5 rounded-full bg-gray-800 overflow-hidden">
                         <div
@@ -60,12 +97,24 @@ const ProFeatures: React.FC = () => {
                       </div>
                     </div>
 
-                    {!isPro && (
+                    {isPlanUnavailable && (
+                      <button
+                        onClick={() => {
+                          void retryPlan();
+                        }}
+                        className="w-full h-10 mt-1 rounded-xl bg-rose-50 text-rose-700 text-[13px] font-bold hover:bg-rose-100 transition-all active:scale-[0.98] shadow-sm flex items-center justify-center gap-1.5"
+                      >
+                        Retry Plan Sync
+                      </button>
+                    )}
+
+                    {showFreeTierPlanUi && (
                       <button
                         onClick={() => openUpgrade()}
-                        className="w-full h-10 mt-1 rounded-xl bg-white text-gray-900 text-[13px] font-bold hover:bg-gray-100 transition-all active:scale-[0.98] shadow-sm flex items-center justify-center gap-1.5"
+                        disabled={isProWaitlistJoined}
+                        className="w-full h-10 mt-1 rounded-xl bg-white text-gray-900 text-[13px] font-bold hover:bg-gray-100 transition-all active:scale-[0.98] shadow-sm flex items-center justify-center gap-1.5 disabled:cursor-not-allowed disabled:bg-gray-200 disabled:text-gray-500"
                       >
-                        Unlock Pro
+                        {isProWaitlistJoined ? 'On Waitlist' : 'Unlock Pro'}
                       </button>
                     )}
                   </div>
@@ -85,11 +134,15 @@ const ProFeatures: React.FC = () => {
                     </span>
                     <span
                       className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[9.5px] font-bold uppercase tracking-widest border ${
-                        isPro ? 'bg-emerald-50 border-emerald-100 text-emerald-600' : 'bg-gray-50 border-gray-200 text-gray-500'
+                        isPlanReady && isPro
+                          ? 'bg-emerald-50 border-emerald-100 text-emerald-600'
+                          : showFreeTierPlanUi
+                            ? 'bg-gray-50 border-gray-200 text-gray-500'
+                            : 'bg-blue-50 border-blue-100 text-blue-600'
                       }`}
                     >
-                      {isPro ? <FiCheck size={10} /> : <FiLock size={10} />}
-                      {isPro ? 'Enabled' : 'Locked'}
+                      {isPlanReady && isPro ? <FiCheck size={10} /> : <FiLock size={10} />}
+                      {featureStatusLabel}
                     </span>
                   </div>
                   <h3 className="text-[15px] font-bold text-gray-900 tracking-tight transition-colors group-hover:text-black">
@@ -153,7 +206,7 @@ const ProFeatures: React.FC = () => {
               </div>
             </section>
 
-            {!isPro && (
+            {showFreeTierPlanUi && (
               <section className="bg-amber-50/50 border border-amber-200/60 rounded-2xl p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-5 relative overflow-hidden">
                 <div className="absolute top-0 left-0 w-2 h-full bg-amber-400" />
                 <div className="pl-2">
@@ -162,14 +215,15 @@ const ProFeatures: React.FC = () => {
                     Ready to supercharge your workflow?
                   </h3>
                   <p className="text-[13px] text-gray-600 mt-1 max-w-lg leading-relaxed">
-                    You can explore this workspace for free, but generating custom AI content, Tailoring, and ATS Audits requires an active Pro plan.
+                    Free accounts get 5 AI workflow runs per day. Pro expands that to 100 daily runs with the same builder workflows and premium controls.
                   </p>
                 </div>
                 <button
                   onClick={() => openUpgrade()}
-                  className="h-10 px-6 w-full sm:w-auto rounded-xl bg-gray-900 text-white text-[13px] font-bold hover:bg-black transition-all hover:-translate-y-px shadow-sm shrink-0"
+                  disabled={isProWaitlistJoined}
+                  className="h-10 px-6 w-full sm:w-auto rounded-xl bg-gray-900 text-white text-[13px] font-bold hover:bg-black transition-all hover:-translate-y-px shadow-sm shrink-0 disabled:cursor-not-allowed disabled:bg-gray-300 disabled:text-gray-600"
                 >
-                  Unlock Pro Now
+                  {isProWaitlistJoined ? 'Already Joined' : 'Unlock Pro Now'}
                 </button>
               </section>
             )}

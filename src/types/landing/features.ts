@@ -5,5 +5,4 @@ export interface LandingFeatureItem {
   title: string;
   description: string;
   icon: ReactNode;
-  media: string;
 }

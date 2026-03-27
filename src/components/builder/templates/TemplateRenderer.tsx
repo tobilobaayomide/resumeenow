@@ -6,21 +6,26 @@ import MonoTemplate from './MonoTemplate';
 import AtsTemplate from './AtsTemplate';
 import type { TemplateRendererProps } from '../../../types/builder';
 
-const TemplateRenderer: React.FC<TemplateRendererProps> = ({ templateId, data, contentRef }) => {
+const TemplateRenderer: React.FC<TemplateRendererProps> = ({
+  templateId,
+  data,
+  contentRef,
+  aiHighlights,
+}) => {
 
   switch (templateId) {
     case 'executive':
-      return <ExecutiveTemplate data={data} contentRef={contentRef} />;
+      return <ExecutiveTemplate data={data} contentRef={contentRef} aiHighlights={aiHighlights} />;
     case 'studio':
-      return <StudioTemplate data={data} contentRef={contentRef} />;
+      return <StudioTemplate data={data} contentRef={contentRef} aiHighlights={aiHighlights} />;
     case 'silicon':
-      return <SiliconTemplate data={data} contentRef={contentRef} />;
+      return <SiliconTemplate data={data} contentRef={contentRef} aiHighlights={aiHighlights} />;
     case 'mono':
-      return <MonoTemplate data={data} contentRef={contentRef} />;
+      return <MonoTemplate data={data} contentRef={contentRef} aiHighlights={aiHighlights} />;
     case 'ats':
-      return <AtsTemplate data={data} contentRef={contentRef} />;
+      return <AtsTemplate data={data} contentRef={contentRef} aiHighlights={aiHighlights} />;
     default:
-      return <ExecutiveTemplate data={data} contentRef={contentRef} />;
+      return <ExecutiveTemplate data={data} contentRef={contentRef} aiHighlights={aiHighlights} />;
   }
 };
 

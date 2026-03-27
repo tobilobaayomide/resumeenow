@@ -1,6 +1,5 @@
-import { lazy, Suspense, type ReactElement } from 'react';
-import { BrowserRouter as Router, Navigate, Route, Routes } from 'react-router-dom';
-import { useAuth } from './context/useAuth';
+import { lazy, Suspense } from 'react';
+import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
 
 const LandingPage = lazy(() => import('./pages/LandingPage'));
 const Dashboard = lazy(() => import('./pages/Dashboard'));
@@ -15,13 +14,7 @@ const ResumePrintPage = lazy(() => import('./pages/ResumePrintPage'));
 const PrivacyPolicyPage = lazy(() => import('./pages/PrivacyPolicyPage'));
 const TermsOfServicePage = lazy(() => import('./pages/TermsOfServicePage'));
 const AppToaster = lazy(() => import('./components/ui/AppToaster'));
-
-const ProtectedRoute = ({ children }: { children: ReactElement }) => {
-  const { user, loading } = useAuth();
-
-  if (loading) return null;
-  return user ? children : <Navigate to="/" replace />;
-};
+const ProtectedAppLayout = lazy(() => import('./components/app/ProtectedAppLayout'));
 
 const AppFallback = () => <div className="h-screen bg-white" />;
 
@@ -35,13 +28,15 @@ export default function App() {
         <Routes>
           <Route path="/print/resume" element={<ResumePrintPage />} />
           <Route path="/" element={<LandingPage />} />
-          <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-          <Route path="/dashboard/myresumes" element={<ProtectedRoute><MyResumes /></ProtectedRoute>} />
-          <Route path="/dashboard/templates" element={<ProtectedRoute><Templates /></ProtectedRoute>} />
-          <Route path="/dashboard/pro" element={<ProtectedRoute><ProFeatures /></ProtectedRoute>} />
-          <Route path="/dashboard/profile" element={<ProtectedRoute><CareerProfile /></ProtectedRoute>} />
-          <Route path="/dashboard/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
-          <Route path="/builder/:id" element={<ProtectedRoute><BuilderPage /></ProtectedRoute>} />
+          <Route element={<ProtectedAppLayout />}>
+            <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/dashboard/myresumes" element={<MyResumes />} />
+            <Route path="/dashboard/templates" element={<Templates />} />
+            <Route path="/dashboard/pro" element={<ProFeatures />} />
+            <Route path="/dashboard/profile" element={<CareerProfile />} />
+            <Route path="/dashboard/settings" element={<Settings />} />
+            <Route path="/builder/:id" element={<BuilderPage />} />
+          </Route>
           <Route path="/reset-password" element={<ResetPasswordPage />} />
           <Route path="/privacy" element={<PrivacyPolicyPage />} />
           <Route path="/terms" element={<TermsOfServicePage />} />

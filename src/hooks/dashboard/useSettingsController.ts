@@ -1,7 +1,21 @@
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef, useState } from 'react';
 import type { ChangeEvent } from 'react';
+import type { User } from '@supabase/supabase-js';
 import { toast } from 'sonner';
 import { getErrorMessage } from '../../lib/errors';
+import {
+  fetchProfileRecord,
+  getProfileQueryKey,
+  PROFILE_QUERY_STALE_TIME,
+  type ProfileRecord,
+  upsertProfileRecord,
+} from '../../lib/queries/profile';
+import {
+  parseAvatarProfileUpdate,
+  parseSettingsFormState,
+  parseSettingsProfileUpdate,
+} from '../../schemas/integrations/profile';
 import { supabase } from '../../lib/supabase';
 import type {
   SettingsFormState,
@@ -17,130 +31,161 @@ const EMPTY_SETTINGS_STATE: SettingsFormState = {
   avatarUrl: null,
 };
 
-const splitName = (fullName: string) => {
-  const parts = fullName.trim().split(/\s+/).filter(Boolean);
-  return {
-    firstName: parts[0] || '',
-    lastName: parts.slice(1).join(' ') || '',
-  };
-};
+const getFallbackSettingsState = (user: User): SettingsFormState =>
+  parseSettingsFormState(
+    { full_name: user.user_metadata?.full_name, bio: '' },
+    typeof user.user_metadata?.avatar_url === 'string'
+      ? user.user_metadata.avatar_url
+      : null,
+  );
+
+const resolveSettingsFormState = (
+  profileRecord: ProfileRecord | null,
+  user: User,
+): SettingsFormState =>
+  profileRecord ? parseSettingsFormState(profileRecord) : getFallbackSettingsState(user);
+
+const areSettingsFormStatesEqual = (
+  left: SettingsFormState,
+  right: SettingsFormState,
+): boolean =>
+  left.firstName === right.firstName &&
+  left.lastName === right.lastName &&
+  left.bio === right.bio &&
+  left.avatarUrl === right.avatarUrl;
 
 export const useSettingsController = ({
   user,
 }: UseSettingsControllerArgs): UseSettingsControllerResult => {
+  const userId = user?.id ?? null;
+  const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState<SettingsTabId>('profile');
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
+  const [draftFormState, setDraftFormState] = useState<SettingsFormState | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [firstName, setFirstName] = useState('');
-  const [lastName, setLastName] = useState('');
-  const [bio, setBio] = useState('');
-  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
-  const [savedFormState, setSavedFormState] = useState<SettingsFormState>(
-    EMPTY_SETTINGS_STATE,
-  );
+  const profileQueryKey = getProfileQueryKey(userId);
 
-  const applyFormState = (formState: SettingsFormState) => {
-    setFirstName(formState.firstName);
-    setLastName(formState.lastName);
-    setBio(formState.bio);
-    setAvatarUrl(formState.avatarUrl);
-  };
-
-  const hasUnsavedChanges =
-    firstName !== savedFormState.firstName ||
-    lastName !== savedFormState.lastName ||
-    bio !== savedFormState.bio ||
-    avatarUrl !== savedFormState.avatarUrl;
+  const profileQuery = useQuery({
+    queryKey: profileQueryKey,
+    queryFn: async () => fetchProfileRecord(userId as string),
+    enabled: userId !== null,
+    staleTime: PROFILE_QUERY_STALE_TIME,
+    refetchOnWindowFocus: false,
+  });
 
   useEffect(() => {
-    if (!user) return;
+    if (profileQuery.isError) {
+      toast.error('Failed to load settings.');
+    }
+  }, [profileQuery.error, profileQuery.isError]);
 
-    const fetchProfile = async () => {
-      setLoading(true);
-      try {
-        const { data, error } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', user.id)
-          .maybeSingle();
+  const serverFormState =
+    user == null
+      ? EMPTY_SETTINGS_STATE
+      : resolveSettingsFormState(profileQuery.data ?? null, user);
+  const formState = draftFormState ?? serverFormState;
+  const hasUnsavedChanges =
+    draftFormState !== null && !areSettingsFormStatesEqual(draftFormState, serverFormState);
 
-        if (error) throw error;
+  const updateDraftFormState = (updater: (current: SettingsFormState) => SettingsFormState) => {
+    setDraftFormState((currentDraft) => {
+      const nextState = updater(currentDraft ?? serverFormState);
+      return areSettingsFormStatesEqual(nextState, serverFormState) ? null : nextState;
+    });
+  };
 
-        if (data) {
-          const names = splitName(data.full_name || '');
-          const nextState: SettingsFormState = {
-            firstName: names.firstName,
-            lastName: names.lastName,
-            bio: data.bio || '',
-            avatarUrl: data.avatar_url || null,
-          };
-          applyFormState(nextState);
-          setSavedFormState(nextState);
-        } else {
-          const names = splitName(user.user_metadata?.full_name || '');
-          const nextState: SettingsFormState = {
-            firstName: names.firstName,
-            lastName: names.lastName,
-            bio: '',
-            avatarUrl:
-              typeof user.user_metadata?.avatar_url === 'string'
-                ? user.user_metadata.avatar_url
-                : null,
-          };
-          applyFormState(nextState);
-          setSavedFormState(nextState);
-        }
-      } catch {
-        toast.error('Failed to load settings.');
-      } finally {
-        setLoading(false);
+  const saveProfileMutation = useMutation({
+    mutationFn: async (nextFormState: SettingsFormState) => {
+      if (!user) {
+        throw new Error('Login required.');
       }
-    };
 
-    void fetchProfile();
-  }, [user]);
-
-  const saveProfile = async () => {
-    if (!user) return;
-    setSaving(true);
-
-    try {
-      const fullName = `${firstName} ${lastName}`.trim();
-
-      const updates = {
+      const fullName = `${nextFormState.firstName} ${nextFormState.lastName}`.trim();
+      const updates = parseSettingsProfileUpdate({
         id: user.id,
         full_name: fullName,
-        bio,
-        avatar_url: avatarUrl,
+        bio: nextFormState.bio,
+        avatar_url: nextFormState.avatarUrl,
         updated_at: new Date().toISOString(),
-      };
+      });
 
-      const { error } = await supabase.from('profiles').upsert(updates);
-      if (error) throw error;
-
+      const savedProfile = await upsertProfileRecord(user.id, updates);
       const { error: authUpdateError } = await supabase.auth.updateUser({
         data: {
           ...user.user_metadata,
           full_name: fullName,
-          avatar_url: avatarUrl,
+          avatar_url: nextFormState.avatarUrl,
         },
       });
+
+      return {
+        savedProfile,
+        authUpdateError,
+      };
+    },
+    onSuccess: ({ savedProfile, authUpdateError }) => {
+      queryClient.setQueryData(profileQueryKey, savedProfile);
+      setDraftFormState(null);
       if (authUpdateError) {
         toast('Settings saved, but account display info may take time to refresh.');
       }
-
-      setSavedFormState({
-        firstName,
-        lastName,
-        bio,
-        avatarUrl,
-      });
       toast.success('Settings saved successfully');
-    } catch (error: unknown) {
+    },
+    onError: (error: unknown) => {
       toast.error(getErrorMessage(error, 'Error updating profile'));
-    } finally {
-      setSaving(false);
+    },
+  });
+
+  const avatarUploadMutation = useMutation({
+    mutationFn: async (file: File) => {
+      if (!user) {
+        throw new Error('Please sign in again and retry.');
+      }
+
+      const fileExt = file.name.split('.').pop() || 'jpg';
+      const filePath = `${user.id}/${Date.now()}-${Math.random().toString(36).slice(2)}.${fileExt}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('avatars')
+        .upload(filePath, file);
+      if (uploadError) {
+        throw uploadError;
+      }
+
+      const { data } = supabase.storage.from('avatars').getPublicUrl(filePath);
+      const nextAvatarUrl = data.publicUrl;
+      const profileUpdate = parseAvatarProfileUpdate({
+        id: user.id,
+        avatar_url: nextAvatarUrl,
+        updated_at: new Date().toISOString(),
+      });
+      const savedProfile = await upsertProfileRecord(user.id, profileUpdate);
+
+      const fullName = `${formState.firstName} ${formState.lastName}`.trim();
+      const { error: authUpdateError } = await supabase.auth.updateUser({
+        data: {
+          ...user.user_metadata,
+          full_name: fullName,
+          avatar_url: nextAvatarUrl,
+        },
+      });
+
+      return {
+        savedProfile,
+        nextAvatarUrl,
+        authUpdateError,
+      };
+    },
+  });
+
+  const saveProfile = async () => {
+    if (!user) {
+      return;
+    }
+
+    try {
+      await saveProfileMutation.mutateAsync(formState);
+    } catch {
+      // Error toast is handled by the mutation.
     }
   };
 
@@ -152,41 +197,28 @@ export const useSettingsController = ({
     if (!event.target.files || event.target.files.length === 0) return;
 
     const file = event.target.files[0];
-    const fileExt = file.name.split('.').pop() || 'jpg';
-    const filePath = `${user.id}/${Date.now()}-${Math.random().toString(36).slice(2)}.${fileExt}`;
-
     const loadingToast = toast.loading('Uploading avatar...');
 
     try {
-      const { error: uploadError } = await supabase.storage
-        .from('avatars')
-        .upload(filePath, file);
-      if (uploadError) throw uploadError;
+      const { savedProfile, nextAvatarUrl, authUpdateError } =
+        await avatarUploadMutation.mutateAsync(file);
+      const nextServerFormState = resolveSettingsFormState(savedProfile, user);
 
-      const { data } = supabase.storage.from('avatars').getPublicUrl(filePath);
-      const nextAvatarUrl = data.publicUrl;
+      queryClient.setQueryData(profileQueryKey, savedProfile);
+      setDraftFormState((currentDraft) => {
+        if (!currentDraft) {
+          return null;
+        }
 
-      const { error: profileError } = await supabase.from('profiles').upsert({
-        id: user.id,
-        avatar_url: nextAvatarUrl,
-        updated_at: new Date().toISOString(),
+        const nextDraftState = {
+          ...currentDraft,
+          avatarUrl: nextAvatarUrl,
+        };
+
+        return areSettingsFormStatesEqual(nextDraftState, nextServerFormState)
+          ? null
+          : nextDraftState;
       });
-      if (profileError) throw profileError;
-
-      const fullName = `${firstName} ${lastName}`.trim();
-      const { error: authUpdateError } = await supabase.auth.updateUser({
-        data: {
-          ...user.user_metadata,
-          full_name: fullName,
-          avatar_url: nextAvatarUrl,
-        },
-      });
-
-      setAvatarUrl(nextAvatarUrl);
-      setSavedFormState((prev) => ({
-        ...prev,
-        avatarUrl: nextAvatarUrl,
-      }));
       toast.dismiss(loadingToast);
       if (authUpdateError) {
         toast('Avatar saved, but account display info may take time to refresh.');
@@ -202,20 +234,20 @@ export const useSettingsController = ({
 
   return {
     activeTab,
-    loading,
-    saving,
+    loading: userId !== null && profileQuery.isPending && profileQuery.data === undefined,
+    saving: saveProfileMutation.isPending || avatarUploadMutation.isPending,
     fileInputRef,
-    firstName,
-    lastName,
-    bio,
-    avatarUrl,
+    firstName: formState.firstName,
+    lastName: formState.lastName,
+    bio: formState.bio,
+    avatarUrl: formState.avatarUrl,
     hasUnsavedChanges,
     setActiveTab,
-    setFirstName,
-    setLastName,
-    setBio,
+    setFirstName: (value) => updateDraftFormState((current) => ({ ...current, firstName: value })),
+    setLastName: (value) => updateDraftFormState((current) => ({ ...current, lastName: value })),
+    setBio: (value) => updateDraftFormState((current) => ({ ...current, bio: value })),
     handleAvatarUpload,
     saveProfile,
-    resetForm: () => applyFormState(savedFormState),
+    resetForm: () => setDraftFormState(null),
   };
 };

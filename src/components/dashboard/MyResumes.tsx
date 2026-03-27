@@ -6,6 +6,7 @@ import Sidebar from './Sidebar';
 import { useAuth } from '../../context/useAuth';
 import { useResumes } from '../../hooks/useResumes';
 import { useMyResumesView } from '../../hooks/dashboard';
+import { getResumeCollectionViewState } from '../../lib/dashboard/resumeCollectionState';
 import { getErrorMessage } from '../../lib/errors';
 import type { ResumeRecord } from '../../types/resume';
 import {
@@ -19,7 +20,7 @@ import {
 const MyResumes: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { resumes, loading, deleteResume } = useResumes(user?.id);
+  const { resumes, loading, error, deleteResume, refreshResumes } = useResumes(user?.id);
   const [activeResumeMenu, setActiveResumeMenu] = useState<ResumeRecord | null>(null);
 
   const {
@@ -76,14 +77,17 @@ const MyResumes: React.FC = () => {
     toast.success('Duplicate opened in builder.');
   };
 
-  const showEmptyState = !loading && filteredResumes.length === 0;
+  const viewState = getResumeCollectionViewState({
+    isLoading: loading,
+    error,
+    totalCount: resumes.length,
+    filteredCount: filteredResumes.length,
+  });
 
   return (
     <div className="min-h-screen bg-[#FDFDFD] flex font-sans text-[#1a1a1a] selection:bg-black selection:text-white">
       <Sidebar />
       <div className="flex-1 flex flex-col min-h-screen relative w-full overflow-hidden">
-        <div className="fixed inset-0 pointer-events-none opacity-[0.03] z-50 bg-[url('https://grainy-gradients.vercel.app/noise.svg')]" />
-
         <MyResumesHeader
           resumeCount={filteredResumes.length}
           searchQuery={searchQuery}
@@ -100,13 +104,29 @@ const MyResumes: React.FC = () => {
               onSortByChange={setSortBy}
             />
 
-            {loading ? (
+            {viewState === 'loading' ? (
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-4 gap-4 md:gap-6 lg:gap-8">
                 {[1, 2, 3, 4].map((item) => (
                   <div key={item} className="aspect-[1/1.41] bg-gray-50 rounded-lg animate-pulse" />
                 ))}
               </div>
-            ) : showEmptyState ? (
+            ) : viewState === 'error' ? (
+              <div className="h-[50vh] border border-red-100 bg-red-50/60 rounded-2xl flex flex-col items-center justify-center text-center p-6">
+                <div className="w-12 h-12 md:w-16 md:h-16 bg-white border border-red-100 rounded-full flex items-center justify-center mb-4">
+                  <FiFileText size={24} className="text-red-400" />
+                </div>
+                <h2 className="text-base md:text-lg font-medium text-black">Failed to load resumes</h2>
+                <p className="text-gray-500 text-xs md:text-sm mt-1 max-w-sm mb-6">{error}</p>
+                <button
+                  onClick={() => {
+                    void refreshResumes();
+                  }}
+                  className="px-5 md:px-6 py-2 bg-black text-white text-xs md:text-sm font-medium rounded-lg hover:bg-gray-800 transition-all"
+                >
+                  Try Again
+                </button>
+              </div>
+            ) : viewState === 'empty' ? (
               <div className="h-[50vh] border border-dashed border-gray-200 rounded-2xl flex flex-col items-center justify-center text-center p-6">
                 <div className="w-12 h-12 md:w-16 md:h-16 bg-gray-50 rounded-full flex items-center justify-center mb-4">
                   <FiFileText size={24} className="text-gray-300" />

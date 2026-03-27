@@ -9,8 +9,6 @@ import {
   FiEye,
   FiFileText,
   FiLayout,
-  FiLock,
-  FiStar,
   FiZap,
 } from 'react-icons/fi';
 import { MdFileDownloadDone } from 'react-icons/md';
@@ -25,10 +23,11 @@ const BuilderHeader: React.FC<BuilderHeaderProps> = ({
   mobileView,
   isEditorCollapsed,
   isPro,
+  planStatus,
   isImporting,
   isSaving,
   isAutosaving,
-  monthlyCredits,
+  dailyCreditLimit,
   usedCredits,
   onBackToDashboard,
   onTitleChange,
@@ -48,6 +47,13 @@ const BuilderHeader: React.FC<BuilderHeaderProps> = ({
     : isAutosaving
       ? 'bg-blue-400 animate-pulse'
       : 'bg-green-400';
+  const showFreeTierPlanUi = planStatus === 'ready' && !isPro;
+  const creditLabel =
+    planStatus === 'loading'
+      ? 'Checking...'
+      : planStatus === 'unavailable'
+        ? 'Unavailable'
+        : `${usedCredits} / ${dailyCreditLimit}`;
 
   const closeMobileMenus = () => {
     setIsMobileTemplateMenuOpen(false);
@@ -174,7 +180,6 @@ const BuilderHeader: React.FC<BuilderHeaderProps> = ({
           >
             <FiZap size={13} />
             <span>AI</span>
-            {!isPro && <FiLock size={10} className={isMobileAiMenuOpen ? 'text-white/70' : 'text-indigo-300'} />}
             <FiChevronDown size={12} className={isMobileAiMenuOpen ? 'rotate-180 transition-transform' : 'transition-transform'} />
           </button>
         </div>
@@ -314,26 +319,15 @@ const BuilderHeader: React.FC<BuilderHeaderProps> = ({
         <div className="w-px h-6 bg-gray-200 mx-1 hidden sm:block" />
         
         {/* Credits Badge */}
-        {!isPro && (
+        {showFreeTierPlanUi && (
           <div className="hidden xl:flex flex-col items-end mr-1">
             <div className="text-[9px] font-bold text-gray-400 tracking-wider uppercase">
-              AI Used Today
+              {planStatus === 'ready' ? 'AI Used Today' : 'Plan Status'}
             </div>
             <div className="text-[11px] font-black text-indigo-600 tabular-nums">
-              {usedCredits} / {monthlyCredits} <span className="text-[9px] font-bold opacity-60">Used</span>
+              {creditLabel} <span className="text-[9px] font-bold opacity-60">{planStatus === 'ready' ? 'Used' : ''}</span>
             </div>
           </div>
-        )}
-
-        {/* Go Pro Badge */}
-        {!isPro && (
-          <button
-            onClick={() => onProAction('priority_templates', 'Pro Waitlist')}
-            className="hidden items-center gap-1.5 px-3.5 h-9 rounded-xl text-[11px] font-black uppercase tracking-wider bg-linear-to-r from-amber-200 to-yellow-400 text-yellow-900 transition-all hover:shadow-sm"
-          >
-            <FiStar size={12} className="fill-yellow-600" />
-            <span>Join Pro Waitlist</span>
-          </button>
         )}
 
         {/* Primary Actions */}
@@ -465,7 +459,6 @@ const BuilderHeader: React.FC<BuilderHeaderProps> = ({
                       <span className="min-w-0 flex-1">
                         <span className="flex items-center gap-1.5 text-[13px] font-bold text-gray-900">
                           {item.label}
-                          {!isPro && <FiLock size={11} className="text-indigo-300" />}
                         </span>
                         <span className="mt-0.5 block text-[11px] leading-relaxed text-gray-500">
                           {item.description}

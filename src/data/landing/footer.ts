@@ -19,7 +19,7 @@ export const LANDING_FOOTER_LEGAL_LINKS: FooterLinkItem[] = [
 
 export const LANDING_FOOTER_SOCIAL_LINKS: FooterSocialLink[] = [
   { iconKey: 'twitter', href: '#', label: 'Twitter' },
-  { iconKey: 'linkedin', href: '#', label: 'LinkedIn' },
+{ iconKey: 'linkedin', href: 'https://www.linkedin.com/company/resumeenow', label: 'LinkedIn' },
   { iconKey: 'instagram', href: '#', label: 'Instagram' },
   { iconKey: 'github', href: '#', label: 'GitHub' },
 ];

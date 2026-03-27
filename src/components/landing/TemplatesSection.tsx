@@ -1,40 +1,31 @@
-import React from 'react';
-import TemplateRenderer from '../builder/templates/TemplateRenderer';
-import { PREVIEW_RESUME_DATA } from '../../domain/resume';
-import {
-  LANDING_TEMPLATE_ITEMS,
-  isRenderableTemplate,
-  type TemplateId,
-} from '../../domain/templates';
+import React, { lazy, Suspense, useRef } from 'react';
+import { LANDING_TEMPLATE_ITEMS } from '../../data/landing';
+import { useEnterViewport } from '../../hooks/useEnterViewport';
 import type { TemplatesSectionProps } from '../../types/landing';
+import type { TemplateId } from '../../types/resume';
 
-const LandingTemplatePreview: React.FC<{ templateId: TemplateId }> = ({ templateId }) => {
-  if (!isRenderableTemplate(templateId)) {
-    return (
-      <div className="absolute inset-0 bg-white p-3">
-        <div className="w-full h-full rounded-sm border border-gray-200 bg-gray-50" />
-      </div>
-    );
-  }
+const LandingTemplatePreview = lazy(() => import('./LandingTemplatePreview'));
 
-  return (
-    <div className="absolute inset-0 overflow-hidden bg-linear-to-b from-white to-gray-50">
-      <div className="absolute left-1/2 top-0 -translate-x-1/2 origin-top scale-[0.36] md:scale-[0.37] pointer-events-none">
-        <div className="w-198.5 h-280.75 bg-white border border-gray-200 shadow-sm p-6 overflow-hidden">
-          <TemplateRenderer templateId={templateId} data={PREVIEW_RESUME_DATA} />
-        </div>
-      </div>
-    </div>
-  );
-};
+const TemplatePreviewFallback = () => (
+  <div className="absolute inset-0 overflow-hidden bg-linear-to-b from-white to-gray-50">
+    <div className="absolute inset-x-6 top-6 bottom-6 rounded-sm border border-gray-200 bg-gray-50" />
+  </div>
+);
 
 const TemplatesSection: React.FC<TemplatesSectionProps> = ({ onSelectTemplate }) => {
+  const sectionRef = useRef<HTMLElement | null>(null);
+  const shouldLoadPreviews = useEnterViewport(sectionRef, '120px 0px');
+
   const handleTemplateSelect = (templateId: TemplateId) => {
     onSelectTemplate?.(templateId);
   };
 
   return (
-    <section id="templates" className="relative overflow-hidden py-24 bg-white">
+    <section
+      ref={sectionRef}
+      id="templates"
+      className="relative overflow-hidden py-24 bg-white"
+    >
       <div className="pointer-events-none absolute inset-0">
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,rgba(0,0,0,0.06),transparent_58%)]" />
       </div>
@@ -53,7 +44,7 @@ const TemplatesSection: React.FC<TemplatesSectionProps> = ({ onSelectTemplate })
           </div>
 
           <a href="#get-started" className="group hidden md:inline-flex items-center gap-2 text-gray-900 font-semibold hover:text-black/70 transition-colors">
-            View All Templates
+            Start Building
           </a>
         </div>
 
@@ -68,7 +59,13 @@ const TemplatesSection: React.FC<TemplatesSectionProps> = ({ onSelectTemplate })
             >
               <div className="relative w-full bg-gray-50 rounded-2xl p-6 md:p-7 flex items-center justify-center transition-colors duration-300 group-hover:bg-gray-100">
                 <div className="relative w-full aspect-[1/1.414] bg-white shadow-sm border border-gray-200 rounded-sm overflow-hidden transition-all duration-300 ease-out group-hover:shadow-xl group-hover:-translate-y-1.5">
-                  <LandingTemplatePreview templateId={template.id} />
+                  {shouldLoadPreviews ? (
+                    <Suspense fallback={<TemplatePreviewFallback />}>
+                      <LandingTemplatePreview templateId={template.id} />
+                    </Suspense>
+                  ) : (
+                    <TemplatePreviewFallback />
+                  )}
 
                   <div className="absolute inset-0 bg-black/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
                     <div className="bg-black text-white px-4 py-2 rounded-full text-sm font-medium shadow-xl transform translate-y-2 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-300 inline-flex items-center gap-2">
@@ -93,7 +90,7 @@ const TemplatesSection: React.FC<TemplatesSectionProps> = ({ onSelectTemplate })
         </div>
 
         <a href="#get-started" className="mt-8 w-full md:hidden inline-flex items-center justify-center gap-2 text-gray-900 font-semibold hover:text-black/70 transition-colors py-3.5 border border-gray-200 rounded-xl">
-          View All Templates
+          Start Building
         </a>
 
       </div>

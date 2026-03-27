@@ -10,6 +10,12 @@ import {
   getVisiblePersonalLinks,
   toExternalLinkHref,
 } from "../../../domain/resume";
+import {
+  previewHighlightInlineClassName,
+  previewHighlightSectionClassName,
+} from "./highlightStyles";
+import HighlightedSkillTokens from "./HighlightedSkillTokens";
+import { isBuilderAiTextHighlighted } from "../../../lib/builder/aiHighlights";
 import { toDescriptionBullets } from "./utils";
 
 const ACCENT = "#1B2A4A";
@@ -32,16 +38,25 @@ const SectionTitle: React.FC<TemplateSectionTitleProps> = ({ children }) => (
   </div>
 );
 
-const BulletList: React.FC<{ id: string; bullets: string[] }> = ({
+const BulletList: React.FC<{
+  id: string;
+  bullets: string[];
+  highlightedBullets?: string[];
+}> = ({
   id,
   bullets,
+  highlightedBullets = [],
 }) => (
   <ul className="mt-1.5 space-y-1 list-disc list-outside pl-4">
     {bullets.map((line, i) => (
       <li
         key={`${id}-b-${i}`}
         data-break-point="true"
-        className="text-[11px] leading-relaxed text-gray-600 text-justify"
+        className={`text-[11px] leading-relaxed text-gray-600 text-justify ${
+          isBuilderAiTextHighlighted(highlightedBullets, line)
+            ? previewHighlightInlineClassName
+            : ""
+        }`}
       >
         {line}
       </li>
@@ -52,6 +67,7 @@ const BulletList: React.FC<{ id: string; bullets: string[] }> = ({
 const ExecutiveTemplate: React.FC<BuilderTemplateComponentProps> = ({
   data,
   contentRef,
+  aiHighlights,
 }) => {
   const {
     personalInfo,
@@ -71,6 +87,8 @@ const ExecutiveTemplate: React.FC<BuilderTemplateComponentProps> = ({
   const groupedSkills = skills.groups.filter((g) => g.items.length > 0);
   const shouldRenderGroupedSkills =
     skills.mode === "grouped" && groupedSkills.length > 0;
+  const isSummaryHighlighted = Boolean(aiHighlights?.summary);
+  const isSkillsHighlighted = (aiHighlights?.skills?.length ?? 0) > 0;
 
   const hasSidebarContent =
     education.length > 0 ||
@@ -176,7 +194,10 @@ const ExecutiveTemplate: React.FC<BuilderTemplateComponentProps> = ({
         <div className="flex items-start">
           <div className="w-2/3 px-8 py-6 space-y-6">
             {summary && (
-              <section>
+              <section
+                data-ai-highlight-anchor="summary"
+                className={isSummaryHighlighted ? previewHighlightSectionClassName : undefined}
+              >
                 <SectionTitle>Summary</SectionTitle>
                 <p 
                   data-break-point="true"
@@ -192,7 +213,11 @@ const ExecutiveTemplate: React.FC<BuilderTemplateComponentProps> = ({
                 <SectionTitle>Experience</SectionTitle>
                 <div className="space-y-5">
                   {experience.map((exp) => (
-                    <div key={exp.id} data-no-split="true">
+                    <div
+                      key={exp.id}
+                      data-no-split="true"
+                      data-ai-highlight-anchor={`experience-${exp.id}`}
+                    >
                       <div className="flex justify-between items-baseline gap-2">
                         <h4
                           className="font-black text-[12.5px] uppercase tracking-[0.02em]"
@@ -223,7 +248,11 @@ const ExecutiveTemplate: React.FC<BuilderTemplateComponentProps> = ({
                         (() => {
                           const bullets = toDescriptionBullets(exp.description);
                           return bullets.length > 0 ? (
-                            <BulletList id={exp.id} bullets={bullets} />
+                            <BulletList
+                              id={exp.id}
+                              bullets={bullets}
+                              highlightedBullets={aiHighlights?.experience[exp.id]}
+                            />
                           ) : (
                             <p 
                               data-break-point="true"
@@ -399,7 +428,10 @@ const ExecutiveTemplate: React.FC<BuilderTemplateComponentProps> = ({
             )}
 
             {activeSkills.length > 0 && (
-              <section>
+              <section
+                data-ai-highlight-anchor="skills"
+                className={isSkillsHighlighted ? previewHighlightSectionClassName : undefined}
+              >
                 <SectionTitle>Skills</SectionTitle>
                 {shouldRenderGroupedSkills ? (
                   <div className="space-y-1.5">
@@ -411,7 +443,10 @@ const ExecutiveTemplate: React.FC<BuilderTemplateComponentProps> = ({
                         <span className="font-bold" style={{ color: ACCENT }}>
                           {group.label}:
                         </span>{" "}
-                        {group.items.join(", ")}
+                        <HighlightedSkillTokens
+                          skills={group.items}
+                          highlightedSkills={aiHighlights?.skills ?? []}
+                        />
                       </p>
                     ))}
                   </div>
@@ -420,7 +455,11 @@ const ExecutiveTemplate: React.FC<BuilderTemplateComponentProps> = ({
                     {activeSkills.map((skill, i) => (
                       <span
                         key={i}
-                        className="text-[9.5px] font-semibold px-2 py-0.5 rounded-sm"
+                        className={`text-[9.5px] font-semibold px-2 py-0.5 rounded-sm ${
+                          isBuilderAiTextHighlighted(aiHighlights?.skills ?? [], skill)
+                            ? previewHighlightInlineClassName
+                            : ""
+                        }`}
                         style={{
                           color: ACCENT,
                           backgroundColor: "white",
@@ -493,7 +532,10 @@ const ExecutiveTemplate: React.FC<BuilderTemplateComponentProps> = ({
       ) : (
         <div className="w-full px-8 py-6 space-y-6">
           {summary && (
-            <section>
+            <section
+              data-ai-highlight-anchor="summary"
+              className={isSummaryHighlighted ? previewHighlightSectionClassName : undefined}
+            >
               <SectionTitle>Summary</SectionTitle>
               <p className="text-[11.5px] leading-relaxed text-gray-600 text-justify">
                 {summary}
@@ -506,7 +548,10 @@ const ExecutiveTemplate: React.FC<BuilderTemplateComponentProps> = ({
               <SectionTitle>Experience</SectionTitle>
               <div className="space-y-5">
                 {experience.map((exp) => (
-                  <div key={exp.id}>
+                  <div
+                    key={exp.id}
+                    data-ai-highlight-anchor={`experience-${exp.id}`}
+                  >
                     <div className="flex justify-between items-baseline gap-2">
                       <h4
                         className="font-black text-[12.5px] uppercase tracking-[0.02em]"
@@ -537,7 +582,11 @@ const ExecutiveTemplate: React.FC<BuilderTemplateComponentProps> = ({
                       (() => {
                         const bullets = toDescriptionBullets(exp.description);
                         return bullets.length > 0 ? (
-                          <BulletList id={exp.id} bullets={bullets} />
+                          <BulletList
+                            id={exp.id}
+                            bullets={bullets}
+                            highlightedBullets={aiHighlights?.experience[exp.id]}
+                          />
                         ) : (
                           <p className="text-[11px] leading-relaxed text-gray-600 mt-1.5 text-justify whitespace-pre-line">
                             {exp.description}

@@ -1,19 +1,18 @@
+import { useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import type { Dispatch, SetStateAction } from 'react';
 import type { User } from '@supabase/supabase-js';
 import { toast } from 'sonner';
-import { clampSummary, isRecord, toString, toStringArray } from '../../lib/builder/page';
+import { clampSummary, isRecord } from '../../lib/builder/page';
 import { getErrorMessage } from '../../lib/errors';
-import { supabase } from '../../lib/supabase';
-import type { BuilderPageMobileView } from '../../types/builder';
 import {
-  normalizeEducationList,
-  normalizeExperienceList,
-  normalizeLinkList,
-  normalizeProjectList,
-  normalizeSkillsSection,
-  type ResumeData,
-} from '../../types/resume';
+  fetchProfileRecord,
+  getProfileQueryKey,
+  PROFILE_QUERY_STALE_TIME,
+} from '../../lib/queries/profile';
+import { parseProfileResumeImport } from '../../schemas/integrations/profile';
+import type { BuilderPageMobileView } from '../../types/builder';
+import type { ResumeData } from '../../types/resume';
 
 interface UseBuilderProfileImportArgs {
   user: User | null;
@@ -31,6 +30,7 @@ export const useBuilderProfileImport = ({
   setResumeData,
   setMobileView,
 }: UseBuilderProfileImportArgs): UseBuilderProfileImportResult => {
+  const queryClient = useQueryClient();
   const [isImporting, setIsImporting] = useState(false);
 
   const executeImport = async () => {
@@ -42,46 +42,21 @@ export const useBuilderProfileImport = ({
     setIsImporting(true);
 
     try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', user.id)
-        .maybeSingle();
+      const profileRecord = await queryClient.ensureQueryData({
+        queryKey: getProfileQueryKey(user.id),
+        queryFn: () => fetchProfileRecord(user.id),
+        staleTime: PROFILE_QUERY_STALE_TIME,
+      });
 
-      if (error) throw error;
-      if (!data || !isRecord(data)) {
+      if (!profileRecord || !isRecord(profileRecord)) {
         toast.error('No Career Profile found.');
         return;
       }
 
-      const profileWebsite = toString(data.website);
-      const parsedLinks = normalizeLinkList(data.links);
-      const links =
-        parsedLinks.length > 0
-          ? parsedLinks
-          : profileWebsite
-            ? [{ id: 'link-1', label: 'Website', url: profileWebsite }]
-            : [];
-
+      const parsedProfile = parseProfileResumeImport(profileRecord, user.email || '');
       const mappedData: ResumeData = {
-        personalInfo: {
-          fullName: toString(data.full_name),
-          email: user.email || '',
-          phone: toString(data.phone),
-          jobTitle: toString(data.headline),
-          location: toString(data.location),
-          website: profileWebsite,
-          links,
-        },
-        summary: clampSummary(toString(data.bio)),
-        experience: normalizeExperienceList(data.experience),
-        volunteering: normalizeExperienceList(data.volunteering),
-        projects: normalizeProjectList(data.projects),
-        education: normalizeEducationList(data.education),
-        certifications: toStringArray(data.certifications),
-        skills: normalizeSkillsSection(data.skills),
-        languages: toStringArray(data.languages),
-        achievements: toStringArray(data.achievements ?? data.awards),
+        ...parsedProfile,
+        summary: clampSummary(parsedProfile.summary),
       };
 
       setResumeData(mappedData);

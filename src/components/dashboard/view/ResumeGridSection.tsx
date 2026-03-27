@@ -1,10 +1,12 @@
 import React from 'react';
 import { FiCopy, FiFileText, FiPlus, FiTrash2, FiUploadCloud, FiClock } from 'react-icons/fi';
+import { getResumeCollectionViewState } from '../../../lib/dashboard/resumeCollectionState';
 import type { ResumeGridSectionProps } from '../../../types/dashboard';
 import ResumeCardPreview from './ResumeCardPreview';
 
 const ResumeGridSection: React.FC<ResumeGridSectionProps> = ({
   isLoading,
+  resumeError,
   resumes,
   filteredResumes,
   searchQuery,
@@ -15,9 +17,17 @@ const ResumeGridSection: React.FC<ResumeGridSectionProps> = ({
   onOpenResume,
   onDeleteResume,
   onDuplicateResume,
+  onRetryResumes,
 }) => {
+  const viewState = getResumeCollectionViewState({
+    isLoading,
+    error: resumeError,
+    totalCount: resumes.length,
+    filteredCount: filteredResumes.length,
+  });
+
   // ── LOADING STATE ──────────────────────────────────────────────────────
-  if (isLoading) {
+  if (viewState === 'loading') {
     return (
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
         {[1, 2, 3].map((item) => (
@@ -33,8 +43,30 @@ const ResumeGridSection: React.FC<ResumeGridSectionProps> = ({
     );
   }
 
+  if (viewState === 'error') {
+    return (
+      <div className="rounded-3xl border border-red-100 bg-red-50/60 p-10 md:p-14 text-center flex flex-col items-center animate-in fade-in duration-300">
+        <div className="w-14 h-14 rounded-2xl bg-white border border-red-100 text-red-500 flex items-center justify-center mb-5 shadow-sm">
+          <FiFileText size={24} strokeWidth={1.5} />
+        </div>
+        <h3 className="text-[20px] font-bold text-gray-900 tracking-tight mb-2">
+          Failed to load resumes
+        </h3>
+        <p className="text-[14px] text-gray-600 max-w-md leading-relaxed pb-2">
+          {resumeError}
+        </p>
+        <button
+          onClick={onRetryResumes}
+          className="mt-6 inline-flex items-center justify-center rounded-xl bg-gray-900 px-6 h-10 text-[12.5px] font-bold text-white shadow-md transition-all hover:bg-black hover:shadow-lg"
+        >
+          Try Again
+        </button>
+      </div>
+    );
+  }
+
   // ── EMPTY STATE ────────────────────────────────────────────────────────
-  if (resumes.length === 0) {
+  if (viewState === 'empty') {
     return (
       <div className="rounded-3xl border border-dashed border-gray-200 bg-gray-50/30 p-10 md:p-14 text-center flex flex-col items-center animate-in fade-in duration-500">
         <div className="w-14 h-14 rounded-2xl bg-white border border-gray-100 text-gray-400 flex items-center justify-center mb-5 shadow-sm">
@@ -63,7 +95,7 @@ const ResumeGridSection: React.FC<ResumeGridSectionProps> = ({
   }
 
   // ── NO MATCHES STATE ───────────────────────────────────────────────────
-  if (filteredResumes.length === 0) {
+  if (viewState === 'no_matches') {
     return (
       <div className="rounded-2xl border border-gray-100 bg-white p-12 text-center shadow-sm">
         <h3 className="text-[16px] font-bold text-gray-900 tracking-tight mb-1">

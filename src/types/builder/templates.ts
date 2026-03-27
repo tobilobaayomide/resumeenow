@@ -1,9 +1,11 @@
 import type { ReactNode, RefObject } from 'react';
+import type { BuilderAiHighlights } from './ai';
 import type { ResumeData, ResumeExperienceItem, TemplateId } from '../resume';
 
 export interface BuilderTemplateComponentProps {
   data: ResumeData;
   contentRef?: RefObject<HTMLDivElement>;
+  aiHighlights?: BuilderAiHighlights;
 }
 
 export interface TemplateRendererProps extends BuilderTemplateComponentProps {

@@ -6,6 +6,12 @@ import {
   getVisiblePersonalLinks,
   toExternalLinkHref,
 } from "../../../domain/resume";
+import {
+  previewHighlightInlineClassName,
+  previewHighlightSectionClassName,
+} from "./highlightStyles";
+import HighlightedSkillTokens from "./HighlightedSkillTokens";
+import { isBuilderAiTextHighlighted } from "../../../lib/builder/aiHighlights";
 import { toDescriptionBullets } from "./utils";
 
 const INK = "#0f1117";
@@ -32,16 +38,25 @@ const SectionHeading: React.FC<{ label: string }> = ({ label }) => (
   </div>
 );
 
-const BulletList: React.FC<{ id: string; bullets: string[] }> = ({
+const BulletList: React.FC<{
+  id: string;
+  bullets: string[];
+  highlightedBullets?: string[];
+}> = ({
   id,
   bullets,
+  highlightedBullets = [],
 }) => (
   <ul className="mt-1.5 space-y-0.75 list-disc list-outside pl-4">
     {bullets.map((line, i) => (
       <li
         key={`${id}-b-${i}`}
         data-break-point="true"
-        className="text-[12px] leading-[1.65] text-justify"
+        className={`text-[12px] leading-[1.65] text-justify ${
+          isBuilderAiTextHighlighted(highlightedBullets, line)
+            ? previewHighlightInlineClassName
+            : ""
+        }`}
         style={{ color: INK, fontFamily: MONO }}
       >
         {line}
@@ -69,6 +84,7 @@ const DateBracket: React.FC<{ start?: string; end?: string }> = ({
 const SiliconTemplate: React.FC<BuilderTemplateComponentProps> = ({
   data,
   contentRef,
+  aiHighlights,
 }) => {
   const {
     personalInfo,
@@ -88,6 +104,8 @@ const SiliconTemplate: React.FC<BuilderTemplateComponentProps> = ({
   const groupedSkills = skills.groups.filter((g) => g.items.length > 0);
   const shouldRenderGroupedSkills =
     skills.mode === "grouped" && groupedSkills.length > 0;
+  const isSummaryHighlighted = Boolean(aiHighlights?.summary);
+  const isSkillsHighlighted = (aiHighlights?.skills?.length ?? 0) > 0;
 
   return (
     <div
@@ -150,7 +168,10 @@ const SiliconTemplate: React.FC<BuilderTemplateComponentProps> = ({
 
       <div className="px-7 py-6 space-y-6">
         {summary && (
-          <section>
+          <section
+            data-ai-highlight-anchor="summary"
+            className={isSummaryHighlighted ? previewHighlightSectionClassName : undefined}
+          >
             <SectionHeading label="About" />
             <p
               data-break-point="true"
@@ -163,7 +184,10 @@ const SiliconTemplate: React.FC<BuilderTemplateComponentProps> = ({
         )}
 
         {activeSkills.length > 0 && (
-          <section>
+          <section
+            data-ai-highlight-anchor="skills"
+            className={isSkillsHighlighted ? previewHighlightSectionClassName : undefined}
+          >
             <SectionHeading label="Stack" />
             {shouldRenderGroupedSkills ? (
               <div className="space-y-1.5 pl-4">
@@ -177,7 +201,10 @@ const SiliconTemplate: React.FC<BuilderTemplateComponentProps> = ({
                     <span className="font-bold" style={{ color: INK }}>
                       {group.label}:
                     </span>{" "}
-                    {group.items.join(", ")}
+                    <HighlightedSkillTokens
+                      skills={group.items}
+                      highlightedSkills={aiHighlights?.skills ?? []}
+                    />
                   </p>
                 ))}
               </div>
@@ -186,7 +213,11 @@ const SiliconTemplate: React.FC<BuilderTemplateComponentProps> = ({
                 {activeSkills.map((skill) => (
                   <span
                     key={skill}
-                    className="text-[12px] px-2 py-0.75 font-medium"
+                    className={`text-[12px] px-2 py-0.75 font-medium ${
+                      isBuilderAiTextHighlighted(aiHighlights?.skills ?? [], skill)
+                        ? previewHighlightInlineClassName
+                        : ""
+                    }`}
                     style={{
                       color: PROMPT,
                       border: `1px solid ${PROMPT}`,
@@ -206,7 +237,11 @@ const SiliconTemplate: React.FC<BuilderTemplateComponentProps> = ({
             <SectionHeading label="Experience" />
             <div className="space-y-5 pl-4">
               {experience.map((exp) => (
-                <div key={exp.id} data-no-split="true">
+                <div
+                  key={exp.id}
+                  data-no-split="true"
+                  data-ai-highlight-anchor={`experience-${exp.id}`}
+                >
                   <div className="flex items-baseline justify-between gap-2">
                     <div className="flex items-baseline gap-0 flex-wrap">
                       <span
@@ -234,7 +269,11 @@ const SiliconTemplate: React.FC<BuilderTemplateComponentProps> = ({
                     (() => {
                       const bullets = toDescriptionBullets(exp.description);
                       return bullets.length > 0 ? (
-                        <BulletList id={exp.id} bullets={bullets} />
+                        <BulletList
+                          id={exp.id}
+                          bullets={bullets}
+                          highlightedBullets={aiHighlights?.experience[exp.id]}
+                        />
                       ) : (
                         <p
                           data-break-point="true"

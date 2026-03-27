@@ -13,6 +13,8 @@ export interface AuthModalProps {
 export interface UpgradeModalProps {
   open: boolean;
   feature: ProFeature | null;
+  joined: boolean;
+  joining: boolean;
   onClose: () => void;
   onUpgrade: () => void;
 }

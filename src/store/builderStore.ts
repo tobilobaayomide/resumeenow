@@ -1,5 +1,13 @@
 import { create } from 'zustand';
-import { persist, createJSONStorage, type StateStorage } from 'zustand/middleware';
+import { persist, createJSONStorage } from 'zustand/middleware';
+import {
+  EMPTY_BUILDER_AI_HIGHLIGHTS,
+  getFirstBuilderAiHighlightFocus,
+  hasBuilderAiHighlights,
+  mergeBuilderAiHighlights,
+  normalizeBuilderAiHighlights,
+  removeBuilderAiHighlight,
+} from '../lib/builder/aiHighlights';
 import {
   mergeGroupedSkillSuggestionsIntoSection,
   mergeSkillNamesIntoSection,
@@ -10,7 +18,12 @@ import {
   appendDescriptionBullet,
   replaceDescriptionBullet,
 } from '../lib/descriptionBullets';
-import type { AtsAuditResult, CoverLetterTone } from '../types/builder';
+import type {
+  AtsAuditResult,
+  BuilderAiHighlightFocusTarget,
+  BuilderAiHighlights,
+  CoverLetterTone,
+} from '../types/builder';
 import {
   DEFAULT_TEMPLATE_ID,
   INITIAL_RESUME_DATA,
@@ -18,6 +31,14 @@ import {
   type ResumeData,
   type TemplateId,
 } from '../types/resume';
+import { parseBuilderPersistedState } from '../schemas/builder/persistedState';
+import { reportRuntimeValidationIssue } from '../lib/observability/runtimeValidation';
+import {
+  BUILDER_PERSIST_VERSION,
+  BUILDER_STORAGE_NAME,
+  migrateBuilderPersistedState,
+} from './builderPersistence';
+import { createDebouncedStateStorage } from '../lib/storage/debouncedStateStorage';
 
 type BuilderState = {
   resumeData: ResumeData;
@@ -39,6 +60,9 @@ type BuilderState = {
   atsRole: string;
   atsJobDescription: string;
   atsResult: AtsAuditResult | null;
+  recentAiHighlights: BuilderAiHighlights;
+  aiHighlightFocus: BuilderAiHighlightFocusTarget | null;
+  aiHighlightFocusNonce: number;
   tailorPreview: {
     jobTitleAfter: string;
     summary?: { current: string; better: string };
@@ -71,6 +95,13 @@ type BuilderActions = {
   setCoverLetterDraft: (draft: string) => void;
   setAtsFields: (role: string, jd: string) => void;
   setAtsResult: (result: AtsAuditResult | null) => void;
+  markAiHighlights: (
+    highlights: Partial<BuilderAiHighlights>,
+    focus?: BuilderAiHighlightFocusTarget | null,
+  ) => void;
+  clearAiHighlights: () => void;
+  clearAiHighlight: (target: BuilderAiHighlightFocusTarget) => void;
+  requestAiHighlightFocus: (target?: BuilderAiHighlightFocusTarget | null) => void;
   setTailorPreview: (preview: BuilderState['tailorPreview']) => void;
   confirmTailoredPreview: () => void;
   discardTailoredPreview: () => void;
@@ -78,32 +109,44 @@ type BuilderActions = {
 
 type BuilderStore = BuilderState & BuilderActions;
 
-const storageTimers: Record<string, ReturnType<typeof setTimeout>> = {};
+const mergePersistedBuilderState = (
+  persistedState: unknown,
+  currentState: BuilderStore,
+): BuilderStore => {
+  const parsedPersistedState = parseBuilderPersistedState(persistedState);
 
-/**
- * Custom storage that debounces writes to localStorage
- * to prevent performance degradation during frequent state updates (typing).
- */
-const debouncedLocalStorage: StateStorage = {
-  getItem: (name) => {
-    return localStorage.getItem(name);
-  },
-  setItem: (name, value) => {
-    if (storageTimers[name]) {
-      clearTimeout(storageTimers[name]);
+  if (!parsedPersistedState) {
+    if (persistedState !== undefined && persistedState !== null) {
+      reportRuntimeValidationIssue({
+        key: 'builder.persist.invalid-merge',
+        source: 'builder.persist',
+        action: 'Ignored invalid persisted builder state during hydration merge.',
+        details: {
+          storageName: BUILDER_STORAGE_NAME,
+        },
+      });
     }
-    storageTimers[name] = setTimeout(() => {
-      localStorage.setItem(name, value);
-      delete storageTimers[name];
-    }, 1000); // 1s debounce for persistence
+
+    return currentState;
+  }
+
+  return {
+    ...currentState,
+    ...parsedPersistedState,
+  };
+};
+
+const debouncedLocalStorage = createDebouncedStateStorage({
+  delayMs: 1000,
+  storage: {
+    getItem: (name) => localStorage.getItem(name),
+    setItem: (name, value) => localStorage.setItem(name, value),
+    removeItem: (name) => localStorage.removeItem(name),
   },
-  removeItem: (name) => {
-    if (storageTimers[name]) {
-      clearTimeout(storageTimers[name]);
-      delete storageTimers[name];
-    }
-    localStorage.removeItem(name);
-  },
+});
+
+export const flushBuilderStorageWrites = () => {
+  debouncedLocalStorage.flushAll();
 };
 
 export const useBuilderStore = create<BuilderStore>()(
@@ -127,6 +170,9 @@ export const useBuilderStore = create<BuilderStore>()(
       atsRole: '',
       atsJobDescription: '',
       atsResult: null,
+      recentAiHighlights: EMPTY_BUILDER_AI_HIGHLIGHTS,
+      aiHighlightFocus: null,
+      aiHighlightFocusNonce: 0,
       tailorPreview: null,
       setResumeData: (updater) =>
         set((state) => ({
@@ -148,6 +194,9 @@ export const useBuilderStore = create<BuilderStore>()(
           resumeData: data,
           templateId: templateId ? normalizeTemplateId(templateId) : state.templateId,
           title: title ?? state.title,
+          recentAiHighlights: EMPTY_BUILDER_AI_HIGHLIGHTS,
+          aiHighlightFocus: null,
+          aiHighlightFocusNonce: 0,
         })),
       reset: () =>
         set(() => ({
@@ -169,6 +218,9 @@ export const useBuilderStore = create<BuilderStore>()(
           atsRole: '',
           atsJobDescription: '',
           atsResult: null,
+          recentAiHighlights: EMPTY_BUILDER_AI_HIGHLIGHTS,
+          aiHighlightFocus: null,
+          aiHighlightFocusNonce: 0,
           tailorPreview: null,
         })),
       setIsGenerating: (value) => set({ isGenerating: value }),
@@ -199,6 +251,62 @@ export const useBuilderStore = create<BuilderStore>()(
       setCoverLetterDraft: (draft) => set({ coverLetterDraft: draft }),
       setAtsFields: (role, jd) => set({ atsRole: role, atsJobDescription: jd }),
       setAtsResult: (result) => set({ atsResult: result }),
+      markAiHighlights: (highlights, focus) =>
+        set((state) => {
+          const freshHighlights = normalizeBuilderAiHighlights(highlights);
+          const recentAiHighlights = mergeBuilderAiHighlights(
+            state.recentAiHighlights,
+            freshHighlights,
+          );
+          const nextFocus =
+            focus ??
+            getFirstBuilderAiHighlightFocus(
+              hasBuilderAiHighlights(freshHighlights)
+                ? freshHighlights
+                : recentAiHighlights,
+            );
+
+          return {
+            recentAiHighlights,
+            aiHighlightFocus: nextFocus,
+            aiHighlightFocusNonce: nextFocus
+              ? state.aiHighlightFocusNonce + 1
+              : state.aiHighlightFocusNonce,
+          };
+        }),
+      clearAiHighlights: () =>
+        set(() => ({
+          recentAiHighlights: EMPTY_BUILDER_AI_HIGHLIGHTS,
+          aiHighlightFocus: null,
+        })),
+      clearAiHighlight: (target) =>
+        set((state) => {
+          const recentAiHighlights = removeBuilderAiHighlight(
+            state.recentAiHighlights,
+            target,
+          );
+
+          return {
+            recentAiHighlights,
+            aiHighlightFocus: hasBuilderAiHighlights(recentAiHighlights)
+              ? state.aiHighlightFocus
+              : null,
+          };
+        }),
+      requestAiHighlightFocus: (target) =>
+        set((state) => {
+          const aiHighlightFocus =
+            target ?? getFirstBuilderAiHighlightFocus(state.recentAiHighlights);
+
+          if (!aiHighlightFocus) {
+            return state;
+          }
+
+          return {
+            aiHighlightFocus,
+            aiHighlightFocusNonce: state.aiHighlightFocusNonce + 1,
+          };
+        }),
       setTailorPreview: (preview) => set({ tailorPreview: preview }),
       confirmTailoredPreview: () => set((state) => {
         if (!state.tailorPreview) return state;
@@ -263,8 +371,11 @@ export const useBuilderStore = create<BuilderStore>()(
       discardTailoredPreview: () => set({ tailorPreview: null }),
     }),
     {
-      name: 'resumeenow:builder',
+      name: BUILDER_STORAGE_NAME,
       storage: createJSONStorage(() => debouncedLocalStorage),
+      version: BUILDER_PERSIST_VERSION,
+      migrate: migrateBuilderPersistedState,
+      merge: mergePersistedBuilderState,
       partialize: (state) => ({
         resumeData: state.resumeData,
         templateId: state.templateId,

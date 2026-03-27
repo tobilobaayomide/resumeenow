@@ -1,5 +1,5 @@
 import type { User } from '@supabase/supabase-js';
-import type { ResumeEducationItem, ResumeExperienceItem } from '../resume';
+import type { ResumeEducationItem, ResumeExperienceItem } from '../resume.js';
 import type { KeyboardEvent } from 'react';
 
 export interface CareerProfileState {

@@ -1,7 +1,7 @@
-import { normalizeResumeData } from '../types/resume';
 import type { ParsedResumeResult } from '../types/parser';
 import { parseResumeText } from './resume-parser/parse';
-import { supabase } from './supabase';
+import { parseResumeApiResponse } from '../schemas/integrations/parser';
+import { getValidAccessToken } from './auth/accessToken';
 
 const PDF_PARSE_ENDPOINT = '/api/parse-resume';
 
@@ -24,19 +24,6 @@ const toServerResponseError = (status: number, message: string): ResponseError =
   return error;
 };
 
-const getAccessToken = async (): Promise<string> => {
-  const {
-    data: { session },
-    error,
-  } = await supabase.auth.getSession();
-
-  if (error || !session?.access_token) {
-    throw new Error('Please sign in again to continue.');
-  }
-
-  return session.access_token;
-};
-
 const shouldFallbackToBrowserParse = (error: unknown): boolean => {
   if (error instanceof TypeError) {
     return true;
@@ -51,7 +38,7 @@ const shouldFallbackToBrowserParse = (error: unknown): boolean => {
 };
 
 const parsePdfFileOnServer = async (file: File): Promise<ParsedResumeResult> => {
-  const accessToken = await getAccessToken();
+  const accessToken = await getValidAccessToken('Please sign in again to continue.');
   const response = await fetch(PDF_PARSE_ENDPOINT, {
     method: 'POST',
     headers: {
@@ -68,17 +55,10 @@ const parsePdfFileOnServer = async (file: File): Promise<ParsedResumeResult> => 
   }
 
   const payload = (await response.json()) as Partial<ParseResumeResponse> | null;
-  if (!payload || typeof payload !== 'object' || !('data' in payload) || !payload.data) {
-    throw new Error('Server returned an invalid resume parse response.');
-  }
-
-  return {
-    data: normalizeResumeData(payload.data),
-    suggestedTitle:
-      typeof payload.suggestedTitle === 'string' && payload.suggestedTitle.trim()
-        ? payload.suggestedTitle
-        : file.name.replace(/\.[^.]+$/, '') || 'Imported Resume',
-  };
+  return parseResumeApiResponse(
+    payload,
+    file.name.replace(/\.[^.]+$/, '') || 'Imported Resume',
+  );
 };
 
 export const parseResumeFile = async (file: File): Promise<ParsedResumeResult> => {

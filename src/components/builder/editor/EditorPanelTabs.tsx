@@ -94,7 +94,7 @@ const EditorPanelTabs: React.FC<EditorPanelTabsProps> = ({
 
         <div
           ref={scrollRef}
-          className="overflow-x-auto overflow-y-hidden touch-pan-x scroll-smooth"
+          className="overflow-x-auto overflow-y-hidden touch-pan-x"
           onWheel={handleHorizontalWheelScroll}
           onScroll={syncScrollState}
           style={{ scrollbarWidth: "none" }}

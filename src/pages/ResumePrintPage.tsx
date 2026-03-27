@@ -1,12 +1,13 @@
 import React, { useEffect, useMemo } from "react";
 import { HtmlTemplateDocument } from "../components/builder/preview/HtmlTemplateDocument";
-import { decodeExportPayload } from "../lib/builder/exportPayload";
-import { normalizeResumeData, normalizeTemplateId } from "../types/resume";
+import Seo from "../components/seo/Seo";
+import { resolveResumePrintPayload } from "../lib/builder/printPayload";
 import type { ResumeData, TemplateId } from "../types/resume";
 
 declare global {
   interface Window {
     __RESUME_PRINT_READY__?: boolean;
+    __RESUME_PRINT_PAYLOAD__?: unknown;
   }
 }
 
@@ -27,44 +28,21 @@ const ResumePrintPage: React.FC = () => {
       return { payload: null, error: "" };
     }
 
-    try {
-      const hash = window.location.hash.replace(/^#/, "");
-      if (!hash) {
-        return { payload: null, error: "Missing export payload." };
-      }
-
-      const decoded = decodeExportPayload(hash);
-      return {
-        payload: {
-          data: normalizeResumeData(decoded.data),
-          templateId: normalizeTemplateId(decoded.templateId),
-          fileName:
-            typeof decoded.fileName === "string" && decoded.fileName.trim()
-              ? decoded.fileName.trim()
-              : "Resume",
-        },
-        error: "",
-      };
-    } catch (decodeError) {
-      console.error("Failed to decode export payload", decodeError);
-      return { payload: null, error: "Could not load resume export." };
+    const resolved = resolveResumePrintPayload(window.__RESUME_PRINT_PAYLOAD__);
+    if (resolved.error) {
+      console.error("Failed to load export payload", resolved.error);
     }
+
+    return resolved;
   }, []);
 
   useEffect(() => {
     window.__RESUME_PRINT_READY__ = false;
-  }, []);
-
-  useEffect(() => {
-    const previousTitle = document.title;
-    if (payload?.fileName) {
-      document.title = payload.fileName;
-    }
-
     return () => {
-      document.title = previousTitle;
+      delete window.__RESUME_PRINT_PAYLOAD__;
+      window.__RESUME_PRINT_READY__ = false;
     };
-  }, [payload?.fileName]);
+  }, []);
 
   useEffect(() => {
     if (!payload) return;
@@ -104,30 +82,54 @@ const ResumePrintPage: React.FC = () => {
   const content = useMemo(() => {
     if (error) {
       return (
-        <div className="flex min-h-screen items-center justify-center bg-white px-6 text-center">
-          <p className="text-sm font-medium text-gray-500">{error}</p>
-        </div>
+        <>
+          <Seo
+            title="Resume Print | ResumeeNow"
+            description="Private resume print view for exports generated inside ResumeeNow."
+            path="/print/resume"
+            robots="noindex,nofollow"
+          />
+          <div className="flex min-h-screen items-center justify-center bg-white px-6 text-center">
+            <p className="text-sm font-medium text-gray-500">{error}</p>
+          </div>
+        </>
       );
     }
 
     if (!payload) {
       return (
-        <div className="flex min-h-screen items-center justify-center bg-white px-6 text-center">
-          <p className="text-sm font-medium text-gray-500">Preparing export…</p>
-        </div>
+        <>
+          <Seo
+            title="Resume Print | ResumeeNow"
+            description="Private resume print view for exports generated inside ResumeeNow."
+            path="/print/resume"
+            robots="noindex,nofollow"
+          />
+          <div className="flex min-h-screen items-center justify-center bg-white px-6 text-center">
+            <p className="text-sm font-medium text-gray-500">Preparing export…</p>
+          </div>
+        </>
       );
     }
 
     return (
-      <div className="flex min-h-screen justify-center bg-white">
-        <HtmlTemplateDocument
-          data={payload.data}
-          templateId={payload.templateId}
-          zoom={1}
-          pageGap={0}
-          withShadow={false}
+      <>
+        <Seo
+          title={payload.fileName || "Resume Print | ResumeeNow"}
+          description="Private resume print view for exports generated inside ResumeeNow."
+          path="/print/resume"
+          robots="noindex,nofollow"
         />
-      </div>
+        <div className="flex min-h-screen justify-center bg-white">
+          <HtmlTemplateDocument
+            data={payload.data}
+            templateId={payload.templateId}
+            zoom={1}
+            pageGap={0}
+            withShadow={false}
+          />
+        </div>
+      </>
     );
   }, [error, payload]);
 

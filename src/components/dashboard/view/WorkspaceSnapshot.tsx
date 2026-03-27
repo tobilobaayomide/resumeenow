@@ -7,15 +7,34 @@ const WorkspaceSnapshot: React.FC<WorkspaceSnapshotProps> = ({
   username,
   documentCountLabel,
   tier,
+  planStatus,
   usedCredits,
-  monthlyCredits,
+  dailyCreditLimit,
   resumeCount,
   isPro,
+  isProWaitlistJoined,
   hasLatestResume,
+  onUpgrade,
+  onRetryPlan,
   onOpenTemplatePicker,
   onExportLatest,
   onUploadSelection,
 }) => {
+  const isPlanReady = planStatus === 'ready';
+  const isPlanUnavailable = planStatus === 'unavailable';
+  const planLabel =
+    planStatus === 'loading'
+      ? 'SYNCING'
+      : planStatus === 'unavailable'
+        ? 'UNAVAILABLE'
+        : tier.toUpperCase();
+  const aiUsageLabel =
+    planStatus === 'loading'
+      ? 'Checking AI usage...'
+      : planStatus === 'unavailable'
+        ? 'AI usage unavailable'
+        : `AI used today: ${usedCredits} / ${dailyCreditLimit}`;
+
   return (
     <div className="mb-10 sm:mb-12">
       <div className="flex flex-col md:flex-row md:items-start justify-between gap-6">
@@ -41,17 +60,23 @@ const WorkspaceSnapshot: React.FC<WorkspaceSnapshotProps> = ({
             </div>
 
             <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-[11.5px] font-semibold ${
-              isPro 
+              isPlanReady && isPro
                 ? 'bg-amber-50 border-amber-200/50 text-amber-700' 
-                : 'bg-gray-50 border-gray-200/60 text-gray-600'
+                : isPlanUnavailable
+                  ? 'bg-rose-50 border-rose-200/60 text-rose-700'
+                  : 'bg-gray-50 border-gray-200/60 text-gray-600'
             }`}>
-              <FiStar size={12} className={isPro ? 'text-amber-500' : 'text-gray-400'} />
-              Plan: {tier.toUpperCase()}
+              <FiStar size={12} className={isPlanReady && isPro ? 'text-amber-500' : isPlanUnavailable ? 'text-rose-500' : 'text-gray-400'} />
+              Plan: {planLabel}
             </div>
 
-            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-indigo-50/50 border border-indigo-100/50 text-[11.5px] font-semibold text-indigo-700">
-              <FiZap size={12} className="text-indigo-400" />
-              AI used today: {usedCredits} / {monthlyCredits}
+            <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11.5px] font-semibold ${
+              isPlanUnavailable
+                ? 'bg-rose-50 border border-rose-100/50 text-rose-700'
+                : 'bg-indigo-50/50 border border-indigo-100/50 text-indigo-700'
+            }`}>
+              <FiZap size={12} className={isPlanUnavailable ? 'text-rose-400' : 'text-indigo-400'} />
+              {aiUsageLabel}
             </div>
           </div>
         </div>
@@ -59,13 +84,22 @@ const WorkspaceSnapshot: React.FC<WorkspaceSnapshotProps> = ({
         {/* ── Right: Action Buttons ─────────────────────────────────────── */}
         <div className="flex flex-wrap items-center gap-2.5 shrink-0 mt-2 md:mt-0">
           
-          {!isPro && (
+          {isPlanUnavailable && (
             <button
-              disabled
-              className="flex items-center gap-1.5 h-10 px-4 rounded-xl text-[12px] font-bold text-amber-700 bg-amber-50/50 border border-amber-200/50 transition-all shadow-sm opacity-50 cursor-not-allowed"
+              onClick={onRetryPlan}
+              className="flex items-center gap-1.5 h-10 px-4 rounded-xl text-[12px] font-bold text-rose-700 bg-rose-50 border border-rose-200/70 hover:bg-rose-100 transition-all shadow-sm"
+            >
+              Retry Plan
+            </button>
+          )}
+
+          {isPlanReady && !isPro && (
+            <button
+              onClick={onUpgrade}
+              className="flex items-center gap-1.5 h-10 px-4 rounded-xl text-[12px] font-bold text-amber-700 bg-amber-50/50 border border-amber-200/50 transition-all shadow-sm hover:bg-amber-100/70"
             >
               <FiStar className="fill-amber-500 text-amber-500" size={13} />
-              Coming Soon
+              {isProWaitlistJoined ? 'On Waitlist' : 'Join Waitlist'}
             </button>
           )}
 

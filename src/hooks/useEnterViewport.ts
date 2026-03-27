@@ -4,16 +4,13 @@ export const useEnterViewport = <T extends Element>(
   ref: RefObject<T | null>,
   rootMargin = '240px 0px',
 ): boolean => {
-  const [hasEnteredViewport, setHasEnteredViewport] = useState(false);
+  const [hasEnteredViewport, setHasEnteredViewport] = useState(
+    () => typeof IntersectionObserver === 'undefined',
+  );
 
   useEffect(() => {
     const element = ref.current;
     if (!element || hasEnteredViewport) return;
-
-    if (typeof IntersectionObserver === 'undefined') {
-      setHasEnteredViewport(true);
-      return;
-    }
 
     const observer = new IntersectionObserver(
       ([entry]) => {

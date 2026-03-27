@@ -8,11 +8,44 @@ import TemplatesSection from '../components/landing/TemplatesSection';
 import StepsSection from '../components/landing/StepsSection';
 import CtaSection from '../components/landing/CtaSection';
 import Footer from '../components/landing/Footer';
-import { TEMPLATE_IDS, type TemplateId } from '../types/resume';
+import Seo from '../components/seo/Seo';
+import { LANDING_PENDING_TEMPLATE_IDS } from '../data/landing';
+import type { TemplateId } from '../types/resume';
 import type { AuthModalMode } from '../types';
+import { buildSeoImageUrl, buildSeoUrl } from '../lib/seo';
+import { LEGAL_CONTACT_EMAIL, LEGAL_COMPANY_NAME } from '../data/legal';
 
 const AuthModal = lazy(() => import('../components/AuthModal'));
 const PENDING_TEMPLATE_STORAGE_KEY = 'resumeenow:pending-template';
+const LANDING_TITLE = 'AI Resume Builder & Resume Parser | ResumeeNow';
+const LANDING_DESCRIPTION =
+  'Build interview-ready resumes faster with AI-assisted editing, PDF resume parsing, live previews, and export workflows in one focused workspace.';
+const LANDING_STRUCTURED_DATA = {
+  '@context': 'https://schema.org',
+  '@graph': [
+    {
+      '@type': 'WebSite',
+      name: LEGAL_COMPANY_NAME,
+      url: buildSeoUrl('/'),
+    },
+    {
+      '@type': 'Organization',
+      name: LEGAL_COMPANY_NAME,
+      url: buildSeoUrl('/'),
+      logo: buildSeoImageUrl('/resumeenowlogo.png'),
+      email: LEGAL_CONTACT_EMAIL,
+    },
+    {
+      '@type': 'SoftwareApplication',
+      name: LEGAL_COMPANY_NAME,
+      applicationCategory: 'BusinessApplication',
+      operatingSystem: 'Web',
+      url: buildSeoUrl('/'),
+      image: buildSeoImageUrl('/resumeenowlogo.png'),
+      description: LANDING_DESCRIPTION,
+    },
+  ],
+};
 
 const readPendingTemplate = (): TemplateId | null => {
   if (typeof window === 'undefined') return null;
@@ -20,7 +53,7 @@ const readPendingTemplate = (): TemplateId | null => {
   const storedTemplateId = window.sessionStorage.getItem(PENDING_TEMPLATE_STORAGE_KEY);
   if (!storedTemplateId) return null;
 
-  return TEMPLATE_IDS.includes(storedTemplateId as TemplateId)
+  return LANDING_PENDING_TEMPLATE_IDS.includes(storedTemplateId as TemplateId)
     ? (storedTemplateId as TemplateId)
     : null;
 };
@@ -75,6 +108,13 @@ const LandingPage: React.FC = () => {
 
   return (
     <div className="min-h-screen flex flex-col bg-gray-50">
+      <Seo
+        title={LANDING_TITLE}
+        description={LANDING_DESCRIPTION}
+        path="/"
+        imageUrl={buildSeoImageUrl('/resumeenowlogo.png')}
+        structuredData={LANDING_STRUCTURED_DATA}
+      />
       <Navbar
         onLogin={() => openAuth('login')}
         onSignup={() => openAuth('signup')}

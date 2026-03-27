@@ -2,6 +2,10 @@ import { useState } from 'react';
 import { toast } from 'sonner';
 import type { CoverLetterTone } from '../../types/builder';
 import {
+  collectAddedBuilderAiSkills,
+  createBuilderAiExperienceHighlights,
+} from '../../lib/builder/aiHighlights';
+import {
   mergeGroupedSkillSuggestionsIntoSection,
   mergeSkillNamesIntoSection,
   parseAiSkills,
@@ -110,6 +114,7 @@ export function useBuilderAiFlows() {
   const setCoverLetterDraft = useBuilderStore((store) => store.setCoverLetterDraft);
   const setAtsFields = useBuilderStore((store) => store.setAtsFields);
   const setAtsResult = useBuilderStore((store) => store.setAtsResult);
+  const markAiHighlights = useBuilderStore((store) => store.markAiHighlights);
   const setTailorPreview = useBuilderStore((store) => store.setTailorPreview);
   const confirmTailoredPreview = useBuilderStore((store) => store.confirmTailoredPreview);
   const discardTailoredPreview = useBuilderStore((store) => store.discardTailoredPreview);
@@ -190,29 +195,40 @@ export function useBuilderAiFlows() {
 
     if (!canApply) return;
 
-    let didApply = type === 'summary' || type === 'skills';
+    if (type === 'summary' && p.summary) {
+      setResumeData((prev) => ({
+        ...prev,
+        summary: sanitizeAiPlainText(p.summary!.better),
+      }));
+      markAiHighlights({ summary: true }, { section: 'summary' });
+    } else if (type === 'skills' && p.skills) {
+      const nextSkills =
+        resumeData.skills.mode === 'grouped' && p.skills.groups?.length
+          ? mergeGroupedSkillSuggestionsIntoSection(resumeData.skills, p.skills.groups)
+          : mergeSkillNamesIntoSection(
+              resumeData.skills,
+              parseAiSkills(p.skills.better),
+            );
 
-    setResumeData((prev) => {
-      const next = { ...prev };
-      if (type === 'summary' && p.summary) {
-        next.summary = sanitizeAiPlainText(p.summary.better);
-      } else if (type === 'skills' && p.skills) {
-        next.skills =
-          next.skills.mode === 'grouped' && p.skills.groups?.length
-            ? mergeGroupedSkillSuggestionsIntoSection(next.skills, p.skills.groups)
-            : mergeSkillNamesIntoSection(
-                next.skills,
-                parseAiSkills(p.skills.better),
-              );
-      } else if (type === 'experience' && id && experienceImprovement) {
-        next.experience = next.experience.map((item) =>
+      setResumeData((prev) => ({ ...prev, skills: nextSkills }));
+      markAiHighlights(
+        { skills: collectAddedBuilderAiSkills(resumeData.skills, nextSkills) },
+        { section: 'skills' },
+      );
+    } else if (type === 'experience' && id && experienceImprovement) {
+      let didApply = false;
+      const betterBullet = sanitizeAiPlainText(experienceImprovement.better);
+
+      setResumeData((prev) => ({
+        ...prev,
+        experience: prev.experience.map((item) =>
           item.id !== id
             ? item
             : (() => {
                 const nextDescription = replaceDescriptionBullet(
                   item.description,
                   experienceImprovement.current,
-                  sanitizeAiPlainText(experienceImprovement.better),
+                  betterBullet,
                 );
 
                 if (!nextDescription) return item;
@@ -222,29 +238,48 @@ export function useBuilderAiFlows() {
                   description: nextDescription,
                 };
               })(),
-        );
-      } else if (type === 'addition' && id && experienceAddition) {
-        next.experience = next.experience.map((item) =>
+        ),
+      }));
+
+      if (!didApply) {
+        toast.info('This AI suggestion no longer matches your current bullet. Run Tailor again.');
+        return;
+      }
+
+      markAiHighlights(
+        {
+          experience: createBuilderAiExperienceHighlights([
+            { experienceId: id, text: betterBullet },
+          ]),
+        },
+        { section: 'experience', experienceId: id },
+      );
+    } else if (type === 'addition' && id && experienceAddition) {
+      const betterBullet = sanitizeAiPlainText(experienceAddition.better);
+
+      setResumeData((prev) => ({
+        ...prev,
+        experience: prev.experience.map((item) =>
           item.id !== id
             ? item
-            : (() => {
-                didApply = true;
-                return {
-                  ...item,
-                  description: appendDescriptionBullet(
-                    item.description,
-                    sanitizeAiPlainText(experienceAddition.better),
-                  ),
-                };
-              })(),
-        );
-      }
-      return next;
-    });
+            : {
+                ...item,
+                description: appendDescriptionBullet(
+                  item.description,
+                  betterBullet,
+                ),
+              },
+        ),
+      }));
 
-    if (!didApply) {
-      toast.info('This AI suggestion no longer matches your current bullet. Run Tailor again.');
-      return;
+      markAiHighlights(
+        {
+          experience: createBuilderAiExperienceHighlights([
+            { experienceId: id, text: betterBullet },
+          ]),
+        },
+        { section: 'experience', experienceId: id },
+      );
     }
 
     setTailorPreview({
@@ -275,6 +310,40 @@ export function useBuilderAiFlows() {
   };
   
   const confirmAiTailorPreview = () => {
+    if (tailorPreview) {
+      const nextSkills =
+        tailorPreview.skills
+          ? resumeData.skills.mode === 'grouped' && tailorPreview.skills.groups?.length
+            ? mergeGroupedSkillSuggestionsIntoSection(
+                resumeData.skills,
+                tailorPreview.skills.groups,
+              )
+            : mergeSkillNamesIntoSection(
+                resumeData.skills,
+                parseAiSkills(tailorPreview.skills.better),
+              )
+          : resumeData.skills;
+
+      markAiHighlights(
+        {
+          summary: Boolean(tailorPreview.summary),
+          skills: tailorPreview.skills
+            ? collectAddedBuilderAiSkills(resumeData.skills, nextSkills)
+            : [],
+          experience: createBuilderAiExperienceHighlights([
+            ...tailorPreview.experienceImprovements.map((item) => ({
+              experienceId: item.id,
+              text: sanitizeAiPlainText(item.better),
+            })),
+            ...tailorPreview.experienceAdditions.map((item) => ({
+              experienceId: item.id,
+              text: sanitizeAiPlainText(item.better),
+            })),
+          ]),
+        },
+      );
+    }
+
     confirmTailoredPreview();
     toast.success('Resume updated successfully!');
     closeAiFlows();
@@ -442,6 +511,7 @@ export function useBuilderAiFlows() {
           skills: mergeSkillNamesIntoSection(prev.skills, additions),
         };
       });
+      markAiHighlights({ skills: atsResult.missingKeywords.slice(0, 6) }, { section: 'skills' });
       toast.success('Missing keywords added to skills.');
       closeAiFlows();
     },
@@ -473,6 +543,21 @@ export function useBuilderAiFlows() {
         });
         return nextContext;
       });
+      markAiHighlights(
+        {
+          skills: atsResult.improvements
+            .filter((imp) => imp.type === 'skill')
+            .map((imp) => sanitizeAiPlainText(imp.better)),
+          experience: createBuilderAiExperienceHighlights(
+            atsResult.improvements
+              .filter((imp) => imp.type === 'bullet' && imp.id)
+              .map((imp) => ({
+                experienceId: imp.id as string,
+                text: sanitizeAiPlainText(imp.better),
+              })),
+          ),
+        },
+      );
       toast.success('Strategic improvements applied!');
       closeAiFlows();
     },
@@ -498,6 +583,25 @@ export function useBuilderAiFlows() {
         }
         return nextContext;
       });
+      markAiHighlights(
+        imp.type === 'skill'
+          ? { skills: [sanitizeAiPlainText(imp.better)] }
+          : {
+              experience: imp.id
+                ? createBuilderAiExperienceHighlights([
+                    {
+                      experienceId: imp.id,
+                      text: sanitizeAiPlainText(imp.better),
+                    },
+                  ])
+                : {},
+            },
+        imp.type === 'skill'
+          ? { section: 'skills' }
+          : imp.id
+            ? { section: 'experience', experienceId: imp.id }
+            : null,
+      );
       toast.success('Improvement applied!');
     },
     onGenerateCoverLetter: generateCoverLetter,
@@ -525,7 +629,7 @@ export function useBuilderAiFlows() {
       openAtsAudit();
       return;
     }
-    console.log(feature, label);
+    toast.info(`${label} flow will be wired next.`);
   };
 
   return { handleProAction, aiModalProps };

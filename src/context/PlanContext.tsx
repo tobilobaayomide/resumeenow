@@ -1,13 +1,24 @@
-import React, { useCallback, useEffect, useState } from 'react';
-import { supabase } from '../lib/supabase';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import React, { useState } from 'react';
 import UpgradeModal from '../components/ui/UpgradeModal';
+import { getErrorMessage } from '../lib/errors';
+import { getProfileQueryKey } from '../lib/queries/profile';
+import {
+  fetchPlanSnapshot,
+  getPlanDailyCreditLimit,
+  getPlanSnapshotQueryKey,
+  resolvePlanState,
+} from '../lib/queries/plan';
+import {
+  fetchProWaitlistStatus,
+  getProWaitlistQueryKey,
+  joinProWaitlist,
+  PRO_WAITLIST_QUERY_STALE_TIME,
+} from '../lib/queries/proWaitlist';
 import { PlanContext, type PlanTier, type ProFeature } from './plan-context';
 import { useAuth } from './useAuth';
 
-const FREE_DAILY_CREDIT_LIMIT = 5;
-const PRO_CREDIT_LIMIT = 100;
-
-const showToast = (type: 'success' | 'error', message: string): void => {
+const showToast = (type: 'success' | 'error' | 'info', message: string): void => {
     void import('sonner')
     .then(({ toast }) => {
       toast[type](message);
@@ -21,81 +32,49 @@ const showToast = (type: 'success' | 'error', message: string): void => {
 
 export const PlanProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user } = useAuth();
-  
-  const [tier, setTier] = useState<PlanTier>('free');
-  const [usedCredits, setUsedCredits] = useState<number>(0);
-  const [dynamicFreeLimit, setDynamicFreeLimit] = useState<number>(FREE_DAILY_CREDIT_LIMIT);
+  const queryClient = useQueryClient();
 
   const [upgradeOpen, setUpgradeOpen] = useState(false);
   const [upgradeOwnerId, setUpgradeOwnerId] = useState<string | null>(null);
   const [pendingFeature, setPendingFeature] = useState<ProFeature | null>(null);
 
   const currentUserId = user?.id ?? null;
-
-  const fetchPlanSnapshot = useCallback(async (userId: string | null) => {
-    if (!userId) {
-      return {
-        tier: 'free' as PlanTier,
-        usedCredits: 0,
-        dynamicFreeLimit: FREE_DAILY_CREDIT_LIMIT,
-      };
-    }
-
-    try {
-      const [subRes, usageRes] = await Promise.all([
-        supabase.from('user_subscriptions').select('plan_tier').eq('user_id', userId).maybeSingle(),
-        supabase.from('user_api_usage').select('ai_credits_used, last_reset_at').eq('user_id', userId).maybeSingle()
-      ]);
-
-      const lastResetDateStr = usageRes.data?.last_reset_at ?? null;
-      const lastResetDate = lastResetDateStr
-        ? new Date(lastResetDateStr).toISOString().split('T')[0]
-        : null;
-      const today = new Date().toISOString().split('T')[0];
-      const isNewDay = lastResetDate && lastResetDateStr !== "" && lastResetDate !== today;
-
-      const calculatedLimit = FREE_DAILY_CREDIT_LIMIT;
-      const effectiveCredits = isNewDay ? 0 : (usageRes.data?.ai_credits_used ?? 0);
-
-      return {
-        tier: (subRes.data?.plan_tier as PlanTier | undefined) ?? 'free',
-        usedCredits: effectiveCredits,
-        dynamicFreeLimit: calculatedLimit,
-      };
-    } catch (error) {
-      console.error('Failed to fetch plan data:', error);
-      return null;
-    }
-  }, []);
-
-  const applyPlanSnapshot = useCallback((snapshot: {
-    tier: PlanTier;
-    usedCredits: number;
-    dynamicFreeLimit: number;
-  }) => {
-    setTier(snapshot.tier);
-    setUsedCredits(snapshot.usedCredits);
-    setDynamicFreeLimit(snapshot.dynamicFreeLimit);
-  }, []);
-
-  useEffect(() => {
-    let cancelled = false;
-
-    void fetchPlanSnapshot(currentUserId).then((snapshot) => {
-      if (cancelled || !snapshot) return;
-      applyPlanSnapshot(snapshot);
-    });
-
-    return () => { cancelled = true; };
-  }, [applyPlanSnapshot, currentUserId, fetchPlanSnapshot]);
-
+  const proWaitlistQueryKey = getProWaitlistQueryKey(currentUserId);
+  const planSnapshotQuery = useQuery({
+    queryKey: getPlanSnapshotQueryKey(currentUserId),
+    queryFn: () => fetchPlanSnapshot(currentUserId),
+    enabled: currentUserId !== null,
+    staleTime: 30_000,
+    refetchOnWindowFocus: false,
+  });
+  const { planStatus, snapshot: planSnapshot } = resolvePlanState({
+    userId: currentUserId,
+    snapshot: planSnapshotQuery.data,
+    isPending: planSnapshotQuery.isPending,
+    isError: planSnapshotQuery.isError,
+  });
+  const tier: PlanTier = planSnapshot.tier;
+  const usedCredits = planSnapshot.usedCredits;
+  const isPlanLoading = planStatus === 'loading';
+  const isPlanUnavailable = planStatus === 'unavailable';
   const isPro = tier === 'pro';
-  const monthlyCredits = isPro ? PRO_CREDIT_LIMIT : dynamicFreeLimit;
+  const proWaitlistQuery = useQuery({
+    queryKey: proWaitlistQueryKey,
+    queryFn: () => fetchProWaitlistStatus(currentUserId as string),
+    enabled: currentUserId !== null && planStatus === 'ready' && !isPro,
+    staleTime: PRO_WAITLIST_QUERY_STALE_TIME,
+    refetchOnWindowFocus: false,
+  });
+  const isProWaitlistJoined = !isPro && (proWaitlistQuery.data ?? false);
+  const dailyCreditLimit = getPlanDailyCreditLimit(planSnapshot);
 
   const hasAccess = (feature: ProFeature): boolean => {
     void feature;
-    // Allow access if Pro OR if credits remain
-    return isPro || usedCredits < monthlyCredits;
+    if (planStatus !== 'ready') {
+      return false;
+    }
+
+    return usedCredits < dailyCreditLimit;
   };
 
   const openUpgrade = (feature?: ProFeature) => {
@@ -110,23 +89,90 @@ export const PlanProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setPendingFeature(null);
   };
 
+  const retryPlan = async () => {
+    if (currentUserId === null) {
+      return;
+    }
+
+    await planSnapshotQuery.refetch();
+  };
+
+  const joinProWaitlistMutation = useMutation({
+    mutationFn: async () => {
+      if (currentUserId === null) {
+        throw new Error('Login required.');
+      }
+
+      return joinProWaitlist(currentUserId);
+    },
+    onSuccess: ({ joinedAt, alreadyJoined }) => {
+      if (currentUserId !== null) {
+        queryClient.setQueryData(proWaitlistQueryKey, true);
+        queryClient.setQueryData(getProfileQueryKey(currentUserId), (current) => {
+          const nextRecord: Record<string, unknown> =
+            typeof current === 'object' && current !== null
+              ? { ...(current as Record<string, unknown>) }
+              : { id: currentUserId };
+
+          nextRecord.pro_waitlist_joined_at = joinedAt;
+          return nextRecord;
+        });
+      }
+
+      closeUpgrade();
+      showToast(
+        'success',
+        alreadyJoined
+          ? 'You are already on the Pro waitlist.'
+          : 'Waitlist joined! Pro billing is coming very soon.',
+      );
+    },
+    onError: (error: unknown) => {
+      showToast('error', getErrorMessage(error, 'Failed to join the Pro waitlist.'));
+    },
+  });
+
   const requestAccess = (feature: ProFeature): boolean => {
     if (!currentUserId) {
       void feature;
       showToast('error', 'Login required to use AI tools.');
       return false;
     }
+
+    if (planStatus === 'loading') {
+      void feature;
+      showToast('info', 'Checking your plan. Try again in a moment.');
+      return false;
+    }
+
+    if (planStatus === 'unavailable') {
+      void feature;
+      void retryPlan();
+      showToast('error', 'We could not verify your plan right now. Retrying now.');
+      return false;
+    }
+
     if (hasAccess(feature)) return true;
+
+    if (isPro) {
+      void feature;
+      showToast('error', 'Daily AI limit reached. Try again after 00:00 UTC.');
+      return false;
+    }
+
     openUpgrade(feature);
     return false;
   };
 
   const consumeCredit = async () => {
-    if (!currentUserId) return;
-    const snapshot = await fetchPlanSnapshot(currentUserId);
-    if (snapshot) {
-      applyPlanSnapshot(snapshot);
+    if (currentUserId === null) {
+      return;
     }
+
+    await queryClient.invalidateQueries({
+      queryKey: getPlanSnapshotQueryKey(currentUserId),
+      exact: true,
+    });
   };
 
   const upgradeToPro = () => {
@@ -135,28 +181,43 @@ export const PlanProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return;
     }
 
-    // Placeholder for actual Stripe integration
-    // We no longer fake-upgrade via localStorage to prevent split-brain issues & false hope.
-    closeUpgrade();
-    showToast('success', 'Waitlist joined! Pro billing is coming very soon.');
+    if (isProWaitlistJoined) {
+      closeUpgrade();
+      showToast('info', 'You are already on the Pro waitlist.');
+      return;
+    }
+
+    void joinProWaitlistMutation.mutateAsync().catch(() => {
+      // Error toast is handled by the mutation.
+    });
   };
 
   const refreshCredits = async () => {
-    const snapshot = await fetchPlanSnapshot(currentUserId);
-    if (snapshot) {
-      applyPlanSnapshot(snapshot);
+    if (currentUserId === null) {
+      return;
     }
+
+    await queryClient.invalidateQueries({
+      queryKey: getPlanSnapshotQueryKey(currentUserId),
+      exact: true,
+    });
   };
 
   const value = {
     tier,
+    planStatus,
+    isPlanLoading,
+    isPlanUnavailable,
     isPro,
-    monthlyCredits,
+    isProWaitlistJoined,
+    isJoiningProWaitlist: joinProWaitlistMutation.isPending,
+    dailyCreditLimit,
     usedCredits,
     hasAccess,
     requestAccess,
     consumeCredit,
     refreshCredits,
+    retryPlan,
     openUpgrade,
     closeUpgrade,
     upgradeToPro,
@@ -169,6 +230,8 @@ export const PlanProvider: React.FC<{ children: React.ReactNode }> = ({ children
       <UpgradeModal
         open={isUpgradeVisible}
         feature={pendingFeature}
+        joined={isProWaitlistJoined}
+        joining={joinProWaitlistMutation.isPending}
         onClose={closeUpgrade}
         onUpgrade={upgradeToPro}
       />

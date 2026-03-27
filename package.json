@@ -9,17 +9,15 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
+    "test:schemas": "tsc -p tsconfig.schema-tests.json && cd node_modules/.tmp/schema-tests && node --test",
     "lint": "eslint .",
-    "preview": "vite preview",
-    "loop:make": "bash scripts/make-loop.sh",
-    "assets:check": "node scripts/check-image-sizes.mjs",
-    "assets:optimize": "bash scripts/optimize-image.sh"
+    "preview": "vite preview"
   },
   "dependencies": {
     "@fontsource/dm-sans": "^5.2.8",
-    "@fontsource/ubuntu": "^5.2.8",
     "@sparticuz/chromium": "^131.0.1",
     "@supabase/supabase-js": "^2.99.1",
+    "@tanstack/react-query": "^5.95.2",
     "mammoth": "^1.12.0",
     "pdfjs-dist": "^5.5.207",
     "playwright-core": "^1.54.2",
@@ -29,6 +27,7 @@
     "react-router-dom": "^7.13.1",
     "sonner": "^2.0.7",
     "unpdf": "^1.4.0",
+    "zod": "^4.3.6",
     "zustand": "^5.0.11"
   },
   "devDependencies": {
