@@ -18,20 +18,8 @@ export const ExportPayloadSchema = z.object({
   fileName: z.string().optional(),
 });
 
-const requiredExportPayloadField = (fieldName: string) =>
-  z.unknown().refine(
-    (value) => value !== undefined && value !== null,
-    `${fieldName} is required.`,
-  );
-
-const ExportPayloadInputSchema = z.object({
-  data: requiredExportPayloadField('data').pipe(ResumeDataSchema),
-  templateId: requiredExportPayloadField('templateId').pipe(TemplateIdSchema),
-  fileName: z.string().optional(),
-});
-
 export const parseExportPayload = (value: unknown): ExportPayload => {
-  const result = ExportPayloadInputSchema.safeParse(value);
+  const result = ExportPayloadSchema.safeParse(value);
   if (!result.success) {
     throw new Error('Invalid export payload.');
   }
