@@ -16,9 +16,22 @@ import type { DashboardNavItem } from '../../types/dashboard';
 
 const Sidebar: React.FC = () => {
     const { user, signOut } = useAuth();
-    const { isPro, tier } = usePlan();
+    const { isPro, planStatus, tier } = usePlan();
     const navigate = useNavigate();
     const location = useLocation();
+    const showFreeTierPlanUi = planStatus === 'ready' && !isPro;
+    const tierLabel =
+        planStatus === 'loading'
+            ? 'syncing'
+            : planStatus === 'unavailable'
+                ? 'unavailable'
+                : tier;
+    const tierClassName =
+        planStatus === 'unavailable'
+            ? 'bg-red-500/10 text-red-300 border border-red-500/20'
+            : isPro
+                ? 'bg-white/10 text-white border border-white/20'
+                : 'bg-zinc-800 text-zinc-400 border border-zinc-700';
 
     const handleSignOut = async () => {
         await signOut();
@@ -47,7 +60,7 @@ const Sidebar: React.FC = () => {
                     <item.icon size={16} className={active ? 'text-white' : 'text-zinc-600 group-hover:text-zinc-400'} />
                 </span>
                 <span>{item.label}</span>
-                {item.proPage && !isPro && (
+                {item.proPage && showFreeTierPlanUi && (
                     <span className="ml-auto inline-flex items-center gap-1 text-[9px] uppercase tracking-[0.12em] text-zinc-600">
                         <FiLock size={10} />
                         Pro
@@ -137,14 +150,10 @@ const Sidebar: React.FC = () => {
                                     {user?.email?.split('@')[0]}
                                 </span>
                                 <div className="mt-1 flex items-center gap-2">
-                                    <span className={`inline-flex items-center rounded-full px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-[0.15em] ${
-                                        isPro
-                                            ? 'bg-white/10 text-white border border-white/20'
-                                            : 'bg-zinc-800 text-zinc-400 border border-zinc-700'
-                                    }`}>
-                                        {tier}
+                                    <span className={`inline-flex items-center rounded-full px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-[0.15em] ${tierClassName}`}>
+                                        {tierLabel}
                                     </span>
-                                    {!isPro && (
+                                    {showFreeTierPlanUi && (
                                         <button
                                             disabled
                                             className="hidden items-center gap-1 text-[9px] font-bold uppercase tracking-[0.12em] text-zinc-500 transition-colors cursor-not-allowed opacity-50"

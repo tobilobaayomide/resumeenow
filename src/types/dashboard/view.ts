@@ -1,7 +1,7 @@
 import type { ChangeEvent, ComponentType } from 'react';
 import type { TemplatePickerItem } from '../../domain/templates';
 import type { AiFlowFeature } from '../../domain/workflows';
-import type { ProFeature, PlanTier } from '../context';
+import type { ProFeature, PlanStatus, PlanTier } from '../context';
 import type { ResumeRecord, TemplateId } from '../resume';
 
 export interface ProActionCard {
@@ -23,8 +23,10 @@ export interface TemplateModalPreviewProps {
 export interface DashboardViewProps {
   resumes: ResumeRecord[];
   isLoading: boolean;
+  resumeError: string | null;
   onCreateResume: (templateId: TemplateId) => void;
   onDeleteResume: (id: string) => void;
+  onRetryResumes: () => void;
   onUploadResume: (file: File, templateId: TemplateId) => Promise<void> | void;
   username?: string;
 }
@@ -48,12 +50,15 @@ export interface WorkspaceSnapshotProps {
   username?: string;
   documentCountLabel: string;
   tier: PlanTier;
+  planStatus: PlanStatus;
   usedCredits: number;
-  monthlyCredits: number;
+  dailyCreditLimit: number;
   resumeCount: number;
   isPro: boolean;
+  isProWaitlistJoined: boolean;
   hasLatestResume: boolean;
   onUpgrade: () => void;
+  onRetryPlan: () => void;
   onOpenTemplatePicker: () => void;
   onExportLatest: () => void;
   onUploadSelection: (event: ChangeEvent<HTMLInputElement>) => void;
@@ -61,6 +66,7 @@ export interface WorkspaceSnapshotProps {
 
 export interface AiWorkspaceSectionProps {
   isPro: boolean;
+  planStatus: PlanStatus;
   onUnlockPro: () => void;
   onProAction: (feature: ProFeature, label: string) => void;
 }
@@ -84,6 +90,7 @@ export interface TemplatePickerModalProps {
 
 export interface ResumeGridSectionProps {
   isLoading: boolean;
+  resumeError: string | null;
   resumes: ResumeRecord[];
   filteredResumes: ResumeRecord[];
   searchQuery: string;
@@ -94,6 +101,7 @@ export interface ResumeGridSectionProps {
   onOpenResume: (resume: ResumeRecord) => void;
   onDeleteResume: (id: string) => void;
   onDuplicateResume: (resume: ResumeRecord) => void;
+  onRetryResumes: () => void;
 }
 
 export interface OnboardingPanelProps {

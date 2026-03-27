@@ -29,13 +29,25 @@ import {
 const DashboardView: React.FC<DashboardViewProps> = ({
   resumes,
   isLoading,
+  resumeError,
   onCreateResume,
   onDeleteResume,
+  onRetryResumes,
   onUploadResume,
   username,
 }) => {
   const navigate = useNavigate();
-  const { tier, isPro, monthlyCredits, usedCredits, requestAccess, openUpgrade } = usePlan();
+  const {
+    tier,
+    planStatus,
+    isPro,
+    isProWaitlistJoined,
+    dailyCreditLimit,
+    usedCredits,
+    requestAccess,
+    openUpgrade,
+    retryPlan,
+  } = usePlan();
 
   const { searchQuery, setSearchQuery, filteredResumes, latestResume } = useDashboardResumeSearch(resumes);
   const { hasExportedPdf, lastExportResumeId } = useDashboardExportStatus();
@@ -69,7 +81,7 @@ const DashboardView: React.FC<DashboardViewProps> = ({
 
   const greeting = getDashboardGreeting();
   const dateLabel = getDashboardDateLabel();
-  const documentCountLabel = isLoading ? '...' : String(resumes.length);
+  const documentCountLabel = isLoading ? '...' : resumeError ? '—' : String(resumes.length);
 
   const handleNotificationsClick = () => {
     toast.info('Notifications center is coming soon.');
@@ -102,12 +114,17 @@ const DashboardView: React.FC<DashboardViewProps> = ({
               username={username}
               documentCountLabel={documentCountLabel}
               tier={tier}
+              planStatus={planStatus}
               usedCredits={usedCredits}
-              monthlyCredits={monthlyCredits}
+              dailyCreditLimit={dailyCreditLimit}
               resumeCount={resumes.length}
               isPro={isPro}
+              isProWaitlistJoined={isProWaitlistJoined}
               hasLatestResume={Boolean(latestResume)}
               onUpgrade={() => openUpgrade()}
+              onRetryPlan={() => {
+                void retryPlan();
+              }}
               onOpenTemplatePicker={openTemplatePickerForCreate}
               onExportLatest={handleExportLatest}
               onUploadSelection={handleUploadSelection}
@@ -115,6 +132,7 @@ const DashboardView: React.FC<DashboardViewProps> = ({
 
             <AiWorkspaceSection
               isPro={isPro}
+              planStatus={planStatus}
               onUnlockPro={() => openUpgrade()}
               onProAction={handleProAction}
             />
@@ -123,6 +141,7 @@ const DashboardView: React.FC<DashboardViewProps> = ({
               <div className="col-span-12 lg:col-span-8">
                 <ResumeGridSection
                   isLoading={isLoading}
+                  resumeError={resumeError}
                   resumes={resumes}
                   filteredResumes={filteredResumes}
                   searchQuery={searchQuery}
@@ -133,6 +152,7 @@ const DashboardView: React.FC<DashboardViewProps> = ({
                   onOpenResume={handleOpenResume}
                   onDeleteResume={onDeleteResume}
                   onDuplicateResume={handleDuplicateResume}
+                  onRetryResumes={onRetryResumes}
                 />
               </div>
 

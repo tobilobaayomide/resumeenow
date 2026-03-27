@@ -27,12 +27,11 @@ export const DASHBOARD_FREE_PLAN_ITEMS = [
   'Resume upload and parsing',
   'Live editor and templates',
   'Save and PDF export',
-  'AI workflows',
+  '5 AI workflow runs per day',
 ] as const;
 
 export const DASHBOARD_PRO_PLAN_ITEMS = [
-  'AI Tailor workflow',
-  'ATS Audit workflow',
-  'Cover Letter generator',
+  '100 AI workflow runs per day',
+  'AI Tailor, ATS Audit, and Cover Letter generator',
   'Pro workspace controls',
 ] as const;

@@ -11,7 +11,13 @@ const Dashboard: React.FC = () => {
   const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
 
-  const { resumes, loading: resumesLoading, deleteResume, refreshResumes } = useResumes(user?.id);
+  const {
+    resumes,
+    loading: resumesLoading,
+    error: resumesError,
+    deleteResume,
+    refreshResumes,
+  } = useResumes(user?.id);
 
   const username =
     user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'User';
@@ -19,14 +25,6 @@ const Dashboard: React.FC = () => {
   useEffect(() => {
     if (!authLoading && !user) navigate('/');
   }, [user, authLoading, navigate]);
-
-  useEffect(() => {
-    if (user) {
-      void refreshResumes().catch(() => {
-        // errors are surfaced by the hook via state
-      });
-    }
-  }, [user, refreshResumes]);
 
   const handleCreateResume = (templateId: TemplateId) => {
     navigate(`/builder/new?template=${templateId}`);
@@ -77,8 +75,12 @@ const Dashboard: React.FC = () => {
     <DashboardView
       resumes={resumes}
       isLoading={resumesLoading}
+      resumeError={resumesError}
       onCreateResume={handleCreateResume}
       onDeleteResume={handleDeleteResume}
+      onRetryResumes={() => {
+        void refreshResumes();
+      }}
       onUploadResume={handleUploadResume}
       username={username}
     />
