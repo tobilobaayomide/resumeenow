@@ -58,6 +58,20 @@ const normalizeHeaderValue = (value: string | string[] | undefined): string | nu
   return typeof value === 'string' && value.trim() ? value.trim() : null;
 };
 
+const getRequestOrigin = (req: ApiRequest): string | null => {
+  const forwardedHost = normalizeHeaderValue(req.headers['x-forwarded-host']);
+  const host = forwardedHost || normalizeHeaderValue(req.headers.host);
+
+  if (!host) {
+    return null;
+  }
+
+  const forwardedProto = normalizeHeaderValue(req.headers['x-forwarded-proto']);
+  const protocol = forwardedProto || (isLocalHost(host) ? 'http' : 'https');
+
+  return normalizeOrigin(`${protocol}://${host}`);
+};
+
 const normalizeOrigin = (value: string | undefined): string | null => {
   const trimmed = String(value || '').trim();
   if (!trimmed) {
@@ -110,14 +124,19 @@ const getConfiguredAppOrigin = () =>
   );
 
 const getTrustedAppOrigin = (req: ApiRequest) => {
+  const requestOrigin = getRequestOrigin(req);
+
+  if (process.env.VERCEL_ENV === 'preview' && requestOrigin) {
+    return requestOrigin;
+  }
+
   const configuredOrigin = getConfiguredAppOrigin();
   if (configuredOrigin) {
     return configuredOrigin;
   }
 
-  const host = normalizeHeaderValue(req.headers.host);
-  if (process.env.NODE_ENV !== 'production' && host && isLocalHost(host)) {
-    return `http://${host}`;
+  if (requestOrigin && process.env.NODE_ENV !== 'production') {
+    return requestOrigin;
   }
 
   throw new HttpError(
