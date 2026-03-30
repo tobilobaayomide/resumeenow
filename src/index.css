@@ -1,41 +1,5 @@
 @import "tailwindcss";
 
-@font-face {
-  font-family: 'IBM Plex Mono';
-  font-style: normal;
-  font-weight: 400;
-  font-display: swap;
-  src:
-    local('IBM Plex Mono'),
-    local('IBMPlexMono'),
-    url('https://cdn.jsdelivr.net/fontsource/fonts/ibm-plex-mono@latest/latin-400-normal.woff2')
-      format('woff2');
-}
-
-@font-face {
-  font-family: 'IBM Plex Mono';
-  font-style: normal;
-  font-weight: 500;
-  font-display: swap;
-  src:
-    local('IBM Plex Mono Medium'),
-    local('IBMPlexMono-Medium'),
-    url('https://cdn.jsdelivr.net/fontsource/fonts/ibm-plex-mono@latest/latin-500-normal.woff2')
-      format('woff2');
-}
-
-@font-face {
-  font-family: 'IBM Plex Mono';
-  font-style: normal;
-  font-weight: 700;
-  font-display: swap;
-  src:
-    local('IBM Plex Mono Bold'),
-    local('IBMPlexMono-Bold'),
-    url('https://cdn.jsdelivr.net/fontsource/fonts/ibm-plex-mono@latest/latin-700-normal.woff2')
-      format('woff2');
-}
-
 html {
   -webkit-text-size-adjust: 100%;
   text-size-adjust: 100%;
