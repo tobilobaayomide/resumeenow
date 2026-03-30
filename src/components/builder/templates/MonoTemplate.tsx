@@ -20,7 +20,7 @@ const BODY_TEXT = "#30302e";
 const MUTED = "#70706c";
 const RULE = "#e0dedd";
 const MONO =
-  '"IBM Plex Mono", "JetBrains Mono", "Fira Code", "SFMono-Regular", "Menlo", "Consolas", monospace';
+  '"IBM Plex Mono", ui-monospace, "SFMono-Regular", "Menlo", "Monaco", "Consolas", "Liberation Mono", "Courier New", monospace';
 
 const DATE_COL_WIDTH = 82;
 const CONTENT_GAP = 20;

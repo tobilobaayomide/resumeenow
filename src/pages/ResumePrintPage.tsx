@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo } from "react";
 import { HtmlTemplateDocument } from "../components/builder/preview/HtmlTemplateDocument";
 import Seo from "../components/seo/Seo";
+import { ensurePrintFontsReady } from "../lib/builder/printFonts";
 import { resolveResumePrintPayload } from "../lib/builder/printPayload";
 import type { ResumeData, TemplateId } from "../types/resume";
 
@@ -58,7 +59,7 @@ const ResumePrintPage: React.FC = () => {
 
       if ("fonts" in document) {
         try {
-          await document.fonts.ready;
+          await ensurePrintFontsReady(document);
         } catch {
           // Ignore font readiness failures and proceed.
         }

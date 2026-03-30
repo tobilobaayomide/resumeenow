@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import type { Browser } from 'playwright-core';
+import { PRINT_FONT_LOADS } from '../src/lib/builder/printFonts.js';
 
 export const config = {
   maxDuration: 60,
@@ -325,6 +326,27 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
     }, {
       timeout: 20000,
     });
+    await page.evaluate(async (fontLoads: readonly string[]) => {
+      const browserGlobal = globalThis as {
+        document?: {
+          fonts?: {
+            load: (font: string, text?: string) => Promise<unknown>;
+            ready: Promise<unknown>;
+          };
+        };
+      };
+      const fonts = browserGlobal.document?.fonts;
+
+      if (!fonts) {
+        return;
+      }
+
+      await Promise.allSettled(
+        fontLoads.map((font) => fonts.load(font, 'BESbswy 0123456789')),
+      );
+      await fonts.ready;
+    }, PRINT_FONT_LOADS);
+    await page.waitForTimeout(150);
     await page.evaluate((title: string | undefined) => {
       const printPage = globalThis as PrintPageGlobals;
       if (typeof title === 'string' && title.trim() && printPage.document) {

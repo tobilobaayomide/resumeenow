@@ -5,6 +5,7 @@ import type { ResumeData } from '../../domain/resume/types';
 import type { TemplateId } from '../../domain/templates';
 import { HtmlTemplateDocument } from '../../components/builder/preview/HtmlTemplateDocument';
 import { getValidAccessToken } from '../auth/accessToken';
+import { ensurePrintFontsReady } from './printFonts';
 
 const PRINT_HOST_ID = 'resume-print-host';
 const PDF_EXPORT_ENDPOINT = '/api/export-pdf';
@@ -67,7 +68,7 @@ const waitForPrintableRender = async (): Promise<void> => {
 
   if ('fonts' in document) {
     try {
-      await document.fonts.ready;
+      await ensurePrintFontsReady(document);
     } catch {
       // Ignore font readiness failures and continue to print.
     }

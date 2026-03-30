@@ -1,4 +1,5 @@
 import '@fontsource/dm-sans/index.css'
+import '@fontsource/ibm-plex-mono/index.css'
 import '@fontsource/ubuntu/index.css'
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
