@@ -145,6 +145,11 @@ const getTrustedAppOrigin = (req: ApiRequest) => {
   );
 };
 
+const isPreviewDeployment = () => process.env.VERCEL_ENV === 'preview';
+
+const shouldExposeServerError = () =>
+  process.env.NODE_ENV !== 'production' || isPreviewDeployment();
+
 const getLocalChromeExecutablePath = () => {
   const envPath =
     process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH ||
@@ -339,12 +344,27 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
     await page.emulateMedia({ media: 'screen' });
     await page.goto(exportUrl, { waitUntil: 'domcontentloaded' });
     await page.waitForLoadState('networkidle');
-    await page.waitForFunction(() => {
-      const printPage = globalThis as PrintPageGlobals;
-      return printPage.__RESUME_PRINT_READY__ === true;
-    }, {
-      timeout: 20000,
-    });
+    try {
+      await page.waitForFunction(() => {
+        const printPage = globalThis as PrintPageGlobals;
+        return printPage.__RESUME_PRINT_READY__ === true;
+      }, {
+        timeout: 20000,
+      });
+    } catch {
+      const currentUrl = page.url();
+      let title = '';
+
+      try {
+        title = await page.title();
+      } catch {
+        // Ignore title lookup failures while reporting the original readiness error.
+      }
+
+      throw new Error(
+        `Print page did not become ready at ${currentUrl}${title ? ` (title: ${title})` : ''}.`,
+      );
+    }
     await page.evaluate(async (fontLoads: readonly string[]) => {
       const browserGlobal = globalThis as {
         document?: {
@@ -400,11 +420,11 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
     res
       .status(error instanceof HttpError ? error.status : 500)
       .send(
-        process.env.NODE_ENV === 'production'
-          ? error instanceof HttpError
+        shouldExposeServerError()
+          ? `Failed to export PDF: ${message}`
+          : error instanceof HttpError
             ? message
             : 'Failed to export PDF.'
-          : `Failed to export PDF: ${message}`,
       );
   } finally {
     if (browser) {
