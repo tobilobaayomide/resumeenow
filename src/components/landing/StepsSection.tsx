@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   LANDING_STEP_ITEMS,
   LANDING_STEP_ROTATION_MS,
@@ -8,16 +8,23 @@ import { usePrefersReducedMotion } from '../../hooks/usePrefersReducedMotion';
 import { useEnterViewport } from '../../hooks/useEnterViewport';
 
 const SWIPE_THRESHOLD_PX = 42;
-const STEPS_MEDIA_ROOT_MARGIN = '320px 0px';
+const STEPS_MEDIA_ROOT_MARGIN = '640px 0px';
+const INITIAL_STEP_PRELOAD_DELAY_MS = 350;
+const getStepPoster = (source: string | null): string | undefined =>
+  LANDING_STEP_ITEMS.find((step) => step.video === source)?.poster;
+const getStepTitle = (source: string | null): string | undefined =>
+  LANDING_STEP_ITEMS.find((step) => step.video === source)?.title;
 
 const StepsSection: React.FC = () => {
   const [active, setActive] = useState(0);
   const [cycleSeed, setCycleSeed] = useState(0);
   const [failedVideos, setFailedVideos] = useState<Record<string, boolean>>({});
-  const [loadedVideoSource, setLoadedVideoSource] = useState<string | null>(null);
+  const [loadedVideoSources, setLoadedVideoSources] = useState<Record<string, boolean>>({});
+  const [displayedVideoSource, setDisplayedVideoSource] = useState<string | null>(null);
   const touchStartXRef = useRef<number | null>(null);
   const mediaRef = useRef<HTMLDivElement | null>(null);
-  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const displayedVideoRef = useRef<HTMLVideoElement | null>(null);
+  const preloadedVideoSourcesRef = useRef<Set<string>>(new Set());
   const activeStep = LANDING_STEP_ITEMS[active];
   const shouldLoadVideo = useEnterViewport(mediaRef, STEPS_MEDIA_ROOT_MARGIN);
   const prefersReducedMotion = usePrefersReducedMotion();
@@ -26,24 +33,109 @@ const StepsSection: React.FC = () => {
     activeStep && !failedVideos[activeStep.video]
       ? activeStep.video
       : null;
-  const isActiveVideoLoaded = activeVideoSource !== null && loadedVideoSource === activeVideoSource;
   const shouldAnimate = shouldLoadVideo && isPageVisible && !prefersReducedMotion;
+  const activeVideoSourceRef = useRef<string | null>(activeVideoSource);
+  const displayedVideoSourceRef = useRef<string | null>(displayedVideoSource);
+  const pendingVideoSource =
+    activeVideoSource &&
+    activeVideoSource !== displayedVideoSource &&
+    !loadedVideoSources[activeVideoSource]
+      ? activeVideoSource
+      : null;
+
+  useEffect(() => {
+    activeVideoSourceRef.current = activeVideoSource;
+    displayedVideoSourceRef.current = displayedVideoSource;
+  }, [activeVideoSource, displayedVideoSource]);
+
+  const markVideoError = useCallback((source: string) => {
+    preloadedVideoSourcesRef.current.delete(source);
+    setFailedVideos((current) => {
+      if (current[source]) return current;
+      return { ...current, [source]: true };
+    });
+  }, []);
+
+  const markVideoLoaded = useCallback((source: string) => {
+    setLoadedVideoSources((current) => {
+      if (current[source]) return current;
+      return { ...current, [source]: true };
+    });
+
+    if (
+      source === activeVideoSourceRef.current ||
+      displayedVideoSourceRef.current === null
+    ) {
+      if (displayedVideoSourceRef.current !== source) {
+        displayedVideoSourceRef.current = source;
+        setDisplayedVideoSource(source);
+      }
+    }
+  }, []);
+
+  const preloadVideo = useCallback((source: string | null | undefined) => {
+    if (typeof document === 'undefined' || !source || failedVideos[source]) return;
+    if (preloadedVideoSourcesRef.current.has(source)) return;
+
+    preloadedVideoSourcesRef.current.add(source);
+
+    const preloadElement = document.createElement('video');
+
+    const dispose = () => {
+      preloadElement.pause();
+      preloadElement.removeAttribute('src');
+      preloadElement.load();
+    };
+
+    const handleLoaded = () => {
+      preloadElement.removeEventListener('loadeddata', handleLoaded);
+      preloadElement.removeEventListener('error', handleError);
+      markVideoLoaded(source);
+      dispose();
+    };
+
+    const handleError = () => {
+      preloadElement.removeEventListener('loadeddata', handleLoaded);
+      preloadElement.removeEventListener('error', handleError);
+      preloadedVideoSourcesRef.current.delete(source);
+      markVideoError(source);
+      dispose();
+    };
+
+    preloadElement.preload = 'auto';
+    preloadElement.muted = true;
+    preloadElement.playsInline = true;
+    preloadElement.src = source;
+    preloadElement.addEventListener('loadeddata', handleLoaded);
+    preloadElement.addEventListener('error', handleError);
+    preloadElement.load();
+  }, [failedVideos, markVideoError, markVideoLoaded]);
+
+  const selectStep = useCallback((index: number) => {
+    const nextVideoSource = LANDING_STEP_ITEMS[index]?.video ?? null;
+    setActive(index);
+    setCycleSeed((seed) => seed + 1);
+    if (nextVideoSource && loadedVideoSources[nextVideoSource]) {
+      displayedVideoSourceRef.current = nextVideoSource;
+      setDisplayedVideoSource(nextVideoSource);
+    }
+  }, [loadedVideoSources]);
 
   useEffect(() => {
     if (!shouldAnimate) return;
 
     const timer = window.setTimeout(() => {
-      setActive((prevActive) => (prevActive + 1) % LANDING_STEP_ITEMS.length);
+      selectStep((active + 1) % LANDING_STEP_ITEMS.length);
     }, LANDING_STEP_ROTATION_MS);
 
     return () => {
       window.clearTimeout(timer);
     };
-  }, [active, cycleSeed, shouldAnimate]);
+  }, [active, cycleSeed, selectStep, shouldAnimate]);
 
   useEffect(() => {
-    const video = videoRef.current;
-    if (!video || !shouldLoadVideo || !activeVideoSource) return;
+    const video = displayedVideoRef.current;
+    if (!video || !shouldLoadVideo || !displayedVideoSource) return;
 
     if (shouldAnimate) {
       const playback = video.play();
@@ -54,18 +146,43 @@ const StepsSection: React.FC = () => {
     }
 
     video.pause();
-  }, [activeVideoSource, shouldAnimate, shouldLoadVideo]);
+  }, [displayedVideoSource, shouldAnimate, shouldLoadVideo]);
+
+  useEffect(() => {
+    const initialVideoSource = LANDING_STEP_ITEMS[0]?.video;
+    if (!initialVideoSource || failedVideos[initialVideoSource]) return;
+
+    const timer = window.setTimeout(() => {
+      preloadVideo(initialVideoSource);
+    }, INITIAL_STEP_PRELOAD_DELAY_MS);
+
+    return () => {
+      window.clearTimeout(timer);
+    };
+  }, [failedVideos, preloadVideo]);
+
+  useEffect(() => {
+    if (!shouldLoadVideo) return;
+
+    preloadVideo(activeVideoSource);
+
+    const nextVideoSource =
+      LANDING_STEP_ITEMS[(active + 1) % LANDING_STEP_ITEMS.length]?.video;
+
+    if (nextVideoSource && !failedVideos[nextVideoSource]) {
+      preloadVideo(nextVideoSource);
+    }
+  }, [active, activeVideoSource, failedVideos, preloadVideo, shouldLoadVideo]);
 
   const handleStepClick = (index: number) => {
-    setActive(index);
-    setCycleSeed((seed) => seed + 1);
+    selectStep(index);
   };
 
   const handleStepSwipe = (direction: 1 | -1) => {
-    setActive((prevActive) => (
-      prevActive + direction + LANDING_STEP_ITEMS.length
-    ) % LANDING_STEP_ITEMS.length);
-    setCycleSeed((seed) => seed + 1);
+    const nextIndex = (
+      active + direction + LANDING_STEP_ITEMS.length
+    ) % LANDING_STEP_ITEMS.length;
+    selectStep(nextIndex);
   };
 
   const handleTouchStart = (event: React.TouchEvent<HTMLDivElement>) => {
@@ -84,13 +201,6 @@ const StepsSection: React.FC = () => {
     if (Math.abs(deltaX) < SWIPE_THRESHOLD_PX) return;
 
     handleStepSwipe(deltaX < 0 ? 1 : -1);
-  };
-
-  const markVideoError = (source: string) => {
-    setFailedVideos((current) => {
-      if (current[source]) return current;
-      return { ...current, [source]: true };
-    });
   };
 
   return (
@@ -119,24 +229,40 @@ const StepsSection: React.FC = () => {
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,#f4f0e7_0%,#ece9e1_52%,#dfdbd2_100%)]">
             <div className="absolute inset-0 flex items-center justify-center">
               {shouldLoadVideo && activeVideoSource ? (
-                <video
-                  ref={videoRef}
-                  key={activeVideoSource}
-                  className={`absolute max-h-full max-w-full h-auto w-auto transition-opacity duration-500 motion-reduce:transition-none ${
-                    isActiveVideoLoaded ? "opacity-100" : "opacity-0"
-                  }`}
-                  aria-label={`${activeStep.title} demo video`}
-                  src={activeVideoSource}
-                  poster={activeStep.poster}
-                  autoPlay={shouldAnimate}
-                  loop={shouldAnimate}
-                  muted
-                  playsInline
-                  preload={shouldLoadVideo ? 'auto' : 'none'}
-                  onLoadStart={() => setLoadedVideoSource(null)}
-                  onLoadedData={() => setLoadedVideoSource(activeVideoSource)}
-                  onError={() => markVideoError(activeStep.video)}
-                />
+                <>
+                  {displayedVideoSource ? (
+                    <video
+                      ref={displayedVideoRef}
+                      key={`displayed-${displayedVideoSource}`}
+                      className="absolute max-h-full max-w-full h-auto w-auto"
+                      aria-label={`${getStepTitle(displayedVideoSource) ?? activeStep.title} demo video`}
+                      src={displayedVideoSource}
+                      poster={getStepPoster(displayedVideoSource)}
+                      autoPlay={shouldAnimate}
+                      loop={shouldAnimate}
+                      muted
+                      playsInline
+                      preload="auto"
+                      onLoadedData={() => markVideoLoaded(displayedVideoSource)}
+                      onError={() => markVideoError(displayedVideoSource)}
+                    />
+                  ) : null}
+
+                  {pendingVideoSource && pendingVideoSource !== displayedVideoSource ? (
+                    <video
+                      key={`pending-${pendingVideoSource}`}
+                      className="absolute max-h-full max-w-full h-auto w-auto opacity-0 pointer-events-none"
+                      aria-hidden="true"
+                      src={pendingVideoSource}
+                      poster={getStepPoster(pendingVideoSource)}
+                      muted
+                      playsInline
+                      preload="auto"
+                      onLoadedData={() => markVideoLoaded(pendingVideoSource)}
+                      onError={() => markVideoError(pendingVideoSource)}
+                    />
+                  ) : null}
+                </>
               ) : null}
 
           
