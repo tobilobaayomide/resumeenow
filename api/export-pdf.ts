@@ -58,20 +58,6 @@ const normalizeHeaderValue = (value: string | string[] | undefined): string | nu
   return typeof value === 'string' && value.trim() ? value.trim() : null;
 };
 
-const getRequestOrigin = (req: ApiRequest): string | null => {
-  const forwardedHost = normalizeHeaderValue(req.headers['x-forwarded-host']);
-  const host = forwardedHost || normalizeHeaderValue(req.headers.host);
-
-  if (!host) {
-    return null;
-  }
-
-  const forwardedProto = normalizeHeaderValue(req.headers['x-forwarded-proto']);
-  const protocol = forwardedProto || (isLocalHost(host) ? 'http' : 'https');
-
-  return normalizeOrigin(`${protocol}://${host}`);
-};
-
 const normalizeOrigin = (value: string | undefined): string | null => {
   const trimmed = String(value || '').trim();
   if (!trimmed) {
@@ -124,19 +110,14 @@ const getConfiguredAppOrigin = () =>
   );
 
 const getTrustedAppOrigin = (req: ApiRequest) => {
-  const requestOrigin = getRequestOrigin(req);
-
-  if (process.env.VERCEL_ENV === 'preview' && requestOrigin) {
-    return requestOrigin;
-  }
-
   const configuredOrigin = getConfiguredAppOrigin();
   if (configuredOrigin) {
     return configuredOrigin;
   }
 
-  if (requestOrigin && process.env.NODE_ENV !== 'production') {
-    return requestOrigin;
+  const host = normalizeHeaderValue(req.headers.host);
+  if (process.env.NODE_ENV !== 'production' && host && isLocalHost(host)) {
+    return `http://${host}`;
   }
 
   throw new HttpError(
@@ -144,11 +125,6 @@ const getTrustedAppOrigin = (req: ApiRequest) => {
     'PDF export origin is not configured. Set APP_URL or SITE_URL.',
   );
 };
-
-const isPreviewDeployment = () => process.env.VERCEL_ENV === 'preview';
-
-const shouldExposeServerError = () =>
-  process.env.NODE_ENV !== 'production' || isPreviewDeployment();
 
 const getLocalChromeExecutablePath = () => {
   const envPath =
@@ -344,27 +320,12 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
     await page.emulateMedia({ media: 'screen' });
     await page.goto(exportUrl, { waitUntil: 'domcontentloaded' });
     await page.waitForLoadState('networkidle');
-    try {
-      await page.waitForFunction(() => {
-        const printPage = globalThis as PrintPageGlobals;
-        return printPage.__RESUME_PRINT_READY__ === true;
-      }, {
-        timeout: 20000,
-      });
-    } catch {
-      const currentUrl = page.url();
-      let title = '';
-
-      try {
-        title = await page.title();
-      } catch {
-        // Ignore title lookup failures while reporting the original readiness error.
-      }
-
-      throw new Error(
-        `Print page did not become ready at ${currentUrl}${title ? ` (title: ${title})` : ''}.`,
-      );
-    }
+    await page.waitForFunction(() => {
+      const printPage = globalThis as PrintPageGlobals;
+      return printPage.__RESUME_PRINT_READY__ === true;
+    }, {
+      timeout: 20000,
+    });
     await page.evaluate(async (fontLoads: readonly string[]) => {
       const browserGlobal = globalThis as {
         document?: {
@@ -420,11 +381,11 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
     res
       .status(error instanceof HttpError ? error.status : 500)
       .send(
-        shouldExposeServerError()
-          ? `Failed to export PDF: ${message}`
-          : error instanceof HttpError
+        process.env.NODE_ENV === 'production'
+          ? error instanceof HttpError
             ? message
             : 'Failed to export PDF.'
+          : `Failed to export PDF: ${message}`
       );
   } finally {
     if (browser) {
