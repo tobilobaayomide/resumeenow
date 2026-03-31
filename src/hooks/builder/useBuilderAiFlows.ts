@@ -6,6 +6,11 @@ import {
   createBuilderAiExperienceHighlights,
 } from '../../lib/builder/aiHighlights';
 import {
+  applyAllAtsImprovements as applyAllAtsImprovementsToResume,
+  applyAtsImprovement as applySingleAtsImprovementToResume,
+  applyAtsKeywords as applyAtsKeywordsToResume,
+} from '../../lib/ai/atsAuditApply';
+import {
   mergeGroupedSkillSuggestionsIntoSection,
   mergeSkillNamesIntoSection,
   parseAiSkills,
@@ -22,33 +27,8 @@ import {
 import { sanitizeAiPlainText } from '../../lib/aiText';
 import { downloadCoverLetterAsPdf } from '../../lib/builder/coverLetterExport';
 import { useBuilderStore } from '../../store/builderStore';
-import { getActiveSkillItems, normalizeSkillsSection } from '../../types/resume';
 import { usePlan } from '../../context/usePlan';
 import type { AtsAuditImprovement } from '../../types/builder';
-
-const applyAtsSkillImprovement = (
-  skills: import('../../types/resume').ResumeData['skills'],
-  improvement: AtsAuditImprovement,
-) => {
-  const betterSkill = sanitizeAiPlainText(improvement.better);
-
-  if (skills.mode === 'grouped' && skills.groups.length > 0) {
-    return normalizeSkillsSection({
-      mode: 'grouped',
-      list: skills.list.map((item) => (item === improvement.current ? betterSkill : item)),
-      groups: skills.groups.map((group) => ({
-        ...group,
-        items: group.items.map((item) => (item === improvement.current ? betterSkill : item)),
-      })),
-    });
-  }
-
-  return normalizeSkillsSection({
-    ...skills,
-    mode: 'list',
-    list: skills.list.map((item) => (item === improvement.current ? betterSkill : item)),
-  });
-};
 
 const formatMissingFields = (fields: string[]): string => {
   if (fields.length === 1) return fields[0];
@@ -489,117 +469,113 @@ export function useBuilderAiFlows() {
     tailorPreview,
 
     onRunAtsAudit: runAtsAudit,
+    onApplyAtsKeywordHint: (keyword: string) => {
+      if (!atsResult) {
+        toast.info('Run an ATS audit first.');
+        return;
+      }
+
+      const outcome = applyAtsKeywordsToResume(resumeData, atsResult, [keyword]);
+      if (!outcome.resolvedKeywords.length) {
+        toast.info('That keyword suggestion is no longer pending.');
+        return;
+      }
+
+      setResumeData(outcome.nextResumeData);
+      setAtsResult(outcome.nextResult);
+
+      if (outcome.appliedKeywords.length > 0) {
+        markAiHighlights({ skills: outcome.appliedKeywords }, { section: 'skills' });
+      }
+
+      toast.success(
+        outcome.appliedKeywords.length > 0
+          ? `"${outcome.resolvedKeywords[0]}" added to your skills.`
+          : `"${outcome.resolvedKeywords[0]}" is already covered on your resume.`,
+      );
+    },
     onApplyAtsKeywordHints: () => {
       if (!atsResult || !atsResult.missingKeywords?.length) {
         toast.info('No missing keywords to apply.');
         return;
       }
-      setResumeData((prev) => {
-        const existingSkillNames = getActiveSkillItems(prev.skills).map((skill) =>
-          skill.toLowerCase(),
-        );
-        const newSkills = atsResult.missingKeywords.filter(
-          (kw) => !existingSkillNames.includes(kw.toLowerCase()),
-        );
-        if (newSkills.length === 0) {
-          toast.info('All suggested keywords are already in your skills!');
-          return prev;
-        }
-        const additions = newSkills.slice(0, 6);
-        return {
-          ...prev,
-          skills: mergeSkillNamesIntoSection(prev.skills, additions),
-        };
-      });
-      markAiHighlights({ skills: atsResult.missingKeywords.slice(0, 6) }, { section: 'skills' });
-      toast.success('Missing keywords added to skills.');
-      closeAiFlows();
+
+      const outcome = applyAtsKeywordsToResume(
+        resumeData,
+        atsResult,
+        atsResult.missingKeywords,
+      );
+
+      if (!outcome.resolvedKeywords.length) {
+        toast.info('No missing keywords to apply.');
+        return;
+      }
+
+      setResumeData(outcome.nextResumeData);
+      setAtsResult(outcome.nextResult);
+
+      if (outcome.appliedKeywords.length > 0) {
+        markAiHighlights({ skills: outcome.appliedKeywords }, { section: 'skills' });
+      }
+
+      toast.success(
+        outcome.appliedKeywords.length > 0
+          ? `${outcome.appliedKeywords.length} keyword${outcome.appliedKeywords.length === 1 ? '' : 's'} added to your skills.`
+          : 'Keyword suggestions cleared. Those terms were already covered.',
+      );
     },
     onApplyAtsImprovements: () => {
       if (!atsResult || !atsResult.improvements?.length) {
         toast.info('No improvements to apply.');
         return;
       }
-      setResumeData((prev) => {
-        const nextContext = { ...prev };
-        atsResult.improvements?.forEach((imp) => {
-          if (imp.type === 'bullet' && imp.id) {
-            nextContext.experience = nextContext.experience.map((exp) =>
-              exp.id !== imp.id
-                ? exp
-                : {
-                    ...exp,
-                    description:
-                      replaceDescriptionBullet(
-                        exp.description,
-                        imp.current,
-                        sanitizeAiPlainText(imp.better),
-                      ) || exp.description,
-                  },
-            );
-          } else if (imp.type === 'skill') {
-            nextContext.skills = applyAtsSkillImprovement(nextContext.skills, imp);
-          }
-        });
-        return nextContext;
-      });
+
+      const outcome = applyAllAtsImprovementsToResume(resumeData, atsResult);
+      if (outcome.appliedCount === 0) {
+        toast.info('These suggestions no longer match your current resume. Run the audit again.');
+        return;
+      }
+
+      setResumeData(outcome.nextResumeData);
+      setAtsResult(outcome.nextResult);
       markAiHighlights(
         {
-          skills: atsResult.improvements
-            .filter((imp) => imp.type === 'skill')
-            .map((imp) => sanitizeAiPlainText(imp.better)),
-          experience: createBuilderAiExperienceHighlights(
-            atsResult.improvements
-              .filter((imp) => imp.type === 'bullet' && imp.id)
-              .map((imp) => ({
-                experienceId: imp.id as string,
-                text: sanitizeAiPlainText(imp.better),
-              })),
-          ),
+          skills: outcome.appliedSkills,
+          experience: createBuilderAiExperienceHighlights(outcome.appliedExperience),
         },
       );
-      toast.success('Strategic improvements applied!');
-      closeAiFlows();
+      toast.success(
+        `${outcome.appliedCount} strategic improvement${outcome.appliedCount === 1 ? '' : 's'} applied.`,
+      );
     },
     onApplyAtsImprovement: (imp: AtsAuditImprovement) => {
-      setResumeData((prev) => {
-        const nextContext = { ...prev };
-        if (imp.type === 'bullet' && imp.id) {
-          nextContext.experience = nextContext.experience.map((exp) =>
-            exp.id !== imp.id
-              ? exp
-              : {
-                  ...exp,
-                  description:
-                    replaceDescriptionBullet(
-                      exp.description,
-                      imp.current,
-                      sanitizeAiPlainText(imp.better),
-                    ) || exp.description,
-                },
-          );
-        } else if (imp.type === 'skill') {
-          nextContext.skills = applyAtsSkillImprovement(nextContext.skills, imp);
-        }
-        return nextContext;
-      });
+      if (!atsResult) {
+        toast.info('Run an ATS audit first.');
+        return;
+      }
+
+      const outcome = applySingleAtsImprovementToResume(resumeData, atsResult, imp);
+      if (!outcome.applied) {
+        toast.info('This suggestion no longer matches your current resume. Run the audit again.');
+        return;
+      }
+
+      setResumeData(outcome.nextResumeData);
+      setAtsResult(outcome.nextResult);
       markAiHighlights(
-        imp.type === 'skill'
-          ? { skills: [sanitizeAiPlainText(imp.better)] }
+        outcome.appliedSkill
+          ? { skills: [outcome.appliedSkill] }
           : {
-              experience: imp.id
+              experience: outcome.appliedExperience
                 ? createBuilderAiExperienceHighlights([
-                    {
-                      experienceId: imp.id,
-                      text: sanitizeAiPlainText(imp.better),
-                    },
+                    outcome.appliedExperience,
                   ])
                 : {},
             },
-        imp.type === 'skill'
+        outcome.appliedSkill
           ? { section: 'skills' }
-          : imp.id
-            ? { section: 'experience', experienceId: imp.id }
+          : outcome.appliedExperience
+            ? { section: 'experience', experienceId: outcome.appliedExperience.experienceId }
             : null,
       );
       toast.success('Improvement applied!');

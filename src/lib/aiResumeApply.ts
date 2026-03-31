@@ -3,8 +3,8 @@ import {
   normalizeSkillsSection,
   type ResumeSkillGroup,
   type ResumeSkillsSection,
-} from "../types/resume";
-import { sanitizeAiPlainText } from "./aiText";
+} from "../types/resume.js";
+import { sanitizeAiPlainText } from "./aiText.js";
 
 export type AiSkillGroupSuggestion = {
   label: string;

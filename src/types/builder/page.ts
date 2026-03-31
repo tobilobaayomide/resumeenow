@@ -6,9 +6,9 @@ import type {
   ResumePersonalInfo,
   ResumeProjectItem,
   TemplateId,
-} from '../resume';
-import type { AiFlowFeature } from '../../domain/workflows';
-import type { PlanStatus, ProFeature } from '../context';
+} from '../resume.js';
+import type { AiFlowFeature } from '../../domain/workflows/index.js';
+import type { PlanStatus, ProFeature } from '../context/index.js';
 
 export type BuilderPageMobileView = 'editor' | 'preview';
 
@@ -136,6 +136,7 @@ export interface BuilderAiWorkflowModalProps {
     keywordAlignment: { matched: string[]; injected: string[]; stillMissing: string[] };
   } | null;
   onRunAtsAudit: () => void;
+  onApplyAtsKeywordHint: (keyword: string) => void;
   onApplyAtsKeywordHints: () => void;
   onApplyAtsImprovements: () => void;
   onApplyAtsImprovement: (improvement: AtsAuditImprovement) => void;

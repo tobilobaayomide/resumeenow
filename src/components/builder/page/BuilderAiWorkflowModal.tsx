@@ -59,8 +59,10 @@ const BuilderAiWorkflowModal: React.FC<BuilderAiWorkflowModalProps> = ({
   onConfirmTailor,
   onDiscardTailor,
   onRunAtsAudit,
+  onApplyAtsKeywordHint,
   onApplyAtsKeywordHints,
   onApplyAtsImprovements,
+  onApplyAtsImprovement,
   onApplyTailorFix,
   onGenerateCoverLetter,
   onDownloadCoverLetterPdf,
@@ -516,6 +518,11 @@ const BuilderAiWorkflowModal: React.FC<BuilderAiWorkflowModalProps> = ({
                     className="w-full min-h-30 px-3.5 py-3 rounded-xl bg-white border border-gray-200 text-[13px] text-gray-800 placeholder:text-gray-300 focus:outline-none focus:ring-4 focus:ring-emerald-50 focus:border-emerald-300 resize-y transition-all leading-relaxed"
                   />
                 </div>
+
+                <p className="text-[11.5px] text-gray-500 flex items-center gap-1.5 bg-emerald-50/60 p-3 rounded-xl border border-emerald-100/70">
+                  <FiInfo size={12} className="shrink-0 text-emerald-600" />
+                  This is an AI ATS-style audit, not an exact employer ATS replica. Apply only true changes, then rerun the audit to rescore.
+                </p>
               </div>
 
               {atsResult && (
@@ -635,8 +642,16 @@ const BuilderAiWorkflowModal: React.FC<BuilderAiWorkflowModalProps> = ({
                              <div key={idx} className="group rounded-2xl border border-indigo-100 bg-linear-to-b from-indigo-50/30 to-white overflow-hidden shadow-xs hover:shadow-md transition-all">
                                 <div className="p-4 space-y-4">
                                    <div className="space-y-2">
-                                      <div className="flex items-center gap-1.5 text-[9px] font-black text-gray-400 uppercase tracking-tighter">
-                                         Current Version
+                                      <div className="flex items-center justify-between gap-3">
+                                        <div className="flex items-center gap-1.5 text-[9px] font-black text-gray-400 uppercase tracking-tighter">
+                                           Current Version
+                                        </div>
+                                        <button
+                                          onClick={() => onApplyAtsImprovement(imp)}
+                                          className="text-[10px] font-black text-indigo-600 bg-indigo-50 px-2 py-1 rounded-md opacity-0 group-hover:opacity-100 transition-opacity"
+                                        >
+                                          Accept Fix
+                                        </button>
                                       </div>
                                       <p className="text-[11.5px] text-gray-500 italic leading-relaxed border-l-2 border-gray-100 pl-3">
                                          "{imp.current}"
@@ -676,17 +691,25 @@ const BuilderAiWorkflowModal: React.FC<BuilderAiWorkflowModalProps> = ({
                           onClick={onApplyAtsKeywordHints}
                           className="px-4 py-2 rounded-xl bg-indigo-500 hover:bg-indigo-400 text-white text-[11px] font-black transition-all shadow-lg active:scale-95"
                         >
-                           Fast Inject
+                           Add All to Skills
                         </button>
                       </div>
-                      <div className="flex flex-wrap gap-2">
+                      <div className="grid gap-2 sm:grid-cols-2">
                         {atsResult.missingKeywords.map((keyword) => (
-                          <span
+                          <div
                             key={keyword}
-                            className="px-2.5 py-1 rounded-lg bg-white/5 border border-white/10 text-gray-300 text-[11px] font-medium"
+                            className="flex items-center justify-between gap-3 rounded-xl bg-white/5 border border-white/10 px-3 py-2"
                           >
-                            {keyword}
-                          </span>
+                            <span className="text-gray-300 text-[11px] font-medium">
+                              {keyword}
+                            </span>
+                            <button
+                              onClick={() => onApplyAtsKeywordHint(keyword)}
+                              className="shrink-0 rounded-lg bg-white text-gray-900 px-2.5 py-1 text-[10px] font-black hover:bg-gray-100 transition-colors"
+                            >
+                              Add
+                            </button>
+                          </div>
                         ))}
                       </div>
                     </div>
@@ -846,15 +869,6 @@ const BuilderAiWorkflowModal: React.FC<BuilderAiWorkflowModalProps> = ({
                 Apply All Changes
               </button>
             </>
-          )}
-
-          {activeAiFlow === "ats_audit" && (
-            <button
-              onClick={onApplyAtsKeywordHints}
-              className="h-10 px-6 rounded-xl bg-gray-900 text-white text-[13px] font-bold hover:bg-black hover:-translate-y-px shadow-sm transition-all"
-            >
-              Inject Missing Keywords
-            </button>
           )}
 
           {activeAiFlow === "cover_letter" && coverLetterDraft && (

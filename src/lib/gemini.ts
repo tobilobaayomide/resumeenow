@@ -7,6 +7,10 @@ import {
 } from '../schemas/integrations/ai';
 import { reportRuntimeValidationIssue } from './observability/runtimeValidation';
 import { sanitizeAiKeywordList, sanitizeAiPlainText } from './aiText';
+import {
+  formatAtsAuditReferenceDate,
+  sanitizeAtsAuditResult,
+} from './ai/atsAudit';
 import { getActiveSkillItems } from '../types/resume';
 import { parseAiGroupedSkills } from './aiResumeApply';
 import { getValidAccessToken } from './auth/accessToken';
@@ -473,13 +477,15 @@ export const analyzeAtsCompleteness = async (
 ): Promise<AtsAuditResult> => {
   const trimmedJD = jobDescription.trim().slice(0, 1500);
   const resumeContext = buildAtsResumeContext(resumeData);
-  const cacheKey = `ats-v2-${role}-${hashString(trimmedJD)}-${hashString(resumeContext)}`;
+  const auditReferenceDate = formatAtsAuditReferenceDate();
+  const cacheKey = `ats-v3-${role}-${hashString(trimmedJD)}-${hashString(resumeContext)}`;
 
   const prompt = `
 You are an Elite Recruiting Analyst and ATS Optimization Engineer. Your goal is to provide a "Big-Tech level" audit (FAANG/Tier-1) for this candidate.
 
 ═══════════════════════════════
 ROLE: ${role}
+TODAY (UTC): ${auditReferenceDate}
 JOB DESCRIPTION:
 ${trimmedJD}
 RESUME:
@@ -502,8 +508,12 @@ YOUR AUDIT REQUIREMENTS:
    - Identify 1 skills list item that needs better phrasing (e.g., adding parentheticals like "Jest (Unit Testing)").
 
 4. CRITICAL MISTAKE IDENTIFICATION:
-   - Highlight ONE major strategic or formatting flaw (e.g., "Contact info in footer", "Missing quantifiable metrics in latest role", "Vague summary").
-   - Provide 'title', 'description', and the 'fix'.
+   - Highlight ONE major strategic or formatting flaw only if there is clear evidence in the resume.
+   - If there is no major mistake, return "criticalMistake": null.
+   - Never invent a red flag just to fill the field.
+   - Never label an employment date as future employment unless the start date or end date is chronologically after TODAY.
+   - Example: if TODAY is ${auditReferenceDate}, then "FEB 2025 - DEC 2025" is NOT future employment.
+   - Provide 'title', 'description', and the 'fix' only when a real issue exists.
 
 5. KEYWORD FILTERING: Hard technical skills only. No soft skills.
 
@@ -528,7 +538,7 @@ Return ONLY valid JSON, no markdown fences:
     { "id": "match existing ID", "type": "bullet", "current": "verbatim substring", "better": "optimized bullet" },
     { "type": "skill", "current": "skill name", "better": "optimized skill" }
   ],
-  "criticalMistake": { "title": string, "description": string, "fix": string },
+  "criticalMistake": { "title": string, "description": string, "fix": string } | null,
   "suggestions": [string]
 }
 
@@ -539,7 +549,10 @@ RULES for improvements:
 
   const resultText = await callGemini(prompt, cacheKey, true);
   try {
-    return parseAtsAuditResult(JSON.parse(resultText));
+    return sanitizeAtsAuditResult(
+      parseAtsAuditResult(JSON.parse(resultText)),
+      resumeData,
+    );
   } catch (e) {
     console.error('JSON Parse Error', e);
     return {
