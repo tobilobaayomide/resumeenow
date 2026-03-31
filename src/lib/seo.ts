@@ -2,7 +2,7 @@ export type SeoStructuredData =
   | Record<string, unknown>
   | Array<Record<string, unknown>>;
 
-const DEFAULT_SITE_URL = 'https://resumeenow.com';
+const DEFAULT_SITE_URL = 'https://resumeenow.xyz';
 const DEFAULT_IMAGE_PATH = '/resumeenowlogo.png';
 
 const normalizeSiteUrl = (value: string | undefined): string => {

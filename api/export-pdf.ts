@@ -1,5 +1,9 @@
 import fs from 'node:fs';
 import type { Browser } from 'playwright-core';
+import {
+  PRINT_FONT_LOADS,
+  PRINT_FONT_READY_TIMEOUT_MS,
+} from '../src/lib/builder/printFonts.js';
 
 export const config = {
   maxDuration: 60,
@@ -25,6 +29,8 @@ interface ApiResponse {
   status: (code: number) => ApiResponse;
   send: (body: string | Buffer) => void;
 }
+
+type HttpHeaderMap = Record<string, string>;
 
 let supabaseAuthClientPromise: Promise<import('@supabase/supabase-js').SupabaseClient> | null = null;
 let exportSchemaModulePromise: Promise<typeof import('../src/schemas/builder/exportPayload.js')> | null = null;
@@ -98,31 +104,83 @@ const normalizeOrigin = (value: string | undefined): string | null => {
   return url.origin;
 };
 
-const getConfiguredAppOrigin = () =>
+const getConfiguredAppOrigin = (env: NodeJS.ProcessEnv = process.env) =>
   normalizeOrigin(
-    process.env.APP_URL ||
-      process.env.SITE_URL ||
-      process.env.PUBLIC_APP_URL ||
-      process.env.VERCEL_URL ||
-      process.env.VERCEL_BRANCH_URL ||
-      process.env.VERCEL_PROJECT_PRODUCTION_URL,
+    env.APP_URL ||
+      env.SITE_URL ||
+      env.PUBLIC_APP_URL ||
+      env.VERCEL_URL ||
+      env.VERCEL_BRANCH_URL ||
+      env.VERCEL_PROJECT_PRODUCTION_URL,
   );
 
-const getTrustedAppOrigin = (req: ApiRequest) => {
-  const configuredOrigin = getConfiguredAppOrigin();
-  if (configuredOrigin) {
-    return configuredOrigin;
+const getRequestAppOrigin = (req: ApiRequest): string | null => {
+  const forwardedHost = normalizeHeaderValue(req.headers['x-forwarded-host']);
+  const host = forwardedHost || normalizeHeaderValue(req.headers.host);
+
+  if (!host) {
+    return null;
   }
 
-  const host = normalizeHeaderValue(req.headers.host);
-  if (process.env.NODE_ENV !== 'production' && host && isLocalHost(host)) {
-    return `http://${host}`;
+  const forwardedProto = normalizeHeaderValue(req.headers['x-forwarded-proto']);
+  const protocol =
+    forwardedProto && /^https?$/i.test(forwardedProto)
+      ? forwardedProto.toLowerCase()
+      : isLocalHost(host)
+        ? 'http'
+        : 'https';
+
+  return normalizeOrigin(`${protocol}://${host}`);
+};
+
+export const resolvePdfExportAppOrigin = (
+  req: ApiRequest,
+  env: NodeJS.ProcessEnv = process.env,
+) => {
+  // Prefer the actual request host so preview deployments export from the
+  // same build the user is currently viewing.
+  const requestOrigin = getRequestAppOrigin(req);
+  if (requestOrigin) {
+    return requestOrigin;
+  }
+
+  const configuredOrigin = getConfiguredAppOrigin(env);
+  if (configuredOrigin) {
+    return configuredOrigin;
   }
 
   throw new HttpError(
     500,
     'PDF export origin is not configured. Set APP_URL or SITE_URL.',
   );
+};
+
+const isRelevantAssetUrl = (url: string) =>
+  /\.(?:css|js|woff2?|ttf|otf)(?:$|[?#])/i.test(url) ||
+  /\/assets\//i.test(url);
+
+export const getPdfExportExtraHeaders = (
+  appOrigin: string,
+  env: NodeJS.ProcessEnv = process.env,
+): HttpHeaderMap | null => {
+  const host = new URL(appOrigin).host;
+
+  if (isLocalHost(host)) {
+    return null;
+  }
+
+  const bypassSecret =
+    env.VERCEL_AUTOMATION_BYPASS_SECRET ||
+    env.VERCEL_PROTECTION_BYPASS_SECRET;
+
+  if (!bypassSecret) {
+    return null;
+  }
+
+  return {
+    'x-vercel-protection-bypass': bypassSecret,
+    'x-vercel-set-bypass-cookie': 'true',
+  };
 };
 
 const getLocalChromeExecutablePath = () => {
@@ -296,7 +354,7 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
     await authenticateRequest(req);
 
     const { data, templateId, fileName } = await parseExportRequest(req);
-    const appOrigin = getTrustedAppOrigin(req);
+    const appOrigin = resolvePdfExportAppOrigin(req);
     const exportUrl = `${appOrigin}/print/resume`;
 
     const { playwright, launchOptions } = await loadBrowserRuntimes(appOrigin);
@@ -308,6 +366,32 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
         height: 1500,
       },
       deviceScaleFactor: 1,
+    });
+    const extraHeaders = getPdfExportExtraHeaders(appOrigin);
+    const assetFailures = new Set<string>();
+
+    if (extraHeaders) {
+      await page.setExtraHTTPHeaders(extraHeaders);
+    }
+
+    page.on('requestfailed', (request) => {
+      const url = request.url();
+      if (!isRelevantAssetUrl(url)) {
+        return;
+      }
+
+      assetFailures.add(
+        `${request.method()} ${url} (${request.failure()?.errorText || 'request failed'})`,
+      );
+    });
+
+    page.on('response', (response) => {
+      const url = response.url();
+      if (!isRelevantAssetUrl(url) || response.status() < 400) {
+        return;
+      }
+
+      assetFailures.add(`${response.status()} ${url}`);
     });
 
     await page.addInitScript((injectedPayload: unknown) => {
@@ -325,6 +409,52 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
     }, {
       timeout: 20000,
     });
+    await page.evaluate(async ({
+      fontLoads,
+      fontTimeoutMs,
+    }: {
+      fontLoads: readonly string[];
+      fontTimeoutMs: number;
+    }) => {
+      const browserGlobal = globalThis as unknown as {
+        setTimeout: (handler: () => void, timeout?: number) => unknown;
+        document?: {
+          fonts?: {
+            load: (font: string, text?: string) => Promise<unknown>;
+            ready: Promise<unknown>;
+          };
+        };
+      };
+      const fonts = browserGlobal.document?.fonts;
+
+      if (!fonts) {
+        return;
+      }
+
+      const timeoutPromise = new Promise<void>((resolve) => {
+        browserGlobal.setTimeout(resolve, fontTimeoutMs);
+      });
+
+      const loadPromise = (async () => {
+        await Promise.allSettled(
+          fontLoads.map((font) => fonts.load(font, 'BESbswy 0123456789')),
+        );
+        await fonts.ready;
+      })();
+
+      await Promise.race([loadPromise, timeoutPromise]);
+    }, {
+      fontLoads: PRINT_FONT_LOADS,
+      fontTimeoutMs: PRINT_FONT_READY_TIMEOUT_MS,
+    });
+    await page.waitForTimeout(150);
+    if (assetFailures.size > 0) {
+      console.error('PDF export asset failures', {
+        appOrigin,
+        exportUrl,
+        assetFailures: Array.from(assetFailures),
+      });
+    }
     await page.evaluate((title: string | undefined) => {
       const printPage = globalThis as PrintPageGlobals;
       if (typeof title === 'string' && title.trim() && printPage.document) {
@@ -355,15 +485,17 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
     console.error('PDF export failed', error);
     const message =
       error instanceof Error ? error.message : 'Failed to export PDF.';
+    const shouldExposeInternalError =
+      process.env.NODE_ENV !== 'production' || process.env.VERCEL_ENV === 'preview';
 
     res
       .status(error instanceof HttpError ? error.status : 500)
       .send(
-        process.env.NODE_ENV === 'production'
-          ? error instanceof HttpError
+        shouldExposeInternalError
+          ? `Failed to export PDF: ${message}`
+          : error instanceof HttpError
             ? message
             : 'Failed to export PDF.'
-          : `Failed to export PDF: ${message}`,
       );
   } finally {
     if (browser) {

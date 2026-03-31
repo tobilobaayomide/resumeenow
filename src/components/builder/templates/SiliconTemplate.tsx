@@ -18,7 +18,7 @@ const INK = "#0f1117";
 const PROMPT = "#16a34a";
 const BORDER = "#e2e4e9";
 const MONO =
-  "'JetBrains Mono', 'Fira Code', 'Fira Mono', 'Courier New', monospace";
+  '"IBM Plex Mono", ui-monospace, "SFMono-Regular", "Menlo", "Monaco", "Consolas", "Liberation Mono", "Courier New", monospace';
 
 const SectionHeading: React.FC<{ label: string }> = ({ label }) => (
   <div className="flex items-center gap-2.5 mb-3">
