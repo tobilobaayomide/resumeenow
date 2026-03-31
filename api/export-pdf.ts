@@ -30,6 +30,8 @@ interface ApiResponse {
   send: (body: string | Buffer) => void;
 }
 
+type HttpHeaderMap = Record<string, string>;
+
 let supabaseAuthClientPromise: Promise<import('@supabase/supabase-js').SupabaseClient> | null = null;
 let exportSchemaModulePromise: Promise<typeof import('../src/schemas/builder/exportPayload.js')> | null = null;
 
@@ -156,6 +158,30 @@ export const resolvePdfExportAppOrigin = (
 const isRelevantAssetUrl = (url: string) =>
   /\.(?:css|js|woff2?|ttf|otf)(?:$|[?#])/i.test(url) ||
   /\/assets\//i.test(url);
+
+export const getPdfExportExtraHeaders = (
+  appOrigin: string,
+  env: NodeJS.ProcessEnv = process.env,
+): HttpHeaderMap | null => {
+  const host = new URL(appOrigin).host;
+
+  if (isLocalHost(host)) {
+    return null;
+  }
+
+  const bypassSecret =
+    env.VERCEL_AUTOMATION_BYPASS_SECRET ||
+    env.VERCEL_PROTECTION_BYPASS_SECRET;
+
+  if (!bypassSecret) {
+    return null;
+  }
+
+  return {
+    'x-vercel-protection-bypass': bypassSecret,
+    'x-vercel-set-bypass-cookie': 'true',
+  };
+};
 
 const getLocalChromeExecutablePath = () => {
   const envPath =
@@ -341,7 +367,12 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
       },
       deviceScaleFactor: 1,
     });
+    const extraHeaders = getPdfExportExtraHeaders(appOrigin);
     const assetFailures = new Set<string>();
+
+    if (extraHeaders) {
+      await page.setExtraHTTPHeaders(extraHeaders);
+    }
 
     page.on('requestfailed', (request) => {
       const url = request.url();
