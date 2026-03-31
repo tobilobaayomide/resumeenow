@@ -1,6 +1,9 @@
 import fs from 'node:fs';
 import type { Browser } from 'playwright-core';
-import { PRINT_FONT_LOADS } from '../src/lib/builder/printFonts.js';
+import {
+  PRINT_FONT_LOADS,
+  PRINT_FONT_READY_TIMEOUT_MS,
+} from '../src/lib/builder/printFonts.js';
 
 export const config = {
   maxDuration: 60,
@@ -375,8 +378,15 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
     }, {
       timeout: 20000,
     });
-    await page.evaluate(async (fontLoads: readonly string[]) => {
-      const browserGlobal = globalThis as {
+    await page.evaluate(async ({
+      fontLoads,
+      fontTimeoutMs,
+    }: {
+      fontLoads: readonly string[];
+      fontTimeoutMs: number;
+    }) => {
+      const browserGlobal = globalThis as unknown as {
+        setTimeout: (handler: () => void, timeout?: number) => unknown;
         document?: {
           fonts?: {
             load: (font: string, text?: string) => Promise<unknown>;
@@ -390,11 +400,22 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
         return;
       }
 
-      await Promise.allSettled(
-        fontLoads.map((font) => fonts.load(font, 'BESbswy 0123456789')),
-      );
-      await fonts.ready;
-    }, PRINT_FONT_LOADS);
+      const timeoutPromise = new Promise<void>((resolve) => {
+        browserGlobal.setTimeout(resolve, fontTimeoutMs);
+      });
+
+      const loadPromise = (async () => {
+        await Promise.allSettled(
+          fontLoads.map((font) => fonts.load(font, 'BESbswy 0123456789')),
+        );
+        await fonts.ready;
+      })();
+
+      await Promise.race([loadPromise, timeoutPromise]);
+    }, {
+      fontLoads: PRINT_FONT_LOADS,
+      fontTimeoutMs: PRINT_FONT_READY_TIMEOUT_MS,
+    });
     await page.waitForTimeout(150);
     if (assetFailures.size > 0) {
       console.error('PDF export asset failures', {
