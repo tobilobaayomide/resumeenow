@@ -99,25 +99,49 @@ const normalizeOrigin = (value: string | undefined): string | null => {
   return url.origin;
 };
 
-const getConfiguredAppOrigin = () =>
+const getConfiguredAppOrigin = (env: NodeJS.ProcessEnv = process.env) =>
   normalizeOrigin(
-    process.env.APP_URL ||
-      process.env.SITE_URL ||
-      process.env.PUBLIC_APP_URL ||
-      process.env.VERCEL_URL ||
-      process.env.VERCEL_BRANCH_URL ||
-      process.env.VERCEL_PROJECT_PRODUCTION_URL,
+    env.APP_URL ||
+      env.SITE_URL ||
+      env.PUBLIC_APP_URL ||
+      env.VERCEL_URL ||
+      env.VERCEL_BRANCH_URL ||
+      env.VERCEL_PROJECT_PRODUCTION_URL,
   );
 
-const getTrustedAppOrigin = (req: ApiRequest) => {
-  const configuredOrigin = getConfiguredAppOrigin();
-  if (configuredOrigin) {
-    return configuredOrigin;
+const getRequestAppOrigin = (req: ApiRequest): string | null => {
+  const forwardedHost = normalizeHeaderValue(req.headers['x-forwarded-host']);
+  const host = forwardedHost || normalizeHeaderValue(req.headers.host);
+
+  if (!host) {
+    return null;
   }
 
-  const host = normalizeHeaderValue(req.headers.host);
-  if (process.env.NODE_ENV !== 'production' && host && isLocalHost(host)) {
-    return `http://${host}`;
+  const forwardedProto = normalizeHeaderValue(req.headers['x-forwarded-proto']);
+  const protocol =
+    forwardedProto && /^https?$/i.test(forwardedProto)
+      ? forwardedProto.toLowerCase()
+      : isLocalHost(host)
+        ? 'http'
+        : 'https';
+
+  return normalizeOrigin(`${protocol}://${host}`);
+};
+
+export const resolvePdfExportAppOrigin = (
+  req: ApiRequest,
+  env: NodeJS.ProcessEnv = process.env,
+) => {
+  // Prefer the actual request host so preview deployments export from the
+  // same build the user is currently viewing.
+  const requestOrigin = getRequestAppOrigin(req);
+  if (requestOrigin) {
+    return requestOrigin;
+  }
+
+  const configuredOrigin = getConfiguredAppOrigin(env);
+  if (configuredOrigin) {
+    return configuredOrigin;
   }
 
   throw new HttpError(
@@ -125,6 +149,10 @@ const getTrustedAppOrigin = (req: ApiRequest) => {
     'PDF export origin is not configured. Set APP_URL or SITE_URL.',
   );
 };
+
+const isRelevantAssetUrl = (url: string) =>
+  /\.(?:css|js|woff2?|ttf|otf)(?:$|[?#])/i.test(url) ||
+  /\/assets\//i.test(url);
 
 const getLocalChromeExecutablePath = () => {
   const envPath =
@@ -297,7 +325,7 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
     await authenticateRequest(req);
 
     const { data, templateId, fileName } = await parseExportRequest(req);
-    const appOrigin = getTrustedAppOrigin(req);
+    const appOrigin = resolvePdfExportAppOrigin(req);
     const exportUrl = `${appOrigin}/print/resume`;
 
     const { playwright, launchOptions } = await loadBrowserRuntimes(appOrigin);
@@ -309,6 +337,27 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
         height: 1500,
       },
       deviceScaleFactor: 1,
+    });
+    const assetFailures = new Set<string>();
+
+    page.on('requestfailed', (request) => {
+      const url = request.url();
+      if (!isRelevantAssetUrl(url)) {
+        return;
+      }
+
+      assetFailures.add(
+        `${request.method()} ${url} (${request.failure()?.errorText || 'request failed'})`,
+      );
+    });
+
+    page.on('response', (response) => {
+      const url = response.url();
+      if (!isRelevantAssetUrl(url) || response.status() < 400) {
+        return;
+      }
+
+      assetFailures.add(`${response.status()} ${url}`);
     });
 
     await page.addInitScript((injectedPayload: unknown) => {
@@ -347,6 +396,13 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
       await fonts.ready;
     }, PRINT_FONT_LOADS);
     await page.waitForTimeout(150);
+    if (assetFailures.size > 0) {
+      console.error('PDF export asset failures', {
+        appOrigin,
+        exportUrl,
+        assetFailures: Array.from(assetFailures),
+      });
+    }
     await page.evaluate((title: string | undefined) => {
       const printPage = globalThis as PrintPageGlobals;
       if (typeof title === 'string' && title.trim() && printPage.document) {
