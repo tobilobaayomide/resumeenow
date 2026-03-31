@@ -871,8 +871,8 @@ const BuilderAiWorkflowModal: React.FC<BuilderAiWorkflowModalProps> = ({
                 disabled={isExportingCoverLetter}
                 className="h-10 px-6 rounded-xl bg-blue-600 text-white text-[13px] font-bold hover:bg-blue-700 hover:-translate-y-px shadow-sm transition-all flex items-center gap-2 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0"
               >
-                <FiDownload size={14} />
-                {isExportingCoverLetter ? "Preparing PDF..." : "Download PDF"}
+                
+                {isExportingCoverLetter ? "Preparing PDF..." : "Download"}
               </button>
             </>
           )}
