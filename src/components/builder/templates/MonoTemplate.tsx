@@ -33,6 +33,20 @@ const columnSpacerStyle: React.CSSProperties = {
 const contentColumnStyle: React.CSSProperties = {
   paddingLeft: CONTENT_GAP,
   flex: 1,
+  minWidth: 0,
+};
+
+const monoBodyCopyStyle: React.CSSProperties = {
+  color: BODY_TEXT,
+  fontFamily: MONO,
+  overflowWrap: "break-word",
+  wordBreak: "normal",
+};
+
+const monoMutedWrapStyle: React.CSSProperties = {
+  color: MUTED,
+  overflowWrap: "anywhere",
+  wordBreak: "normal",
 };
 
 const SectionHeading: React.FC<{ children: React.ReactNode; index: number }> = ({
@@ -122,12 +136,12 @@ const BulletList: React.FC<{
       <li
         key={`${id}-b-${i}`}
         data-break-point="true"
-        className={`text-[11.5px] leading-[1.65] text-justify ${
+        className={`text-[11.5px] leading-[1.65] text-left ${
           isBuilderAiTextHighlighted(highlightedBullets, line)
             ? previewHighlightInlineClassName
             : ""
         }`}
-        style={{ color: BODY_TEXT, fontFamily: MONO }}
+        style={monoBodyCopyStyle}
       >
         {line}
       </li>
@@ -213,8 +227,8 @@ const MonoTemplate: React.FC<BuilderTemplateComponentProps> = ({
               {personalInfo.email ? (
                 <a
                   href={`mailto:${personalInfo.email}`}
-                  className="break-all"
-                  style={{ color: MUTED }}
+                  className="wrap-break-word"
+                  style={monoMutedWrapStyle}
                 >
                   {personalInfo.email}
                 </a>
@@ -227,8 +241,8 @@ const MonoTemplate: React.FC<BuilderTemplateComponentProps> = ({
                   href={toExternalLinkHref(link.url)}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="break-all"
-                  style={{ color: MUTED }}
+                  className="wrap-break-word"
+                  style={monoMutedWrapStyle}
                 >
                   {getPersonalLinkDisplayLabel(link)}
                 </a>
@@ -249,8 +263,8 @@ const MonoTemplate: React.FC<BuilderTemplateComponentProps> = ({
             <ContentBand>
               <p
                 data-break-point="true"
-                className="text-[11.5px] leading-[1.75] text-justify -ml-20"
-                style={{ color: BODY_TEXT }}
+                className="text-[11.5px] leading-[1.75] text-left -ml-20"
+                style={monoBodyCopyStyle}
               >
                 {summary}
               </p>
@@ -289,8 +303,8 @@ const MonoTemplate: React.FC<BuilderTemplateComponentProps> = ({
               ) : (
                 <p
                   data-break-point="true"
-                  className="text-[11.5px] leading-[1.7] -ml-20 text-justify"
-                  style={{ color: BODY_TEXT }}
+                  className="text-[11.5px] leading-[1.7] -ml-20 text-left"
+                  style={monoBodyCopyStyle}
                 >
                   <HighlightedSkillTokens
                     skills={activeSkills}
@@ -346,8 +360,8 @@ const MonoTemplate: React.FC<BuilderTemplateComponentProps> = ({
                       ) : (
                           <p
                             data-break-point="true"
-                            className="mt-2 text-[11.5px] leading-[1.7] text-justify whitespace-pre-line"
-                            style={{ color: BODY_TEXT }}
+                            className="mt-2 text-[11.5px] leading-[1.7] text-left whitespace-pre-line"
+                            style={monoBodyCopyStyle}
                           >
                             {exp.description}
                           </p>
@@ -383,8 +397,8 @@ const MonoTemplate: React.FC<BuilderTemplateComponentProps> = ({
     href={toExternalLinkHref(project.link)}
     target="_blank"
     rel="noopener noreferrer"
-    className="mt-1 block text-[10px] break-all hover:underline"
-    style={{ color: MUTED }}
+    className="mt-1 block text-[10px] wrap-break-word hover:underline"
+    style={monoMutedWrapStyle}
   >
     {project.link}
   </a>
@@ -401,8 +415,8 @@ const MonoTemplate: React.FC<BuilderTemplateComponentProps> = ({
                         ) : (
                           <p
                             data-break-point="true"
-                            className="mt-2 text-[11.5px] leading-[1.7] text-justify "
-                            style={{ color: BODY_TEXT }}
+                            className="mt-2 text-[11.5px] leading-[1.7] text-left"
+                            style={monoBodyCopyStyle}
                           >
                             {project.description}
                           </p>
@@ -452,8 +466,8 @@ const MonoTemplate: React.FC<BuilderTemplateComponentProps> = ({
                         ) : (
                           <p
                             data-break-point="true"
-                            className="mt-2 text-[11.5px] leading-[1.7] text-justify whitespace-pre-line"
-                            style={{ color: BODY_TEXT }}
+                            className="mt-2 text-[11.5px] leading-[1.7] text-left whitespace-pre-line"
+                            style={monoBodyCopyStyle}
                           >
                             {item.description}
                           </p>
@@ -498,8 +512,8 @@ const MonoTemplate: React.FC<BuilderTemplateComponentProps> = ({
                   {edu.description ? (
                     <p
                       data-break-point="true"
-                      className="mt-2 text-[11.5px] leading-[1.7] text-justify whitespace-pre-line"
-                      style={{ color: BODY_TEXT }}
+                      className="mt-2 text-[11.5px] leading-[1.7] text-left whitespace-pre-line"
+                      style={monoBodyCopyStyle}
                     >
                       {edu.description}
                     </p>
