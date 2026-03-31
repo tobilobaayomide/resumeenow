@@ -433,15 +433,17 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
     console.error('PDF export failed', error);
     const message =
       error instanceof Error ? error.message : 'Failed to export PDF.';
+    const shouldExposeInternalError =
+      process.env.NODE_ENV !== 'production' || process.env.VERCEL_ENV === 'preview';
 
     res
       .status(error instanceof HttpError ? error.status : 500)
       .send(
-        process.env.NODE_ENV === 'production'
-          ? error instanceof HttpError
+        shouldExposeInternalError
+          ? `Failed to export PDF: ${message}`
+          : error instanceof HttpError
             ? message
             : 'Failed to export PDF.'
-          : `Failed to export PDF: ${message}`
       );
   } finally {
     if (browser) {
