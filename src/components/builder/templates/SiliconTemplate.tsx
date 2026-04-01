@@ -14,12 +14,12 @@ import HighlightedSkillTokens from "./HighlightedSkillTokens";
 import InlineFormattedText from "./InlineFormattedText";
 import { isBuilderAiTextHighlighted } from "../../../lib/builder/aiHighlights";
 import { toDescriptionBullets } from "./utils";
+import { FONT_STACKS } from "../../../fonts/registry";
 
 const INK = "#0f1117";
 const PROMPT = "#16a34a";
 const BORDER = "#e2e4e9";
-const MONO =
-  '"IBM Plex Mono", ui-monospace, "SFMono-Regular", "Menlo", "Monaco", "Consolas", "Liberation Mono", "Courier New", monospace';
+const MONO = FONT_STACKS.mono;
 
 const SectionHeading: React.FC<{ label: string }> = ({ label }) => (
   <div className="flex items-center gap-2.5 mb-3">

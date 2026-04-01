@@ -1,14 +1,6 @@
-export const PRINT_FONT_LOADS = [
-  '400 16px "DM Sans"',
-  '500 16px "DM Sans"',
-  '700 16px "DM Sans"',
-  '400 16px "Ubuntu"',
-  '500 16px "Ubuntu"',
-  '700 16px "Ubuntu"',
-  '400 16px "IBM Plex Mono"',
-  '500 16px "IBM Plex Mono"',
-  '700 16px "IBM Plex Mono"',
-] as const;
+import { buildPrintFontLoads } from "../../fonts/registry.js";
+
+export const PRINT_FONT_LOADS = buildPrintFontLoads();
 
 const PRINT_FONT_SAMPLE_TEXT = 'BESbswy 0123456789';
 export const PRINT_FONT_READY_TIMEOUT_MS = 5_000;

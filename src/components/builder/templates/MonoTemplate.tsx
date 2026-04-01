@@ -14,14 +14,14 @@ import HighlightedSkillTokens from "./HighlightedSkillTokens";
 import InlineFormattedText from "./InlineFormattedText";
 import { isBuilderAiTextHighlighted } from "../../../lib/builder/aiHighlights";
 import { toDescriptionBullets } from "./utils";
+import { FONT_STACKS } from "../../../fonts/registry";
 
 const INK = "#111110";
 const DATE_COL = "#4a4a48";
 const BODY_TEXT = "#30302e";
 const MUTED = "#70706c";
 const RULE = "#e0dedd";
-const MONO =
-  '"IBM Plex Mono", ui-monospace, "SFMono-Regular", "Menlo", "Monaco", "Consolas", "Liberation Mono", "Courier New", monospace';
+const MONO = FONT_STACKS.mono;
 
 const DATE_COL_WIDTH = 82;
 const CONTENT_GAP = 20;
@@ -40,6 +40,7 @@ const contentColumnStyle: React.CSSProperties = {
 const monoBodyCopyStyle: React.CSSProperties = {
   color: BODY_TEXT,
   fontFamily: MONO,
+  textAlign: "justify",
   overflowWrap: "break-word",
   wordBreak: "normal",
 };
@@ -137,7 +138,7 @@ const BulletList: React.FC<{
       <li
         key={`${id}-b-${i}`}
         data-break-point="true"
-        className={`text-[11.5px] leading-[1.65] text-left ${
+        className={`text-[11.5px] leading-[1.65] text-justify ${
           isBuilderAiTextHighlighted(highlightedBullets, line)
             ? previewHighlightInlineClassName
             : ""
@@ -264,7 +265,7 @@ const MonoTemplate: React.FC<BuilderTemplateComponentProps> = ({
             <ContentBand>
               <p
                 data-break-point="true"
-                className="text-[11.5px] leading-[1.75] text-left -ml-20"
+                className="text-[11.5px] leading-[1.75] text-justify -ml-20"
                 style={monoBodyCopyStyle}
               >
                 {summary}
@@ -304,7 +305,7 @@ const MonoTemplate: React.FC<BuilderTemplateComponentProps> = ({
               ) : (
                 <p
                   data-break-point="true"
-                  className="text-[11.5px] leading-[1.7] -ml-20 text-left"
+                  className="text-[11.5px] leading-[1.7] -ml-20 text-justify"
                   style={monoBodyCopyStyle}
                 >
                   <HighlightedSkillTokens
@@ -361,7 +362,7 @@ const MonoTemplate: React.FC<BuilderTemplateComponentProps> = ({
                       ) : (
                           <p
                             data-break-point="true"
-                            className="mt-2 text-[11.5px] leading-[1.7] text-left whitespace-pre-line"
+                            className="mt-2 text-[11.5px] leading-[1.7] text-justify whitespace-pre-line"
                             style={monoBodyCopyStyle}
                           >
                             <InlineFormattedText value={exp.description} />
@@ -416,7 +417,7 @@ const MonoTemplate: React.FC<BuilderTemplateComponentProps> = ({
                         ) : (
                           <p
                             data-break-point="true"
-                            className="mt-2 text-[11.5px] leading-[1.7] text-left"
+                            className="mt-2 text-[11.5px] leading-[1.7] text-justify"
                             style={monoBodyCopyStyle}
                           >
                             <InlineFormattedText value={project.description} />
@@ -467,7 +468,7 @@ const MonoTemplate: React.FC<BuilderTemplateComponentProps> = ({
                         ) : (
                           <p
                             data-break-point="true"
-                            className="mt-2 text-[11.5px] leading-[1.7] text-left whitespace-pre-line"
+                            className="mt-2 text-[11.5px] leading-[1.7] text-justify whitespace-pre-line"
                             style={monoBodyCopyStyle}
                           >
                             <InlineFormattedText value={item.description} />
@@ -513,7 +514,7 @@ const MonoTemplate: React.FC<BuilderTemplateComponentProps> = ({
                   {edu.description ? (
                     <p
                       data-break-point="true"
-                      className="mt-2 text-[11.5px] leading-[1.7] text-left whitespace-pre-line"
+                      className="mt-2 text-[11.5px] leading-[1.7] text-justify whitespace-pre-line"
                       style={monoBodyCopyStyle}
                     >
                       <InlineFormattedText value={edu.description} />
