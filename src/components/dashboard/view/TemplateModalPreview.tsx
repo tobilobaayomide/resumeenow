@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { PREVIEW_RESUME_DATA } from '../../../domain/resume';
 import type { TemplateModalPreviewProps } from '../../../types/dashboard';
 import ScaledResumePreview from '../shared/ScaledResumePreview';
-import { PAGE_WIDTH_PX } from '../../builder/preview/HtmlTemplateDocument';
+import { PAGE_WIDTH_PX } from '../../builder/preview/pagination';
 
 const DESKTOP_PREVIEW_ZOOM = 0.68;
 const MOBILE_SIDE_GUTTER_PX = 40;

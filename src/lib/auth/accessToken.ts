@@ -38,19 +38,5 @@ export const getValidAccessToken = async (
     throw new Error(missingTokenMessage);
   }
 
-  const { data: userData, error: userError } = await supabase.auth.getUser(session.access_token);
-  if (userError || !userData.user) {
-    session = await refreshSessionOrThrow(missingTokenMessage);
-
-    const {
-      data: refreshedUserData,
-      error: refreshedUserError,
-    } = await supabase.auth.getUser(session.access_token);
-
-    if (refreshedUserError || !refreshedUserData.user) {
-      throw new Error(missingTokenMessage);
-    }
-  }
-
   return session.access_token;
 };

@@ -1,0 +1,15 @@
+@import "@fontsource/dm-sans/400.css";
+@import "@fontsource/dm-sans/500.css";
+@import "@fontsource/dm-sans/700.css";
+@import "@fontsource/ibm-plex-mono/400.css";
+@import "@fontsource/ibm-plex-mono/500.css";
+@import "@fontsource/ibm-plex-mono/700.css";
+@import "@fontsource/ubuntu/400.css";
+@import "@fontsource/ubuntu/500.css";
+@import "@fontsource/ubuntu/700.css";
+
+/*
+ * Future custom template fonts should live beside this file under `src/fonts/`
+ * and be declared with @font-face here so app, preview, and PDF export all
+ * load them through the same pipeline.
+ */

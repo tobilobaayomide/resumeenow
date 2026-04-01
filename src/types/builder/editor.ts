@@ -52,6 +52,18 @@ export interface EditorTextareaProps {
   id?: string;
 }
 
+export interface DescriptionBulletEditorProps {
+  label?: string;
+  placeholder?: string;
+  value: string;
+  onChange: (v: string) => void;
+  minRows?: number;
+  maxBullets?: number;
+  allowRawMode?: boolean;
+  name?: string;
+  id?: string;
+}
+
 export interface EditorDateRowProps {
   startDate: string;
   endDate: string;

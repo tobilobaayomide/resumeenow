@@ -2,6 +2,7 @@ import React from "react";
 import { FiHeart, FiInfo, FiPlus } from "react-icons/fi";
 import type { EditorPanelState } from "../useEditorPanelState";
 import type { ResumeData } from "../../../../types/resume";
+import DescriptionBulletEditor from "../DescriptionBulletEditor";
 import {
   AddButton,
   Card,
@@ -9,7 +10,6 @@ import {
   Input,
   ItemSwitcher,
   Section,
-  Textarea,
 } from "../common";
 
 interface EditorVolunteeringSectionProps {
@@ -143,9 +143,9 @@ const EditorVolunteeringSection: React.FC<EditorVolunteeringSectionProps> = ({
                     }
                   />
 
-                  <Textarea
+                  <DescriptionBulletEditor
                     label="Description & Impact"
-                    placeholder="Impact, activities, or outcomes..."
+                    placeholder="e.g. Mentored 20 students through weekly front-end workshops and portfolio reviews."
                     value={state.activeVolunteering.description}
                     onChange={(value) =>
                       state.updateVolunteering(
@@ -154,6 +154,7 @@ const EditorVolunteeringSection: React.FC<EditorVolunteeringSectionProps> = ({
                         value,
                       )
                     }
+                    minRows={3}
                   />
                 </div>
               </Card>

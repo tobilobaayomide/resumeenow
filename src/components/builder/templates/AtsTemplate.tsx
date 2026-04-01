@@ -11,6 +11,7 @@ import {
   previewHighlightSectionClassName,
 } from "./highlightStyles";
 import HighlightedSkillTokens from "./HighlightedSkillTokens";
+import InlineFormattedText from "./InlineFormattedText";
 import { isBuilderAiTextHighlighted } from "../../../lib/builder/aiHighlights";
 import { toDescriptionBullets } from "./utils";
 
@@ -117,7 +118,7 @@ const BulletList: React.FC<{
             : {}),
         }}
       >
-        {line}
+        <InlineFormattedText value={line} />
       </li>
     ))}
   </ul>
@@ -229,7 +230,7 @@ const EntryBlock: React.FC<{
             whiteSpace: "pre-line",
           }}
         >
-          {description}
+          <InlineFormattedText value={description} />
         </p>
       ) : null}
     </div>

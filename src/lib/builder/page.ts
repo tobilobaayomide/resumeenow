@@ -1,5 +1,6 @@
 import type { AtsAuditResult } from '../../types/builder';
 import { getActiveSkillItems, type ResumeData, type TemplateId } from '../../types/resume';
+import { stripInlineFormattingText } from '../inlineFormatting';
 
 export const SUMMARY_MAX_LENGTH = 500;
 export const AUTOSAVE_DELAY_MS = 2000;
@@ -83,20 +84,25 @@ export const runLocalAtsAudit = (
   const activeSkills = getActiveSkillItems(data.skills);
   const keywords = extractKeywords(`${targetRole} ${jobDescription}`);
   const resumeCorpus = [
-    data.summary,
+    stripInlineFormattingText(data.summary),
     activeSkills.join(' '),
     data.languages.join(' '),
     data.achievements.join(' '),
     ...data.experience.map(
-      (item) => `${item.role} ${item.company} ${item.description}`,
+      (item) =>
+        `${item.role} ${item.company} ${stripInlineFormattingText(item.description)}`,
     ),
-    ...data.projects.map((item) => `${item.name} ${item.description}`),
+    ...data.projects.map(
+      (item) => `${item.name} ${stripInlineFormattingText(item.description)}`,
+    ),
   ]
     .join(' ')
     .toLowerCase();
 
   const quantifiedBulletCount = data.experience.reduce((count, item) => {
-    const matches = item.description.match(/\b\d+%?|\$?\d+[kKmM]?|x\b/g);
+    const matches = stripInlineFormattingText(item.description).match(
+      /\b\d+%?|\$?\d+[kKmM]?|x\b/g,
+    );
     return count + (matches ? matches.length : 0);
   }, 0);
 
@@ -110,8 +116,9 @@ export const runLocalAtsAudit = (
     keywords.length > 0
       ? Math.round((matchedKeywords.length / keywords.length) * 100)
       : 50;
+  const plainSummary = stripInlineFormattingText(data.summary || '').trim();
   const summaryScore =
-    (data.summary || '').trim().length >= 80 ? 100 : (data.summary || '').trim() ? 60 : 0;
+    plainSummary.length >= 80 ? 100 : plainSummary ? 60 : 0;
   const skillScore = Math.min(100, activeSkills.length * 10);
   const experienceScore = Math.min(100, data.experience.length * 35);
   const impactScore = Math.min(100, quantifiedBulletCount * 12);

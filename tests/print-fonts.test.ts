@@ -1,6 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { ensurePrintFontsReady } from '../src/lib/builder/printFonts.js';
+import {
+  PRINT_FONT_LOADS,
+  ensurePrintFontsReady,
+} from '../src/lib/builder/printFonts.js';
 
 test('ensurePrintFontsReady resolves after fonts finish loading', async () => {
   let loadCalls = 0;
@@ -17,7 +20,7 @@ test('ensurePrintFontsReady resolves after fonts finish loading', async () => {
     50,
   );
 
-  assert.equal(loadCalls, 9);
+  assert.equal(loadCalls, PRINT_FONT_LOADS.length);
 });
 
 test('ensurePrintFontsReady times out instead of hanging indefinitely', async () => {

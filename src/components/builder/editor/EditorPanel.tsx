@@ -20,8 +20,8 @@ import { getBuilderAiHighlightAnchor } from '../../../lib/builder/aiHighlights';
 import { useBuilderStore } from '../../../store/builderStore';
 
 const MIN_WIDTH = 550;
-const MAX_WIDTH = 700;
-const DEFAULT_WIDTH = 550;
+const MAX_WIDTH = 850;
+const DEFAULT_WIDTH = 700;
 
 const EditorPanel: React.FC = () => {
   const [panelWidth, setPanelWidth] = useState(DEFAULT_WIDTH);

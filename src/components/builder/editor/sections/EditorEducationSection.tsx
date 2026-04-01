@@ -2,6 +2,7 @@ import React from "react";
 import { FiBook, FiInfo, FiPlus } from "react-icons/fi";
 import type { EditorPanelState } from "../useEditorPanelState";
 import type { ResumeData } from "../../../../types/resume";
+import DescriptionBulletEditor from "../DescriptionBulletEditor";
 import {
   AddButton,
   Card,
@@ -9,7 +10,6 @@ import {
   Input,
   ItemSwitcher,
   Section,
-  Textarea,
 } from "../common";
 
 interface EditorEducationSectionProps {
@@ -144,9 +144,9 @@ const EditorEducationSection: React.FC<EditorEducationSectionProps> = ({
                     }
                   />
 
-                  <Textarea
+                  <DescriptionBulletEditor
                     label="Additional Details (Optional)"
-                    placeholder="Relevant coursework, honours, thesis topics..."
+                    placeholder="e.g. Graduated with first-class honours and completed coursework."
                     value={state.activeEducation.description}
                     onChange={(value) =>
                       state.updateEducation(
@@ -155,6 +155,7 @@ const EditorEducationSection: React.FC<EditorEducationSectionProps> = ({
                         value,
                       )
                     }
+                    minRows={2}
                   />
                 </div>
               </Card>

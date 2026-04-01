@@ -3,6 +3,7 @@ import { FiBriefcase, FiInfo, FiPlus } from "react-icons/fi";
 import { getBuilderAiExperienceHighlights } from "../../../../lib/builder/aiHighlights";
 import type { EditorPanelState } from "../useEditorPanelState";
 import type { ResumeData } from "../../../../types/resume";
+import DescriptionBulletEditor from "../DescriptionBulletEditor";
 import {
   AddButton,
   Card,
@@ -10,7 +11,6 @@ import {
   Input,
   ItemSwitcher,
   Section,
-  Textarea,
 } from "../common";
 
 interface EditorExperienceSectionProps {
@@ -99,7 +99,7 @@ const EditorExperienceSection: React.FC<EditorExperienceSectionProps> = ({
             {state.activeExperience && (
               <div
                 data-ai-highlight-anchor={`experience-${state.activeExperience.id}`}
-                className="animate-in slide-in-from-bottom-2 fade-in duration-200 rounded-xl transition-all duration-300"
+                className="animate-in slide-in-from-bottom-2 fade-in duration-200 rounded-xl transition-all"
               >
                 <Card
                   label="Role"
@@ -174,9 +174,9 @@ const EditorExperienceSection: React.FC<EditorExperienceSectionProps> = ({
                       </div>
                     )}
 
-                    <Textarea
+                    <DescriptionBulletEditor
                       label="Description & Highlights"
-                      placeholder="• Spearheaded the launch of a new payment API that increased revenue by 15%&#10;• Mentored a team of 4 junior developers..."
+                      placeholder="e.g. Spearheaded the launch of a new payment API that increased revenue by 15%."
                       value={state.activeExperience.description}
                       onChange={(value) =>
                         state.updateExperience(
@@ -185,6 +185,7 @@ const EditorExperienceSection: React.FC<EditorExperienceSectionProps> = ({
                           value,
                         )
                       }
+                      minRows={3}
                     />
                   </div>
                 </Card>

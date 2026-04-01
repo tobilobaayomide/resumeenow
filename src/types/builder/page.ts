@@ -6,9 +6,9 @@ import type {
   ResumePersonalInfo,
   ResumeProjectItem,
   TemplateId,
-} from '../resume';
-import type { AiFlowFeature } from '../../domain/workflows';
-import type { PlanStatus, ProFeature } from '../context';
+} from '../resume.js';
+import type { AiFlowFeature } from '../../domain/workflows/index.js';
+import type { PlanStatus, ProFeature } from '../context/index.js';
 
 export type BuilderPageMobileView = 'editor' | 'preview';
 
@@ -50,6 +50,21 @@ export interface BuilderDraftPayload {
   template_id: string;
   content: ResumeData;
 }
+
+export type BuilderAiProgressPhase =
+  | 'preparing'
+  | 'authenticating'
+  | 'checking_limits'
+  | 'generating'
+  | 'finalizing'
+  | 'cached';
+
+export interface BuilderAiProgressState {
+  phase: BuilderAiProgressPhase;
+  label: string;
+}
+
+export type BuilderAiProgressStatus = 'active' | 'success';
 
 export interface BuilderHeaderProps {
   title: string;
@@ -100,6 +115,8 @@ export interface UseBuilderDraftMutationsResult {
 export interface BuilderAiWorkflowModalProps {
   isGenerating: boolean;
   isExportingCoverLetter: boolean;
+  aiProgress: BuilderAiProgressState | null;
+  aiProgressStatus: BuilderAiProgressStatus | null;
   activeAiFlow: AiFlowFeature | null;
   tailorRole: string;
   tailorCompany: string;
@@ -136,6 +153,7 @@ export interface BuilderAiWorkflowModalProps {
     keywordAlignment: { matched: string[]; injected: string[]; stillMissing: string[] };
   } | null;
   onRunAtsAudit: () => void;
+  onApplyAtsKeywordHint: (keyword: string) => void;
   onApplyAtsKeywordHints: () => void;
   onApplyAtsImprovements: () => void;
   onApplyAtsImprovement: (improvement: AtsAuditImprovement) => void;
