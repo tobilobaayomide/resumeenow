@@ -1,6 +1,6 @@
 import { findMatchingDescriptionBullet } from './descriptionBullets';
 import { stripInlineFormattingText } from './inlineFormatting';
-import { supabase } from './supabase';
+import { supabaseAnonKey, supabaseUrl } from './supabase';
 import {
   parseAtsAuditResult,
   parseTailoredSummaryResult,
@@ -12,6 +12,7 @@ import {
   formatAtsAuditReferenceDate,
   sanitizeAtsAuditResult,
 } from './ai/atsAudit';
+import { createPersistentTimedLruCache } from './ai/persistentCache';
 import { getActiveSkillItems } from '../types/resume';
 import { parseAiGroupedSkills } from './aiResumeApply';
 import { getValidAccessToken } from './auth/accessToken';
@@ -23,13 +24,75 @@ import type { AtsAuditResult } from '../types/builder';
 const CACHE_TTL_MS = 10 * 60 * 1000;
 const MAX_CACHE_ENTRIES = 50;
 const MAX_CONCURRENT = 2;
+const PERSISTENT_CACHE_NAMESPACE = 'resumeenow:ai-cache:v1';
+const GEMINI_PROXY_ENDPOINT = `${supabaseUrl}/functions/v1/gemini-proxy`;
+
+export interface AiRequestProgress {
+  phase:
+    | 'preparing'
+    | 'authenticating'
+    | 'checking_limits'
+    | 'generating'
+    | 'finalizing'
+    | 'cached';
+  label: string;
+}
+
+type AiProgressListener = (progress: AiRequestProgress) => void;
+
+interface GeminiProxySuccessPayload {
+  text: string;
+}
+
+const AI_PROGRESS_LABELS: Record<AiRequestProgress['phase'], string> = {
+  preparing: 'Preparing request…',
+  authenticating: 'Authenticating…',
+  checking_limits: 'Checking plan limits…',
+  generating: 'Generating response…',
+  finalizing: 'Finalizing result…',
+  cached: 'Using cached result…',
+};
 
 const responseCache = createTimedLruCache<string>({
   ttlMs: CACHE_TTL_MS,
   maxEntries: MAX_CACHE_ENTRIES,
 });
+const persistentResponseCache = createPersistentTimedLruCache<string>({
+  namespace: PERSISTENT_CACHE_NAMESPACE,
+  ttlMs: CACHE_TTL_MS,
+  maxEntries: MAX_CACHE_ENTRIES,
+});
 const requestScheduler = createRequestScheduler(MAX_CONCURRENT);
 const inFlightRequests = new Map<string, Promise<string>>();
+
+const emitAiProgress = (
+  listener: AiProgressListener | undefined,
+  phase: AiRequestProgress['phase'],
+  label = AI_PROGRESS_LABELS[phase],
+) => {
+  listener?.({ phase, label });
+};
+
+const getCachedResponse = (cacheKey: string): string | undefined => {
+  const memoryCached = responseCache.get(cacheKey);
+  if (memoryCached) return memoryCached;
+
+  const persistentCached = persistentResponseCache.get(cacheKey);
+  if (persistentCached) {
+    responseCache.set(cacheKey, persistentCached);
+  }
+  return persistentCached;
+};
+
+const setCachedResponse = (cacheKey: string, value: string) => {
+  responseCache.set(cacheKey, value);
+  persistentResponseCache.set(cacheKey, value);
+};
+
+const deleteCachedResponse = (cacheKey: string) => {
+  responseCache.delete(cacheKey);
+  persistentResponseCache.delete(cacheKey);
+};
 
 const normalizeErrorMessage = (message: string): string =>
   message.replace(/^(Error:\s*)+/i, '').trim();
@@ -69,40 +132,175 @@ const handleError = (error: unknown): never => {
 // ─── Retry delays ─────────────────────────────────────────────────────────────
 const RETRY_DELAYS = [5000, 15000, 45000];
 
+const readProxyErrorMessage = async (response: Response): Promise<string> => {
+  try {
+    const payload = await response.clone().json();
+    if (typeof payload?.message === 'string' && payload.message.trim()) {
+      return payload.message.trim();
+    }
+    if (typeof payload?.error === 'string' && payload.error.trim()) {
+      return payload.error.trim();
+    }
+  } catch {
+    // Fall through to text parsing below.
+  }
+
+  try {
+    const text = (await response.clone().text()).trim();
+    if (text) return text;
+  } catch {
+    // Ignore text parsing failures.
+  }
+
+  return `AI request failed with status ${response.status}.`;
+};
+
+const parseSseChunk = (rawEvent: string): { event: string; data: string } | null => {
+  const lines = rawEvent
+    .split('\n')
+    .map((line) => line.trimEnd())
+    .filter(Boolean);
+
+  if (!lines.length) return null;
+
+  let event = 'message';
+  const dataLines: string[] = [];
+
+  lines.forEach((line) => {
+    if (line.startsWith('event:')) {
+      event = line.slice(6).trim();
+      return;
+    }
+
+    if (line.startsWith('data:')) {
+      dataLines.push(line.slice(5).trim());
+    }
+  });
+
+  return {
+    event,
+    data: dataLines.join('\n'),
+  };
+};
+
+const consumeGeminiProxyStream = async (
+  response: Response,
+  onProgress?: AiProgressListener,
+): Promise<GeminiProxySuccessPayload> => {
+  const reader = response.body?.getReader();
+  if (!reader) {
+    throw new Error('AI stream was unavailable. Please try again.');
+  }
+
+  const decoder = new TextDecoder();
+  let buffer = '';
+
+  while (true) {
+    const { value, done } = await reader.read();
+    buffer += decoder.decode(value ?? new Uint8Array(), { stream: !done }).replace(/\r/g, '');
+
+    let delimiterIndex = buffer.indexOf('\n\n');
+    while (delimiterIndex >= 0) {
+      const rawEvent = buffer.slice(0, delimiterIndex);
+      buffer = buffer.slice(delimiterIndex + 2);
+
+      const parsedEvent = parseSseChunk(rawEvent);
+      if (parsedEvent) {
+        if (parsedEvent.event === 'status') {
+          try {
+            const payload = JSON.parse(parsedEvent.data) as {
+              phase?: AiRequestProgress['phase'];
+              label?: string;
+            };
+            const phase = payload.phase;
+            if (phase && phase in AI_PROGRESS_LABELS) {
+              emitAiProgress(onProgress, phase, payload.label || AI_PROGRESS_LABELS[phase]);
+            }
+          } catch {
+            // Ignore malformed status events and continue reading.
+          }
+        }
+
+        if (parsedEvent.event === 'result') {
+          return JSON.parse(parsedEvent.data) as GeminiProxySuccessPayload;
+        }
+
+        if (parsedEvent.event === 'error') {
+          try {
+            const payload = JSON.parse(parsedEvent.data) as { message?: string };
+            throw new Error(payload.message || 'AI request failed.');
+          } catch (error) {
+            if (error instanceof Error) {
+              throw error;
+            }
+            throw new Error('AI request failed.');
+          }
+        }
+      }
+
+      delimiterIndex = buffer.indexOf('\n\n');
+    }
+
+    if (done) {
+      break;
+    }
+  }
+
+  throw new Error('AI request ended before a final result was returned.');
+};
+
+const invokeGeminiProxy = async (
+  prompt: string,
+  expectJson: boolean,
+  accessToken: string,
+  onProgress?: AiProgressListener,
+): Promise<GeminiProxySuccessPayload> => {
+  const response = await fetch(GEMINI_PROXY_ENDPOINT, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      apikey: supabaseAnonKey,
+      Accept: onProgress ? 'text/event-stream' : 'application/json',
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      prompt,
+      expectJson,
+      stream: Boolean(onProgress),
+    }),
+  });
+
+  if (!response.ok) {
+    throw new Error(await readProxyErrorMessage(response));
+  }
+
+  const contentType = response.headers.get('content-type') || '';
+  if (contentType.includes('text/event-stream')) {
+    return consumeGeminiProxyStream(response, onProgress);
+  }
+
+  const payload = (await response.json()) as GeminiProxySuccessPayload & { error?: string };
+  if (payload.error) {
+    throw new Error(payload.error);
+  }
+
+  emitAiProgress(onProgress, 'finalizing');
+  return payload;
+};
+
 const callWithRetry = async (
   prompt: string,
   expectJson: boolean,
   retries = 2,
   hasRefreshedSession = false,
+  onProgress?: AiProgressListener,
 ): Promise<string> => {
   try {
+    emitAiProgress(onProgress, 'authenticating');
     const accessToken = await getValidAccessToken('Please sign in again to use AI tools.');
-    const { data, error, response } = await supabase.functions.invoke('gemini-proxy', {
-      body: { prompt, expectJson },
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-      },
-    });
+    const data = await invokeGeminiProxy(prompt, expectJson, accessToken, onProgress);
 
-    if (error) {
-      let responseMessage = '';
-      if (response) {
-        try {
-          const payload = await response.clone().json();
-          responseMessage = typeof payload?.message === 'string'
-            ? payload.message
-            : typeof payload?.error === 'string'
-              ? payload.error
-              : '';
-        } catch {
-          // Fall through to the generic error message below.
-        }
-      }
-      throw new Error(normalizeErrorMessage(responseMessage || error.message));
-    }
-    if (data?.error) throw new Error(data.error);
-
-    let text: string = data?.text ?? '';
+    let text: string = data.text ?? '';
     if (expectJson) text = text.replace(/```json/g, '').replace(/```/g, '').trim();
     return text;
   } catch (error: unknown) {
@@ -113,7 +311,7 @@ const callWithRetry = async (
     ) {
       try {
         await getValidAccessToken('Please sign in again to use AI tools.');
-        return callWithRetry(prompt, expectJson, retries, true);
+        return callWithRetry(prompt, expectJson, retries, true, onProgress);
       } catch {
         // Fall through to the shared error handling below.
       }
@@ -122,7 +320,8 @@ const callWithRetry = async (
       const delay = RETRY_DELAYS[RETRY_DELAYS.length - retries] ?? 15000;
       console.warn(`Rate limited — retrying in ${delay / 1000}s (${retries} retries left)`);
       await new Promise((r) => setTimeout(r, delay));
-      return callWithRetry(prompt, expectJson, retries - 1, hasRefreshedSession);
+      emitAiProgress(onProgress, 'preparing', `Retrying in ${delay / 1000}s…`);
+      return callWithRetry(prompt, expectJson, retries - 1, hasRefreshedSession, onProgress);
     }
     return handleError(error);
   }
@@ -132,9 +331,11 @@ const callGemini = async (
   prompt: string,
   cacheKey: string,
   expectJson = false,
+  onProgress?: AiProgressListener,
 ): Promise<string> => {
-  const cached = responseCache.get(cacheKey);
+  const cached = getCachedResponse(cacheKey);
   if (cached) {
+    emitAiProgress(onProgress, 'cached');
     return cached;
   }
 
@@ -144,13 +345,15 @@ const callGemini = async (
   }
 
   const request = requestScheduler.run(async () => {
-    const queuedCached = responseCache.get(cacheKey);
+    const queuedCached = getCachedResponse(cacheKey);
     if (queuedCached) {
+      emitAiProgress(onProgress, 'cached');
       return queuedCached;
     }
 
-    const text = await callWithRetry(prompt, expectJson);
-    responseCache.set(cacheKey, text);
+    emitAiProgress(onProgress, 'preparing');
+    const text = await callWithRetry(prompt, expectJson, 2, false, onProgress);
+    setCachedResponse(cacheKey, text);
     return text;
   });
 
@@ -304,6 +507,7 @@ export const generateTailoredSummary = async (
   role: string,
   company: string,
   jobDescription: string,
+  onProgress?: AiProgressListener,
 ): Promise<TailoredSummaryResult> => {
   const trimmedJD = jobDescription.trim().slice(0, 2500);
   try { getActiveSkillItems(resumeData.skills); } catch { /* ignore */ }
@@ -396,8 +600,9 @@ RULES:
   const cacheKey = `tailor-v4-${role}-${hashString(trimmedJD)}-${hashString(
     `${skillsContext}\n${experienceText}`,
   )}`;
-  const cached = responseCache.get(cacheKey);
+  const cached = getCachedResponse(cacheKey);
   if (cached) {
+    emitAiProgress(onProgress, 'cached');
     try {
       return parseTailoredSummaryResult(JSON.parse(cached));
     } catch (error) {
@@ -410,12 +615,14 @@ RULES:
         },
         error,
       });
-      responseCache.delete(cacheKey);
+      deleteCachedResponse(cacheKey);
     }
   }
 
+  const requestCacheKey = `${cacheKey}:raw`;
+
   try {
-    const resultText = await callGemini(prompt, cacheKey, true);
+    const resultText = await callGemini(prompt, requestCacheKey, true, onProgress);
     const parsed = parseTailoredSummaryResult(JSON.parse(resultText));
     const experienceDescriptions = new Map(
       resumeData.experience.map((item) => [item.id, item.description]),
@@ -426,9 +633,11 @@ RULES:
       experienceAdditions: parsed.experienceAdditions || [],
     }, experienceDescriptions);
 
-    responseCache.set(cacheKey, JSON.stringify(sanitized));
+    deleteCachedResponse(requestCacheKey);
+    setCachedResponse(cacheKey, JSON.stringify(sanitized));
     return sanitized;
   } catch (error: unknown) {
+    deleteCachedResponse(requestCacheKey);
     console.error('Tailor Error:', error);
     throw error;
   }
@@ -441,6 +650,7 @@ export const generateCoverLetterText = async (
   manager: string,
   tone: string,
   jobDescription?: string,
+  onProgress?: AiProgressListener,
 ): Promise<string> => {
   let activeSkills: string[] = [];
   try { activeSkills = getActiveSkillItems(resumeData.skills); } catch { activeSkills = []; }
@@ -477,13 +687,14 @@ RULES:
 - Return ONLY the letter text
 `.trim();
 
-  return callGemini(prompt, cacheKey, false);
+  return callGemini(prompt, cacheKey, false, onProgress);
 };
 
 export const analyzeAtsCompleteness = async (
   resumeData: ResumeData,
   role: string,
   jobDescription: string,
+  onProgress?: AiProgressListener,
 ): Promise<AtsAuditResult> => {
   const trimmedJD = jobDescription.trim().slice(0, 1500);
   const resumeContext = buildAtsResumeContext(resumeData);
@@ -557,7 +768,7 @@ RULES for improvements:
 2. For 'skill', 'current' must be the exact skill name from the resume.
 3. Max 3 improvements total.`.trim();
 
-  const resultText = await callGemini(prompt, cacheKey, true);
+  const resultText = await callGemini(prompt, cacheKey, true, onProgress);
   try {
     return sanitizeAtsAuditResult(
       parseAtsAuditResult(JSON.parse(resultText)),
@@ -565,6 +776,7 @@ RULES for improvements:
     );
   } catch (e) {
     console.error('JSON Parse Error', e);
+    deleteCachedResponse(cacheKey);
     return {
       score: 0, keywordCoverage: 0, matchedCount: 0, keywordCount: 0,
       quantifiedBulletCount: 0, breakdown: [], matchedKeywords: [],
