@@ -3,12 +3,14 @@ import TemplateRenderer from "../templates/TemplateRenderer";
 import type { ResumeData } from "../../../domain/resume";
 import type { TemplateId } from "../../../domain/templates";
 import type { BuilderAiHighlights } from "../../../types/builder";
-
-export const PAGE_WIDTH_PX = 794;
-export const PAGE_HEIGHT_PX = 1123;
-export const PAGE_PADDING_TOP_PX = 47;
-export const PAGE_PADDING_BOTTOM_PX = 47;
-export const PAGE_PADDING_SIDE_PX = 57;
+import {
+  PAGE_HEIGHT_PX,
+  PAGE_PADDING_BOTTOM_PX,
+  PAGE_PADDING_SIDE_PX,
+  PAGE_PADDING_TOP_PX,
+  PAGE_WIDTH_PX,
+  calculatePageBreaks,
+} from "./pagination";
 
 const DEFAULT_PAGE_GAP_PX = 24;
 const CONTENT_HEIGHT_PER_PAGE =
@@ -18,71 +20,6 @@ const getContentHeightForPage = (pageIndex: number, flushHeader: boolean) =>
   pageIndex === 0 && flushHeader
     ? CONTENT_HEIGHT_PER_PAGE + PAGE_PADDING_TOP_PX
     : CONTENT_HEIGHT_PER_PAGE;
-
-const calculatePageBreaks = (
-  container: HTMLDivElement,
-  flushHeader: boolean,
-): number[] => {
-  const containerTop = container.getBoundingClientRect().top;
-
-  const headerEl = container.querySelector<HTMLElement>(
-    '[data-page-header="true"]',
-  );
-  const headerHeight = headerEl ? headerEl.getBoundingClientRect().height : 0;
-
-  const allElements = Array.from(
-    container.querySelectorAll<HTMLElement>(
-      "p, h1, h2, h3, h4, h5, h6, li, td, th, span, div",
-    ),
-  ).filter((el) => {
-    const rect = el.getBoundingClientRect();
-    const hasHeight = rect.height > 0;
-    const hasText = (el.textContent || "").trim().length > 0;
-    const hasBlockChildren = Array.from(el.children).some((child) => {
-      const style = window.getComputedStyle(child);
-      return (
-        style.display === "block" ||
-        style.display === "flex" ||
-        style.display === "grid"
-      );
-    });
-    return hasHeight && hasText && !hasBlockChildren;
-  });
-
-  const breaks: number[] = [0];
-  let currentPageStart = 0;
-  let isFirstPage = true;
-
-  allElements.forEach((el) => {
-    const rects = Array.from(el.getClientRects());
-    if (rects.length === 0) return;
-
-    for (const rect of rects) {
-      const lineTop = rect.top - containerTop;
-      const lineBottom = rect.bottom - containerTop;
-
-      const pageHeight = isFirstPage
-        ? getContentHeightForPage(0, flushHeader) - headerHeight
-        : CONTENT_HEIGHT_PER_PAGE;
-
-      const pageBoundary = currentPageStart + pageHeight;
-
-      if (lineBottom > pageBoundary) {
-        if (lineTop > currentPageStart + 0.5) {
-          breaks.push(lineTop);
-          currentPageStart = lineTop;
-        } else {
-          breaks.push(pageBoundary);
-          currentPageStart = pageBoundary;
-        }
-        isFirstPage = false;
-        break;
-      }
-    }
-  });
-
-  return breaks;
-};
 
 interface HtmlTemplateDocumentProps {
   data: ResumeData;

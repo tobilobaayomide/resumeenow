@@ -240,31 +240,32 @@ const SiliconTemplate: React.FC<BuilderTemplateComponentProps> = ({
               {experience.map((exp) => (
                 <div
                   key={exp.id}
-                  data-no-split="true"
                   data-ai-highlight-anchor={`experience-${exp.id}`}
                 >
-                  <div className="flex items-baseline justify-between gap-2">
-                    <div className="flex items-baseline gap-0 flex-wrap">
-                      <span
-                        className="text-[12.5px] font-bold"
-                        style={{ color: INK }}
-                      >
-                        {exp.role}
-                      </span>
-                      <span
-                        className="text-[11px] mx-1.5 font-bold"
-                        style={{ color: PROMPT }}
-                      >
-                        @
-                      </span>
-                      <span
-                        className="text-[12px] font-medium"
-                        style={{ color: INK }}
-                      >
-                        {exp.company}
-                      </span>
+                  <div data-no-split="true">
+                    <div className="flex items-baseline justify-between gap-2">
+                      <div className="flex items-baseline gap-0 flex-wrap">
+                        <span
+                          className="text-[12.5px] font-bold"
+                          style={{ color: INK }}
+                        >
+                          {exp.role}
+                        </span>
+                        <span
+                          className="text-[11px] mx-1.5 font-bold"
+                          style={{ color: PROMPT }}
+                        >
+                          @
+                        </span>
+                        <span
+                          className="text-[12px] font-medium"
+                          style={{ color: INK }}
+                        >
+                          {exp.company}
+                        </span>
+                      </div>
+                      <DateBracket start={exp.startDate} end={exp.endDate} />
                     </div>
-                    <DateBracket start={exp.startDate} end={exp.endDate} />
                   </div>
                   {exp.description &&
                     (() => {
@@ -296,30 +297,32 @@ const SiliconTemplate: React.FC<BuilderTemplateComponentProps> = ({
             <SectionHeading label="Projects" />
             <div className="space-y-4 pl-4">
               {projects.map((project) => (
-                <div key={project.id} data-no-split="true">
-                  <div className="flex items-baseline justify-between gap-2">
-                    <span
-                      className="text-[12px] font-bold"
-                      style={{ color: INK }}
-                    >
-                      {project.name}
-                    </span>
-                    <DateBracket
-                      start={project.startDate}
-                      end={project.endDate}
-                    />
+                <div key={project.id}>
+                  <div data-no-split="true">
+                    <div className="flex items-baseline justify-between gap-2">
+                      <span
+                        className="text-[12px] font-bold"
+                        style={{ color: INK }}
+                      >
+                        {project.name}
+                      </span>
+                      <DateBracket
+                        start={project.startDate}
+                        end={project.endDate}
+                      />
+                    </div>
+                    {project.link && (
+                      <a
+                        href={toExternalLinkHref(project.link)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-[10px] break-all hover:underline"
+                        style={{ color: PROMPT }}
+                      >
+                        {project.link}
+                      </a>
+                    )}
                   </div>
-                  {project.link && (
-                    <a
-                      href={toExternalLinkHref(project.link)}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-[10px] break-all hover:underline"
-                      style={{ color: PROMPT }}
-                    >
-                      {project.link}
-                    </a>
-                  )}
                   {project.description &&
                     (() => {
                       const bullets = toDescriptionBullets(project.description);
@@ -346,29 +349,31 @@ const SiliconTemplate: React.FC<BuilderTemplateComponentProps> = ({
             <SectionHeading label="Volunteering" />
             <div className="space-y-4 pl-4">
               {volunteering.map((item) => (
-                <div key={item.id} data-no-split="true">
-                  <div className="flex items-baseline justify-between gap-2">
-                    <div className="flex items-baseline gap-0 flex-wrap">
-                      <span
-                        className="text-[12px] font-bold"
-                        style={{ color: INK }}
-                      >
-                        {item.role}
-                      </span>
-                      <span
-                        className="text-[11px] mx-1.5 font-bold"
-                        style={{ color: PROMPT }}
-                      >
-                        @
-                      </span>
-                      <span
-                        className="text-[12px] font-medium"
-                        style={{ color: INK }}
-                      >
-                        {item.company}
-                      </span>
+                <div key={item.id}>
+                  <div data-no-split="true">
+                    <div className="flex items-baseline justify-between gap-2">
+                      <div className="flex items-baseline gap-0 flex-wrap">
+                        <span
+                          className="text-[12px] font-bold"
+                          style={{ color: INK }}
+                        >
+                          {item.role}
+                        </span>
+                        <span
+                          className="text-[11px] mx-1.5 font-bold"
+                          style={{ color: PROMPT }}
+                        >
+                          @
+                        </span>
+                        <span
+                          className="text-[12px] font-medium"
+                          style={{ color: INK }}
+                        >
+                          {item.company}
+                        </span>
+                      </div>
+                      <DateBracket start={item.startDate} end={item.endDate} />
                     </div>
-                    <DateBracket start={item.startDate} end={item.endDate} />
                   </div>
                   {item.description &&
                     (() => {
@@ -392,31 +397,33 @@ const SiliconTemplate: React.FC<BuilderTemplateComponentProps> = ({
         )}
 
      {education.length > 0 && (
-  <section>
+ <section>
     <SectionHeading label="Education" />
     <div className="space-y-3 pl-4">
       {education.map((edu) => (
-        <div key={edu.id} data-no-split="true">
-          <div className="flex items-baseline justify-between gap-2">
-            <div>
-              <div
-                className="text-[12px] font-bold"
-                style={{ color: INK }}
-              >
-                {edu.school}
-              </div>
-
-              {edu.degree && (
+        <div key={edu.id}>
+          <div data-no-split="true">
+            <div className="flex items-baseline justify-between gap-2">
+              <div>
                 <div
-                  className="text-[12px] mt-1"
+                  className="text-[12px] font-bold"
                   style={{ color: INK }}
                 >
-                  {edu.degree}
+                  {edu.school}
                 </div>
-              )}
-            </div>
 
-            <DateBracket start={edu.startDate} end={edu.endDate} />
+                {edu.degree && (
+                  <div
+                    className="text-[12px] mt-1"
+                    style={{ color: INK }}
+                  >
+                    {edu.degree}
+                  </div>
+                )}
+              </div>
+
+              <DateBracket start={edu.startDate} end={edu.endDate} />
+            </div>
           </div>
 
           {edu.description && (

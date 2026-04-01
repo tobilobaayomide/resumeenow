@@ -226,24 +226,25 @@ const StudioTemplate: React.FC<BuilderTemplateComponentProps> = ({
               {experience.map((exp) => (
                 <Entry
                   key={exp.id}
-                  noSplit
                   data-ai-highlight-anchor={`experience-${exp.id}`}
                 >
-                  <div className="flex items-baseline justify-between gap-4">
-                    <h3
-                      style={{ color: ACCENT }}
-                      className="text-[12.5px] font-black leading-snug uppercase tracking-[0.02em]"
-                    >
-                      {exp.role}
-                    </h3>
-                    <DateBadge>
-                      {exp.startDate}
-                      {exp.endDate ? ` – ${exp.endDate}` : " – Present"}
-                    </DateBadge>
+                  <div data-no-split="true">
+                    <div className="flex items-baseline justify-between gap-4">
+                      <h3
+                        style={{ color: ACCENT }}
+                        className="text-[12.5px] font-black leading-snug uppercase tracking-[0.02em]"
+                      >
+                        {exp.role}
+                      </h3>
+                      <DateBadge>
+                        {exp.startDate}
+                        {exp.endDate ? ` – ${exp.endDate}` : " – Present"}
+                      </DateBadge>
+                    </div>
+                    <p className="text-[10.5px] font-semibold text-gray-500 mt-0.5">
+                      {exp.company}
+                    </p>
                   </div>
-                  <p className="text-[10.5px] font-semibold text-gray-500 mt-0.5">
-                    {exp.company}
-                  </p>
                   {exp.description &&
                     (() => {
                       const bullets = toDescriptionBullets(exp.description);
@@ -321,22 +322,24 @@ const StudioTemplate: React.FC<BuilderTemplateComponentProps> = ({
             <SectionHeading>Education</SectionHeading>
             <div className="space-y-4">
               {education.map((edu) => (
-                <Entry key={edu.id} noSplit>
-                  <div className="flex items-baseline justify-between gap-4">
-                    <h3
-                      style={{ color: ACCENT }}
-                      className="text-[12px] font-black leading-snug uppercase tracking-[0.02em]"
-                    >
-                      {edu.school}
-                    </h3>
-                    <DateBadge>
-                      {edu.startDate}
-                      {edu.endDate ? ` – ${edu.endDate}` : ""}
-                    </DateBadge>
+                <Entry key={edu.id}>
+                  <div data-no-split="true">
+                    <div className="flex items-baseline justify-between gap-4">
+                      <h3
+                        style={{ color: ACCENT }}
+                        className="text-[12px] font-black leading-snug uppercase tracking-[0.02em]"
+                      >
+                        {edu.school}
+                      </h3>
+                      <DateBadge>
+                        {edu.startDate}
+                        {edu.endDate ? ` – ${edu.endDate}` : ""}
+                      </DateBadge>
+                    </div>
+                    <p className="text-[10.5px] font-semibold text-gray-500 mt-0.5">
+                      {edu.degree}
+                    </p>
                   </div>
-                  <p className="text-[10.5px] font-semibold text-gray-500 mt-0.5">
-                    {edu.degree}
-                  </p>
                   {edu.description && (
                     <p
                       data-break-point="true"
@@ -398,22 +401,24 @@ const StudioTemplate: React.FC<BuilderTemplateComponentProps> = ({
             <SectionHeading>Volunteering</SectionHeading>
             <div className="space-y-4">
               {volunteering.map((item) => (
-                <Entry key={item.id} noSplit>
-                  <div className="flex items-baseline justify-between gap-4">
-                    <h3
-                      style={{ color: ACCENT }}
-                      className="text-[12px] font-black leading-snug uppercase tracking-[0.02em]"
-                    >
-                      {item.role}
-                    </h3>
-                    <DateBadge>
-                      {item.startDate}
-                      {item.endDate ? ` – ${item.endDate}` : " – Present"}
-                    </DateBadge>
+                <Entry key={item.id}>
+                  <div data-no-split="true">
+                    <div className="flex items-baseline justify-between gap-4">
+                      <h3
+                        style={{ color: ACCENT }}
+                        className="text-[12px] font-black leading-snug uppercase tracking-[0.02em]"
+                      >
+                        {item.role}
+                      </h3>
+                      <DateBadge>
+                        {item.startDate}
+                        {item.endDate ? ` – ${item.endDate}` : " – Present"}
+                      </DateBadge>
+                    </div>
+                    <p className="text-[10.5px] font-semibold text-gray-500 mt-0.5">
+                      {item.company}
+                    </p>
                   </div>
-                  <p className="text-[10.5px] font-semibold text-gray-500 mt-0.5">
-                    {item.company}
-                  </p>
                   {item.description &&
                     (() => {
                       const bullets = toDescriptionBullets(item.description);

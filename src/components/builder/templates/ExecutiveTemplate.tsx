@@ -216,35 +216,36 @@ const ExecutiveTemplate: React.FC<BuilderTemplateComponentProps> = ({
                   {experience.map((exp) => (
                     <div
                       key={exp.id}
-                      data-no-split="true"
                       data-ai-highlight-anchor={`experience-${exp.id}`}
                     >
-                      <div className="flex justify-between items-baseline gap-2">
-                        <h4
-                          className="font-black text-[12.5px] uppercase tracking-[0.02em]"
-                          style={{ color: ACCENT }}
-                        >
-                          {exp.role || (
-                            <span className="text-gray-300">Role</span>
+                      <div data-no-split="true">
+                        <div className="flex justify-between items-baseline gap-2">
+                          <h4
+                            className="font-black text-[12.5px] uppercase tracking-[0.02em]"
+                            style={{ color: ACCENT }}
+                          >
+                            {exp.role || (
+                              <span className="text-gray-300">Role</span>
+                            )}
+                          </h4>
+                          <span
+                            className="text-[9.5px] font-bold whitespace-nowrap shrink-0 px-2 py-0.5 rounded-sm"
+                            style={{
+                              color: GOLD,
+                              backgroundColor: "rgba(176,141,87,0.08)",
+                              border: "1px solid rgba(176,141,87,0.25)",
+                            }}
+                          >
+                            {exp.startDate}
+                            {exp.endDate ? ` — ${exp.endDate}` : " — Present"}
+                          </span>
+                        </div>
+                        <p className="text-[10.5px] font-semibold text-gray-500 mt-0.5">
+                          {exp.company || (
+                            <span className="text-gray-300">Company</span>
                           )}
-                        </h4>
-                        <span
-                          className="text-[9.5px] font-bold whitespace-nowrap shrink-0 px-2 py-0.5 rounded-sm"
-                          style={{
-                            color: GOLD,
-                            backgroundColor: "rgba(176,141,87,0.08)",
-                            border: "1px solid rgba(176,141,87,0.25)",
-                          }}
-                        >
-                          {exp.startDate}
-                          {exp.endDate ? ` — ${exp.endDate}` : " — Present"}
-                        </span>
+                        </p>
                       </div>
-                      <p className="text-[10.5px] font-semibold text-gray-500 mt-0.5">
-                        {exp.company || (
-                          <span className="text-gray-300">Company</span>
-                        )}
-                      </p>
                       {exp.description &&
                         (() => {
                           const bullets = toDescriptionBullets(exp.description);
@@ -274,40 +275,42 @@ const ExecutiveTemplate: React.FC<BuilderTemplateComponentProps> = ({
                 <SectionTitle>Projects</SectionTitle>
                 <div className="space-y-4">
                   {projects.map((project) => (
-                    <div key={project.id} data-no-split="true">
-                      <div className="flex justify-between items-baseline gap-2">
-                        <h4
-                          className="font-black text-[12px] uppercase tracking-[0.02em]"
-                          style={{ color: ACCENT }}
-                        >
-                          {project.name || (
-                            <span className="text-gray-300">Project</span>
-                          )}
-                        </h4>
-                        {(project.startDate || project.endDate) && (
-                          <span
-                            className="text-[9.5px] font-bold whitespace-nowrap shrink-0 px-2 py-0.5 rounded-sm"
-                            style={{
-                              color: GOLD,
-                              backgroundColor: "rgba(176,141,87,0.08)",
-                              border: "1px solid rgba(176,141,87,0.25)",
-                            }}
+                    <div key={project.id}>
+                      <div data-no-split="true">
+                        <div className="flex justify-between items-baseline gap-2">
+                          <h4
+                            className="font-black text-[12px] uppercase tracking-[0.02em]"
+                            style={{ color: ACCENT }}
                           >
-                            {project.startDate}
-                            {project.endDate ? ` — ${project.endDate}` : ""}
-                          </span>
+                            {project.name || (
+                              <span className="text-gray-300">Project</span>
+                            )}
+                          </h4>
+                          {(project.startDate || project.endDate) && (
+                            <span
+                              className="text-[9.5px] font-bold whitespace-nowrap shrink-0 px-2 py-0.5 rounded-sm"
+                              style={{
+                                color: GOLD,
+                                backgroundColor: "rgba(176,141,87,0.08)",
+                                border: "1px solid rgba(176,141,87,0.25)",
+                              }}
+                            >
+                              {project.startDate}
+                              {project.endDate ? ` — ${project.endDate}` : ""}
+                            </span>
+                          )}
+                        </div>
+                        {project.link && (
+                          <a
+                            href={toExternalLinkHref(project.link)}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-[9.5px] text-gray-800 mt-0.5 break-all"
+                          >
+                            {project.link}
+                          </a>
                         )}
                       </div>
-                      {project.link && (
-                        <a
-                          href={toExternalLinkHref(project.link)}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-[9.5px] text-gray-800 mt-0.5 break-all"
-                        >
-                          {project.link}
-                        </a>
-                      )}
                       {project.description &&
                         (() => {
                           const bullets = toDescriptionBullets(
@@ -335,31 +338,33 @@ const ExecutiveTemplate: React.FC<BuilderTemplateComponentProps> = ({
                 <SectionTitle>Volunteering</SectionTitle>
                 <div className="space-y-4">
                   {volunteering.map((item) => (
-                    <div key={item.id} data-no-split="true">
-                      <div className="flex justify-between items-baseline gap-2">
-                        <h4
-                          className="font-black text-[12px] uppercase tracking-[0.02em]"
-                          style={{ color: ACCENT }}
-                        >
-                          {item.role || (
-                            <span className="text-gray-300">Role</span>
-                          )}
-                        </h4>
-                        <span
-                          className="text-[9.5px] font-bold whitespace-nowrap shrink-0 px-2 py-0.5 rounded-sm"
-                          style={{
-                            color: GOLD,
-                            backgroundColor: "rgba(176,141,87,0.08)",
-                            border: "1px solid rgba(176,141,87,0.25)",
-                          }}
-                        >
-                          {item.startDate}
-                          {item.endDate ? ` — ${item.endDate}` : " — Present"}
-                        </span>
+                    <div key={item.id}>
+                      <div data-no-split="true">
+                        <div className="flex justify-between items-baseline gap-2">
+                          <h4
+                            className="font-black text-[12px] uppercase tracking-[0.02em]"
+                            style={{ color: ACCENT }}
+                          >
+                            {item.role || (
+                              <span className="text-gray-300">Role</span>
+                            )}
+                          </h4>
+                          <span
+                            className="text-[9.5px] font-bold whitespace-nowrap shrink-0 px-2 py-0.5 rounded-sm"
+                            style={{
+                              color: GOLD,
+                              backgroundColor: "rgba(176,141,87,0.08)",
+                              border: "1px solid rgba(176,141,87,0.25)",
+                            }}
+                          >
+                            {item.startDate}
+                            {item.endDate ? ` — ${item.endDate}` : " — Present"}
+                          </span>
+                        </div>
+                        <p className="text-[10.5px] font-semibold text-gray-500 mt-0.5">
+                          {item.company}
+                        </p>
                       </div>
-                      <p className="text-[10.5px] font-semibold text-gray-500 mt-0.5">
-                        {item.company}
-                      </p>
                       {item.description &&
                         (() => {
                           const bullets = toDescriptionBullets(
@@ -395,25 +400,27 @@ const ExecutiveTemplate: React.FC<BuilderTemplateComponentProps> = ({
                 <SectionTitle>Education</SectionTitle>
                 <div className="space-y-4">
                   {education.map((edu) => (
-                    <div key={edu.id} data-no-split="true">
-                      <h4
-                        className="font-black text-[11px] leading-snug uppercase tracking-[0.02em]"
-                        style={{ color: ACCENT }}
-                      >
-                        {edu.school || (
-                          <span className="text-gray-300">School</span>
-                        )}
-                      </h4>
-                      <p className="text-[10px] font-semibold text-gray-500 mt-0.5">
-                        {edu.degree}
-                      </p>
-                      <p
-                        className="text-[9.5px] font-bold mt-0.5"
-                        style={{ color: GOLD }}
-                      >
-                        {edu.startDate}
-                        {edu.endDate ? ` — ${edu.endDate}` : ""}
-                      </p>
+                    <div key={edu.id}>
+                      <div data-no-split="true">
+                        <h4
+                          className="font-black text-[11px] leading-snug uppercase tracking-[0.02em]"
+                          style={{ color: ACCENT }}
+                        >
+                          {edu.school || (
+                            <span className="text-gray-300">School</span>
+                          )}
+                        </h4>
+                        <p className="text-[10px] font-semibold text-gray-500 mt-0.5">
+                          {edu.degree}
+                        </p>
+                        <p
+                          className="text-[9.5px] font-bold mt-0.5"
+                          style={{ color: GOLD }}
+                        >
+                          {edu.startDate}
+                          {edu.endDate ? ` — ${edu.endDate}` : ""}
+                        </p>
+                      </div>
                       {edu.description && (
                         <p 
                           data-break-point="true"
