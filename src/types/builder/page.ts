@@ -51,6 +51,21 @@ export interface BuilderDraftPayload {
   content: ResumeData;
 }
 
+export type BuilderAiProgressPhase =
+  | 'preparing'
+  | 'authenticating'
+  | 'checking_limits'
+  | 'generating'
+  | 'finalizing'
+  | 'cached';
+
+export interface BuilderAiProgressState {
+  phase: BuilderAiProgressPhase;
+  label: string;
+}
+
+export type BuilderAiProgressStatus = 'active' | 'success';
+
 export interface BuilderHeaderProps {
   title: string;
   saveStatusLabel: string;
@@ -100,6 +115,8 @@ export interface UseBuilderDraftMutationsResult {
 export interface BuilderAiWorkflowModalProps {
   isGenerating: boolean;
   isExportingCoverLetter: boolean;
+  aiProgress: BuilderAiProgressState | null;
+  aiProgressStatus: BuilderAiProgressStatus | null;
   activeAiFlow: AiFlowFeature | null;
   tailorRole: string;
   tailorCompany: string;

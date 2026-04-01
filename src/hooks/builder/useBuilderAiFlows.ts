@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import type { CoverLetterTone } from '../../types/builder';
+import type { AiFlowFeature } from '../../domain/workflows';
 import {
   collectAddedBuilderAiSkills,
   createBuilderAiExperienceHighlights,
@@ -21,6 +22,7 @@ import {
 } from '../../lib/descriptionBullets';
 import {
   analyzeAtsCompleteness,
+  type AiRequestProgress,
   generateCoverLetterText,
   generateTailoredSummary,
 } from '../../lib/gemini';
@@ -64,8 +66,58 @@ const buildCoverLetterFileName = (
 const getErrorMessage = (error: unknown, fallback: string): string =>
   error instanceof Error && error.message.trim() ? error.message : fallback;
 
+const AI_PROGRESS_SUCCESS_LABELS: Record<AiFlowFeature, string> = {
+  ai_tailor: 'Tailor strategy ready.',
+  ats_audit: 'ATS audit ready.',
+  cover_letter: 'Cover letter ready.',
+};
+
+const getAiProgressLabel = (
+  flow: AiFlowFeature,
+  progress: AiRequestProgress,
+): string => {
+  switch (flow) {
+    case 'ai_tailor':
+      return (
+        {
+          preparing: 'Reading your resume and target role…',
+          authenticating: 'Securing your AI session…',
+          checking_limits: 'Checking plan limits…',
+          generating: 'Building your tailoring strategy…',
+          finalizing: 'Polishing suggested edits…',
+          cached: 'Loaded a recent tailor result.',
+        } satisfies Record<AiRequestProgress['phase'], string>
+      )[progress.phase];
+    case 'ats_audit':
+      return (
+        {
+          preparing: 'Reading the job description…',
+          authenticating: 'Securing your AI session…',
+          checking_limits: 'Checking plan limits…',
+          generating: 'Scoring ATS compatibility…',
+          finalizing: 'Summarizing gaps and fixes…',
+          cached: 'Loaded a recent ATS audit.',
+        } satisfies Record<AiRequestProgress['phase'], string>
+      )[progress.phase];
+    case 'cover_letter':
+      return (
+        {
+          preparing: 'Gathering your resume context…',
+          authenticating: 'Securing your AI session…',
+          checking_limits: 'Checking plan limits…',
+          generating: 'Drafting your cover letter…',
+          finalizing: 'Polishing the final draft…',
+          cached: 'Loaded a recent cover letter draft.',
+        } satisfies Record<AiRequestProgress['phase'], string>
+      )[progress.phase];
+  }
+};
+
 export function useBuilderAiFlows() {
   const [isExportingCoverLetter, setIsExportingCoverLetter] = useState(false);
+  const [aiProgress, setAiProgress] = useState<AiRequestProgress | null>(null);
+  const [aiProgressStatus, setAiProgressStatus] = useState<'active' | 'success' | null>(null);
+  const aiProgressResetTimeoutRef = useRef<number | null>(null);
   const title = useBuilderStore((store) => store.title);
   const resumeData = useBuilderStore((store) => store.resumeData);
   const setResumeData = useBuilderStore((store) => store.setResumeData);
@@ -102,6 +154,54 @@ export function useBuilderAiFlows() {
 
   const { requestAccess, refreshCredits } = usePlan();
 
+  const clearAiProgressReset = () => {
+    if (aiProgressResetTimeoutRef.current !== null) {
+      window.clearTimeout(aiProgressResetTimeoutRef.current);
+      aiProgressResetTimeoutRef.current = null;
+    }
+  };
+
+  useEffect(() => () => {
+    if (aiProgressResetTimeoutRef.current !== null) {
+      window.clearTimeout(aiProgressResetTimeoutRef.current);
+      aiProgressResetTimeoutRef.current = null;
+    }
+  }, []);
+
+  const bindAiProgress = (flow: AiFlowFeature) => {
+    return (progress: AiRequestProgress) => {
+      clearAiProgressReset();
+      setAiProgress({
+        ...progress,
+        label: getAiProgressLabel(flow, progress),
+      });
+      setAiProgressStatus('active');
+    };
+  };
+
+  const resetAiProgress = () => {
+    clearAiProgressReset();
+    setAiProgress(null);
+    setAiProgressStatus(null);
+  };
+
+  const completeAiProgress = (
+    flow: AiFlowFeature,
+    label = AI_PROGRESS_SUCCESS_LABELS[flow],
+  ) => {
+    clearAiProgressReset();
+    setAiProgress((current) => ({
+      phase: current?.phase === 'cached' ? 'cached' : 'finalizing',
+      label,
+    }));
+    setAiProgressStatus('success');
+    aiProgressResetTimeoutRef.current = window.setTimeout(() => {
+      setAiProgress(null);
+      setAiProgressStatus(null);
+      aiProgressResetTimeoutRef.current = null;
+    }, 900);
+  };
+
   const generateAiTailorPreview = async () => {
     if (!validateRequiredFields([
       { label: 'target role', value: tailorRole },
@@ -113,7 +213,7 @@ export function useBuilderAiFlows() {
     if (!requestAccess('ai_tailor')) return;
 
     setIsGenerating(true);
-    const loadingToast = toast.loading('Tailoring resume...');
+    resetAiProgress();
 
     try {
       const tailored = await generateTailoredSummary(
@@ -121,10 +221,12 @@ export function useBuilderAiFlows() {
         tailorRole,
         tailorCompany,
         tailorJobDescription,
+        bindAiProgress('ai_tailor'),
       );
 
       if (!tailored.jobTitleAfter) {
-        toast.info('AI did not return usable edits. Tailoring skipped.', { id: loadingToast });
+        completeAiProgress('ai_tailor', 'No usable edits returned.');
+        toast.info('AI did not return usable edits. Tailoring skipped.');
         return;
       }
 
@@ -137,17 +239,11 @@ export function useBuilderAiFlows() {
         contactFix: tailored.contactFix,
         keywordAlignment: tailored.keywordAlignment || { matched: [], injected: [], stillMissing: [] },
       });
-
-      // Show specific change in toast
-      toast.success(
-        'Tailor Strategy generated! Review the board.',
-        { id: loadingToast },
-      );
-
-      // Do NOT close flow yet, wait for confirming preview
+      completeAiProgress('ai_tailor');
     } catch (error) {
       console.error(error);
-      toast.error(getErrorMessage(error, 'Failed to tailor resume.'), { id: loadingToast });
+      resetAiProgress();
+      toast.error(getErrorMessage(error, 'Failed to tailor resume.'));
     } finally {
       setIsGenerating(false);
       await refreshCredits();
@@ -372,7 +468,7 @@ export function useBuilderAiFlows() {
     if (!requestAccess('cover_letter')) return;
 
     setIsGenerating(true);
-    const loadingToast = toast.loading('Drafting cover letter...');
+    resetAiProgress();
 
     try {
       const draft = await generateCoverLetterText(
@@ -383,13 +479,15 @@ export function useBuilderAiFlows() {
         coverTone,
         // Pass tailor JD if available so cover letter uses same keywords
         tailorJobDescription || undefined,
+        bindAiProgress('cover_letter'),
       );
 
       setCoverLetterDraft(draft.trim());
-      toast.success('Cover letter generated.', { id: loadingToast });
+      completeAiProgress('cover_letter');
     } catch (error) {
       console.error(error);
-      toast.error(getErrorMessage(error, 'Failed to draft cover letter.'), { id: loadingToast });
+      resetAiProgress();
+      toast.error(getErrorMessage(error, 'Failed to draft cover letter.'));
     } finally {
       setIsGenerating(false);
       await refreshCredits();
@@ -406,15 +504,21 @@ export function useBuilderAiFlows() {
     if (!requestAccess('ats_audit')) return;
 
     setIsGenerating(true);
-    const loadingToast = toast.loading('Scanning ATS compatibility...');
+    resetAiProgress();
 
     try {
-      const result = await analyzeAtsCompleteness(resumeData, atsRole, atsJobDescription);
+      const result = await analyzeAtsCompleteness(
+        resumeData,
+        atsRole,
+        atsJobDescription,
+        bindAiProgress('ats_audit'),
+      );
       setAtsResult(result);
-      toast.success('ATS audit complete.', { id: loadingToast });
+      completeAiProgress('ats_audit');
     } catch (error) {
       console.error(error);
-      toast.error(getErrorMessage(error, 'Failed processing audit.'), { id: loadingToast });
+      resetAiProgress();
+      toast.error(getErrorMessage(error, 'Failed processing audit.'));
     } finally {
       setIsGenerating(false);
       await refreshCredits();
@@ -432,6 +536,8 @@ export function useBuilderAiFlows() {
   const aiModalProps: import('../../types/builder/page').BuilderAiWorkflowModalProps = {
     activeAiFlow,
     isGenerating,
+    aiProgress,
+    aiProgressStatus,
 
     tailorRole,
     tailorCompany,
@@ -448,7 +554,10 @@ export function useBuilderAiFlows() {
     coverLetterDraft,
     isExportingCoverLetter,
 
-    onClose: closeAiFlows,
+    onClose: () => {
+      resetAiProgress();
+      closeAiFlows();
+    },
 
     onTailorRoleChange: (value: string) => setTailorFields(value, tailorCompany, tailorJobDescription),
     onTailorCompanyChange: (value: string) => setTailorFields(tailorRole, value, tailorJobDescription),

@@ -13,7 +13,10 @@ import {
   FiSearch,
   FiInfo,
 } from "react-icons/fi";
-import type { BuilderAiWorkflowModalProps } from "../../../types/builder";
+import type {
+  BuilderAiProgressState,
+  BuilderAiWorkflowModalProps,
+} from "../../../types/builder";
 
 const dedupeKeywords = (keywords: string[]) => {
   const seen = new Set<string>();
@@ -31,6 +34,43 @@ const dedupeKeywords = (keywords: string[]) => {
     return result;
   }, []);
 };
+
+const AI_PROGRESS_PERCENTAGES: Record<BuilderAiProgressState["phase"], number> = {
+  preparing: 12,
+  authenticating: 28,
+  checking_limits: 42,
+  generating: 78,
+  finalizing: 92,
+  cached: 100,
+};
+
+const AI_PROGRESS_PHASE_LABELS: Record<BuilderAiProgressState["phase"], string> = {
+  preparing: "Preparing",
+  authenticating: "Authenticating",
+  checking_limits: "Checking limits",
+  generating: "Generating",
+  finalizing: "Finalizing",
+  cached: "Cached result",
+};
+
+const AI_PROGRESS_ORDER: BuilderAiProgressState["phase"][] = [
+  "preparing",
+  "authenticating",
+  "checking_limits",
+  "generating",
+  "finalizing",
+  "cached",
+];
+
+const AI_PROGRESS_STEPS: Array<{
+  label: string;
+  phase: BuilderAiProgressState["phase"];
+}> = [
+  { label: "Prepare", phase: "preparing" },
+  { label: "Secure", phase: "authenticating" },
+  { label: "Generate", phase: "generating" },
+  { label: "Deliver", phase: "finalizing" },
+];
 
 const BuilderAiWorkflowModal: React.FC<BuilderAiWorkflowModalProps> = ({
   activeAiFlow,
@@ -69,6 +109,8 @@ const BuilderAiWorkflowModal: React.FC<BuilderAiWorkflowModalProps> = ({
   onCopyCoverLetter,
   isGenerating,
   isExportingCoverLetter,
+  aiProgress,
+  aiProgressStatus,
   tailorPreview,
 }) => {
   if (!activeAiFlow) return null;
@@ -77,18 +119,47 @@ const BuilderAiWorkflowModal: React.FC<BuilderAiWorkflowModalProps> = ({
     ai_tailor: {
       title: "AI Resume Tailoring",
       icon: <FiZap className="text-indigo-500" size={18} />,
+      progressPanel:
+        "border-indigo-100 bg-[radial-gradient(circle_at_top_left,_rgba(99,102,241,0.18),_transparent_58%),linear-gradient(180deg,#ffffff_0%,#eef2ff_100%)]",
+      progressText: "text-indigo-700",
+      progressBadge: "border-indigo-200 bg-white/85 text-indigo-700",
+      progressBar:
+        "bg-gradient-to-r from-indigo-500 via-violet-500 to-sky-400 shadow-[0_0_18px_rgba(99,102,241,0.28)]",
+      progressStepActive: "text-indigo-700",
     },
     ats_audit: {
       title: "ATS Match Audit",
       icon: <FiCheck className="text-emerald-500" size={18} />,
+      progressPanel:
+        "border-emerald-100 bg-[radial-gradient(circle_at_top_left,_rgba(16,185,129,0.18),_transparent_58%),linear-gradient(180deg,#ffffff_0%,#ecfdf5_100%)]",
+      progressText: "text-emerald-700",
+      progressBadge: "border-emerald-200 bg-white/85 text-emerald-700",
+      progressBar:
+        "bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-400 shadow-[0_0_18px_rgba(16,185,129,0.24)]",
+      progressStepActive: "text-emerald-700",
     },
     cover_letter: {
       title: "Generate Cover Letter",
       icon: <FiFileText className="text-blue-500" size={18} />,
+      progressPanel:
+        "border-blue-100 bg-[radial-gradient(circle_at_top_left,_rgba(59,130,246,0.18),_transparent_58%),linear-gradient(180deg,#ffffff_0%,#eff6ff_100%)]",
+      progressText: "text-blue-700",
+      progressBadge: "border-blue-200 bg-white/85 text-blue-700",
+      progressBar:
+        "bg-gradient-to-r from-blue-500 via-sky-500 to-cyan-400 shadow-[0_0_18px_rgba(59,130,246,0.24)]",
+      progressStepActive: "text-blue-700",
     },
   };
 
   const activeConfig = headerConfig[activeAiFlow];
+  const progressPhaseIndex = aiProgress
+    ? AI_PROGRESS_ORDER.indexOf(aiProgress.phase)
+    : -1;
+  const progressPercent = aiProgress
+    ? aiProgressStatus === "success"
+      ? 100
+      : AI_PROGRESS_PERCENTAGES[aiProgress.phase]
+    : 0;
   const keywordAlignment = tailorPreview?.keywordAlignment || {
     matched: [],
     injected: [],
@@ -211,6 +282,74 @@ const BuilderAiWorkflowModal: React.FC<BuilderAiWorkflowModalProps> = ({
             <FiX size={15} />
           </button>
         </div>
+
+        {aiProgress ? (
+          <div className="shrink-0 border-b border-gray-100 bg-white px-6 py-4">
+            <div
+              className={`overflow-hidden rounded-2xl border px-4 py-3 ${activeConfig.progressPanel}`}
+            >
+              <div className="flex items-start justify-between gap-4">
+                <div className="min-w-0">
+                  <p
+                    className={`text-[10px] font-black uppercase tracking-[0.22em] ${activeConfig.progressText}`}
+                  >
+                    {aiProgressStatus === "success"
+                      ? "Complete"
+                      : AI_PROGRESS_PHASE_LABELS[aiProgress.phase]}
+                  </p>
+                  <p className="mt-1 text-[13px] font-semibold leading-relaxed text-slate-900">
+                    {aiProgress.label}
+                  </p>
+                </div>
+                <span
+                  className={`shrink-0 rounded-full border px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.16em] ${activeConfig.progressBadge}`}
+                >
+                  {aiProgressStatus === "success"
+                    ? "Ready"
+                    : aiProgress.phase === "cached"
+                      ? "Cached"
+                      : "Live"}
+                </span>
+              </div>
+
+              <div className="mt-4">
+                <div className="relative h-1.5 overflow-hidden rounded-full bg-white/80 ring-1 ring-slate-200/70">
+                  <div
+                    className={`h-full rounded-full transition-[width] duration-700 ease-out ${activeConfig.progressBar} ${isGenerating ? "animate-pulse" : ""}`}
+                    style={{ width: `${progressPercent}%` }}
+                  />
+                </div>
+
+                <div className="mt-3 grid grid-cols-4 gap-2">
+                  {AI_PROGRESS_STEPS.map((step) => {
+                    const isStepActive =
+                      aiProgressStatus === "success" ||
+                      progressPhaseIndex >=
+                        AI_PROGRESS_ORDER.indexOf(step.phase);
+
+                    return (
+                      <div
+                        key={step.label}
+                        className={`flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.16em] ${
+                          isStepActive
+                            ? activeConfig.progressStepActive
+                            : "text-slate-400"
+                        }`}
+                      >
+                        <span
+                          className={`h-1.5 w-1.5 rounded-full ${
+                            isStepActive ? activeConfig.progressBar : "bg-slate-300"
+                          }`}
+                        />
+                        <span>{step.label}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          </div>
+        ) : null}
 
         {/* ── BODY ────────────────────────────────────────────────────────── */}
         <div className="overflow-y-auto flex-1 bg-slate-50/30">
