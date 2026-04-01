@@ -2,6 +2,7 @@ import React from "react";
 import { FiCode, FiInfo, FiPlus } from "react-icons/fi";
 import type { EditorPanelState } from "../useEditorPanelState";
 import type { ResumeData } from "../../../../types/resume";
+import DescriptionBulletEditor from "../DescriptionBulletEditor";
 import {
   AddButton,
   Card,
@@ -9,7 +10,6 @@ import {
   Input,
   ItemSwitcher,
   Section,
-  Textarea,
 } from "../common";
 
 interface EditorProjectsSectionProps {
@@ -141,9 +141,9 @@ const EditorProjectsSection: React.FC<EditorProjectsSectionProps> = ({
                     }
                   />
 
-                  <Textarea
+                  <DescriptionBulletEditor
                     label="Description & Tech Stack"
-                    placeholder="What you built, the technologies used, and measurable results..."
+                    placeholder="e.g. Built a multi-tenant dashboard with React, Supabase, and Stripe, improving onboarding speed by 40%."
                     value={state.activeProject.description}
                     onChange={(value) =>
                       state.updateProject(
@@ -152,6 +152,7 @@ const EditorProjectsSection: React.FC<EditorProjectsSectionProps> = ({
                         value,
                       )
                     }
+                    minRows={3}
                   />
                 </div>
               </Card>

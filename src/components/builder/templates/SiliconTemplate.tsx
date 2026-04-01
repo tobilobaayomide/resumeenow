@@ -11,6 +11,7 @@ import {
   previewHighlightSectionClassName,
 } from "./highlightStyles";
 import HighlightedSkillTokens from "./HighlightedSkillTokens";
+import InlineFormattedText from "./InlineFormattedText";
 import { isBuilderAiTextHighlighted } from "../../../lib/builder/aiHighlights";
 import { toDescriptionBullets } from "./utils";
 
@@ -59,7 +60,7 @@ const BulletList: React.FC<{
         }`}
         style={{ color: INK, fontFamily: MONO }}
       >
-        {line}
+        <InlineFormattedText value={line} />
       </li>
     ))}
   </ul>
@@ -280,7 +281,7 @@ const SiliconTemplate: React.FC<BuilderTemplateComponentProps> = ({
                           className="text-[12px] mt-1.5 leading-relaxed text-justify whitespace-pre-line"
                           style={{ color: INK }}
                         >
-                          {exp.description}
+                          <InlineFormattedText value={exp.description} />
                         </p>
                       );
                     })()}
@@ -330,7 +331,7 @@ const SiliconTemplate: React.FC<BuilderTemplateComponentProps> = ({
                           className="text-[12px] mt-1.5 leading-relaxed text-justify"
                           style={{ color: INK }}
                         >
-                          {project.description}
+                          <InlineFormattedText value={project.description} />
                         </p>
                       );
                     })()}
@@ -380,7 +381,7 @@ const SiliconTemplate: React.FC<BuilderTemplateComponentProps> = ({
                           className="text-[12px] mt-1.5 leading-relaxed text-justify whitespace-pre-line"
                           style={{ color: INK }}
                         >
-                          {item.description}
+                          <InlineFormattedText value={item.description} />
                         </p>
                       );
                     })()}
@@ -424,7 +425,7 @@ const SiliconTemplate: React.FC<BuilderTemplateComponentProps> = ({
               className="text-[12px] mt-1 leading-relaxed"
               style={{ color: INK }}
             >
-              {edu.description}
+              <InlineFormattedText value={edu.description} />
             </p>
           )}
         </div>

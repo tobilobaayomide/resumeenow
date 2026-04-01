@@ -11,6 +11,7 @@ import {
   previewHighlightSectionClassName,
 } from "./highlightStyles";
 import HighlightedSkillTokens from "./HighlightedSkillTokens";
+import InlineFormattedText from "./InlineFormattedText";
 import { isBuilderAiTextHighlighted } from "../../../lib/builder/aiHighlights";
 import { toDescriptionBullets } from "./utils";
 
@@ -143,7 +144,7 @@ const BulletList: React.FC<{
         }`}
         style={monoBodyCopyStyle}
       >
-        {line}
+        <InlineFormattedText value={line} />
       </li>
     ))}
   </ul>
@@ -363,7 +364,7 @@ const MonoTemplate: React.FC<BuilderTemplateComponentProps> = ({
                             className="mt-2 text-[11.5px] leading-[1.7] text-left whitespace-pre-line"
                             style={monoBodyCopyStyle}
                           >
-                            {exp.description}
+                            <InlineFormattedText value={exp.description} />
                           </p>
                         );
                       })()
@@ -418,7 +419,7 @@ const MonoTemplate: React.FC<BuilderTemplateComponentProps> = ({
                             className="mt-2 text-[11.5px] leading-[1.7] text-left"
                             style={monoBodyCopyStyle}
                           >
-                            {project.description}
+                            <InlineFormattedText value={project.description} />
                           </p>
                         );
                       })()
@@ -469,7 +470,7 @@ const MonoTemplate: React.FC<BuilderTemplateComponentProps> = ({
                             className="mt-2 text-[11.5px] leading-[1.7] text-left whitespace-pre-line"
                             style={monoBodyCopyStyle}
                           >
-                            {item.description}
+                            <InlineFormattedText value={item.description} />
                           </p>
                         );
                       })()
@@ -515,7 +516,7 @@ const MonoTemplate: React.FC<BuilderTemplateComponentProps> = ({
                       className="mt-2 text-[11.5px] leading-[1.7] text-left whitespace-pre-line"
                       style={monoBodyCopyStyle}
                     >
-                      {edu.description}
+                      <InlineFormattedText value={edu.description} />
                     </p>
                   ) : null}
                 </EntryRow>

@@ -12,6 +12,7 @@ import {
   previewHighlightSectionClassName,
 } from "./highlightStyles";
 import HighlightedSkillTokens from "./HighlightedSkillTokens";
+import InlineFormattedText from "./InlineFormattedText";
 import { isBuilderAiTextHighlighted } from "../../../lib/builder/aiHighlights";
 import { toDescriptionBullets } from "./utils";
 
@@ -104,7 +105,7 @@ const BulletList: React.FC<{
             : ""
         }`}
       >
-        {line}
+        <InlineFormattedText value={line} />
       </li>
     ))}
   </ul>
@@ -257,7 +258,7 @@ const StudioTemplate: React.FC<BuilderTemplateComponentProps> = ({
                           data-break-point="true"
                           className="text-[11px] text-gray-600 mt-2 leading-relaxed text-justify whitespace-pre-line"
                         >
-                          {exp.description}
+                          <InlineFormattedText value={exp.description} />
                         </p>
                       );
                     })()}
@@ -305,7 +306,7 @@ const StudioTemplate: React.FC<BuilderTemplateComponentProps> = ({
                           data-break-point="true"
                           className="text-[11px] text-gray-600 mt-1.5 leading-relaxed text-justify"
                         >
-                          {project.description}
+                          <InlineFormattedText value={project.description} />
                         </p>
                       );
                     })()}
@@ -341,7 +342,7 @@ const StudioTemplate: React.FC<BuilderTemplateComponentProps> = ({
                       data-break-point="true"
                       className="text-[11px] text-gray-600 mt-1 leading-relaxed"
                     >
-                      {edu.description}
+                      <InlineFormattedText value={edu.description} />
                     </p>
                   )}
                 </Entry>
@@ -423,7 +424,7 @@ const StudioTemplate: React.FC<BuilderTemplateComponentProps> = ({
                           data-break-point="true"
                           className="text-[11px] text-gray-600 mt-1.5 leading-relaxed text-justify whitespace-pre-line"
                         >
-                          {item.description}
+                          <InlineFormattedText value={item.description} />
                         </p>
                       );
                     })()}

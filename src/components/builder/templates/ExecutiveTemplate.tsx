@@ -15,6 +15,7 @@ import {
   previewHighlightSectionClassName,
 } from "./highlightStyles";
 import HighlightedSkillTokens from "./HighlightedSkillTokens";
+import InlineFormattedText from "./InlineFormattedText";
 import { isBuilderAiTextHighlighted } from "../../../lib/builder/aiHighlights";
 import { toDescriptionBullets } from "./utils";
 
@@ -58,7 +59,7 @@ const BulletList: React.FC<{
             : ""
         }`}
       >
-        {line}
+        <InlineFormattedText value={line} />
       </li>
     ))}
   </ul>
@@ -258,7 +259,7 @@ const ExecutiveTemplate: React.FC<BuilderTemplateComponentProps> = ({
                               data-break-point="true"
                               className="text-[11px] leading-relaxed text-gray-600 mt-1.5 text-justify whitespace-pre-line"
                             >
-                              {exp.description}
+                              <InlineFormattedText value={exp.description} />
                             </p>
                           );
                         })()}
@@ -319,7 +320,7 @@ const ExecutiveTemplate: React.FC<BuilderTemplateComponentProps> = ({
                               data-break-point="true"
                               className="text-[11px] leading-relaxed text-gray-600 mt-1.5 text-justify"
                             >
-                              {project.description}
+                              <InlineFormattedText value={project.description} />
                             </p>
                           );
                         })()}
@@ -371,7 +372,7 @@ const ExecutiveTemplate: React.FC<BuilderTemplateComponentProps> = ({
                               data-break-point="true"
                               className="text-[11px] leading-relaxed text-gray-600 mt-1.5 text-justify whitespace-pre-line"
                             >
-                              {item.description}
+                              <InlineFormattedText value={item.description} />
                             </p>
                           );
                         })()}
@@ -418,7 +419,7 @@ const ExecutiveTemplate: React.FC<BuilderTemplateComponentProps> = ({
                           data-break-point="true"
                           className="text-[10px] text-gray-500 mt-1 leading-snug"
                         >
-                          {edu.description}
+                          <InlineFormattedText value={edu.description} />
                         </p>
                       )}
                     </div>
@@ -589,7 +590,7 @@ const ExecutiveTemplate: React.FC<BuilderTemplateComponentProps> = ({
                           />
                         ) : (
                           <p className="text-[11px] leading-relaxed text-gray-600 mt-1.5 text-justify whitespace-pre-line">
-                            {exp.description}
+                            <InlineFormattedText value={exp.description} />
                           </p>
                         );
                       })()}
@@ -642,7 +643,7 @@ const ExecutiveTemplate: React.FC<BuilderTemplateComponentProps> = ({
                           <BulletList id={project.id} bullets={bullets} />
                         ) : (
                           <p className="text-[11px] leading-relaxed text-gray-600 mt-1.5 text-justify">
-                            {project.description}
+                            <InlineFormattedText value={project.description} />
                           </p>
                         );
                       })()}
@@ -689,7 +690,7 @@ const ExecutiveTemplate: React.FC<BuilderTemplateComponentProps> = ({
                           <BulletList id={item.id} bullets={bullets} />
                         ) : (
                           <p className="text-[11px] leading-relaxed text-gray-600 mt-1.5 text-justify whitespace-pre-line">
-                            {item.description}
+                            <InlineFormattedText value={item.description} />
                           </p>
                         );
                       })()}

@@ -1,4 +1,5 @@
 import { findMatchingDescriptionBullet } from './descriptionBullets';
+import { stripInlineFormattingText } from './inlineFormatting';
 import { supabase } from './supabase';
 import {
   parseAtsAuditResult,
@@ -171,11 +172,14 @@ const buildAtsResumeContext = (resumeData: ResumeData): string => {
   return `
 Name: ${personalInfo?.fullName || 'N/A'}
 Title: ${personalInfo?.jobTitle || 'N/A'}
-Summary: ${summary || 'None'}
+Summary: ${stripInlineFormattingText(summary || '') || 'None'}
 Skills: ${activeSkills.join(', ') || 'None'}
 Experience: ${
     experience?.slice(0, 4).map(
-      (e) => `[ID: ${e.id}] ${e.role} at ${e.company} (${e.startDate} - ${e.endDate}): ${e.description?.slice(0, 800) || ''}`,
+      (e) =>
+        `[ID: ${e.id}] ${e.role} at ${e.company} (${e.startDate} - ${e.endDate}): ${
+          stripInlineFormattingText(e.description || '').slice(0, 800) || ''
+        }`,
     ).join('\n') || 'None'
   }
 Education: ${
@@ -184,15 +188,16 @@ Education: ${
 };
 
 const splitBullets = (description: string): string[] => {
-  if (!description) return [];
-  const byNewline = description.split('\n').map((b) => b.trim()).filter(Boolean);
+  const plainDescription = stripInlineFormattingText(description);
+  if (!plainDescription) return [];
+  const byNewline = plainDescription.split('\n').map((b) => b.trim()).filter(Boolean);
   if (byNewline.length > 1) return byNewline;
-  const bySentence = description
+  const bySentence = plainDescription
     .split(/(?<=[.!?])\s+(?=[A-Z][a-z])/)
     .map((b) => b.trim())
     .filter(Boolean);
   if (bySentence.length > 1) return bySentence;
-  return [description.trim()];
+  return [plainDescription.trim()];
 };
 
 const extractTopAchievement = (resumeData: ResumeData): string => {
@@ -305,7 +310,12 @@ export const generateTailoredSummary = async (
   const skillsContext = buildSkillsContext(resumeData);
 
   const experienceContext = resumeData.experience.map((e) => {
-    return { id: e.id, role: e.role, company: e.company, description: e.description };
+    return {
+      id: e.id,
+      role: e.role,
+      company: e.company,
+      description: stripInlineFormattingText(e.description),
+    };
   });
 
   const experienceText = experienceContext.map(
@@ -325,7 +335,7 @@ ${trimmedJD}
 ═══════════════════════════════
 CURRENT RESUME:
 Title: ${resumeData.personalInfo?.jobTitle || ''}
-Summary: ${resumeData.summary || ''}
+Summary: ${stripInlineFormattingText(resumeData.summary || '')}
 Skills:
 ${skillsContext || 'None'}
 Experience:
@@ -449,7 +459,7 @@ You are an expert cover letter writer. Write a ${tone} cover letter for the role
 CANDIDATE PROFILE:
 Name: ${candidateName}
 Current Title: ${resumeData.personalInfo?.jobTitle || ''}
-Summary: ${resumeData.summary?.slice(0, 200) || ''}
+Summary: ${stripInlineFormattingText(resumeData.summary || '').slice(0, 200) || ''}
 Top Skills: ${activeSkills.slice(0, 8).join(', ')}
 Key Achievement: ${topAchievement || 'None provided'}
 ${jobDescription ? `\n═══════════════════════════════\nJOB DESCRIPTION:\n${jobDescription.trim().slice(0, 800)}` : ''}
