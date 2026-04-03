@@ -4,14 +4,18 @@ import { useAuth } from '../context/useAuth';
 import {
   fetchProfileRecord,
   getProfileQueryKey,
-  PROFILE_QUERY_STALE_TIME,
 } from '../lib/queries/profile';
 import { parseProfileRole } from '../schemas/integrations/profile';
-import type { ProfileRole } from '../types/profile';
+import {
+  isAdminProfileRole,
+  isSuperAdminProfileRole,
+  type ProfileRole,
+} from '../types/profile';
 
 export interface UseCurrentUserRoleResult {
   role: ProfileRole;
   isAdmin: boolean;
+  isSuperAdmin: boolean;
   loading: boolean;
   error: Error | null;
 }
@@ -24,14 +28,16 @@ export const useCurrentUserRole = (): UseCurrentUserRoleResult => {
     queryKey: getProfileQueryKey(userId),
     queryFn: async () => fetchProfileRecord(userId as string),
     enabled: Boolean(userId),
-    staleTime: PROFILE_QUERY_STALE_TIME,
+    staleTime: 30_000,
+    refetchOnMount: 'always',
   });
 
   const role = useMemo(() => parseProfileRole(profileQuery.data ?? null), [profileQuery.data]);
 
   return {
     role,
-    isAdmin: role === 'admin',
+    isAdmin: isAdminProfileRole(role),
+    isSuperAdmin: isSuperAdminProfileRole(role),
     loading: Boolean(userId) && profileQuery.isPending && profileQuery.data === undefined,
     error: profileQuery.error instanceof Error ? profileQuery.error : null,
   };

@@ -54,6 +54,7 @@ type BeginAiRequestResult = {
 
 type GeminiProfileRoleRecord = {
   role?: string | null;
+  account_status?: string | null;
 };
 
 type GeminiProgressPhase = "checking_limits" | "generating" | "finalizing";
@@ -164,7 +165,7 @@ const executeGeminiRequest = async ({
 
   const { data: profileData, error: profileError } = await supabaseClient
     .from("profiles")
-    .select("role")
+    .select("role, account_status")
     .eq("id", user.id)
     .maybeSingle();
 
@@ -176,7 +177,13 @@ const executeGeminiRequest = async ({
   }
 
   const profileRole = (profileData as GeminiProfileRoleRecord | null)?.role ?? null;
-  const isAdminUser = profileRole === "admin";
+  const accountStatus = (profileData as GeminiProfileRoleRecord | null)?.account_status ?? null;
+  if (accountStatus === "suspended") {
+    throw new HttpError(403, "This account is suspended.", {
+      error: "ACCOUNT_SUSPENDED",
+    });
+  }
+  const isAdminUser = profileRole === "admin" || profileRole === "super_admin";
 
   let beginRequest: BeginAiRequestResult | null = null;
 
