@@ -19,7 +19,7 @@ import type { DashboardNavItem } from '../../types/dashboard';
 const Sidebar: React.FC = () => {
     const { user, signOut } = useAuth();
     const { isPro, planStatus, tier, hasUnlimitedAccess } = usePlan();
-    const { isAdmin } = useCurrentUserRole();
+    const { isAdmin, isSuperAdmin } = useCurrentUserRole();
     const navigate = useNavigate();
     const location = useLocation();
     const showFreeTierPlanUi = planStatus === 'ready' && !isPro;
@@ -29,7 +29,9 @@ const Sidebar: React.FC = () => {
             : planStatus === 'unavailable'
                 ? 'unavailable'
                 : isAdmin
-                    ? 'admin'
+                    ? isSuperAdmin
+                        ? 'super admin'
+                        : 'admin'
                     : hasUnlimitedAccess
                         ? 'unlimited'
                         : tier;
