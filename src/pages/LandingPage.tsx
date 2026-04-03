@@ -71,13 +71,16 @@ const syncPendingTemplate = (templateId: TemplateId | null) => {
 const LandingPage: React.FC = () => {
   const [authOpen, setAuthOpen] = useState(false);
   const [authMode, setAuthMode] = useState<AuthModalMode>("login");
+  const [authRedirectPending, setAuthRedirectPending] = useState(false);
   const [pendingTemplate, setPendingTemplate] = useState<TemplateId | null>(() => readPendingTemplate());
-  const { user } = useAuth();
+  const { user, loading } = useAuth();
   const navigate = useNavigate();
 
   // Redirect if logged in
   React.useEffect(() => {
     if (user) {
+      setAuthRedirectPending(false);
+      setAuthOpen(false);
       const nextTemplate = pendingTemplate ?? readPendingTemplate();
 
       if (nextTemplate) {
@@ -87,11 +90,17 @@ const LandingPage: React.FC = () => {
         return;
       }
       navigate("/dashboard");
+      return;
     }
-  }, [user, navigate, pendingTemplate]);
+
+    if (!loading && authRedirectPending) {
+      setAuthRedirectPending(false);
+    }
+  }, [authRedirectPending, loading, navigate, pendingTemplate, user]);
 
   const openAuth = (mode: 'login' | 'signup') => {
     setAuthMode(mode);
+    setAuthRedirectPending(false);
     setAuthOpen(true);
   };
 
@@ -136,13 +145,20 @@ const LandingPage: React.FC = () => {
         <AuthModal
           open={authOpen}
           onClose={(options) => {
+            if (options?.preservePendingTemplate) {
+              setAuthRedirectPending(true);
+              return;
+            }
+
             setAuthOpen(false);
-            if (!user && !options?.preservePendingTemplate) {
+            setAuthRedirectPending(false);
+            if (!user) {
               setPendingTemplate(null);
               syncPendingTemplate(null);
             }
           }}
           mode={authMode}
+          postAuthPending={authRedirectPending}
         />
       ) : null}
     </div>
