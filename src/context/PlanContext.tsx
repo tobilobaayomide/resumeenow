@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import React, { useState } from 'react';
 import UpgradeModal from '../components/ui/UpgradeModal';
 import { getErrorMessage } from '../lib/errors';
+import { triggerNotificationEvent } from '../lib/notifications/client';
 import { getProfileQueryKey } from '../lib/queries/profile';
 import {
   fetchPlanSnapshot,
@@ -116,6 +117,19 @@ export const PlanProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
           nextRecord.pro_waitlist_joined_at = joinedAt;
           return nextRecord;
+        });
+      }
+
+      if (!alreadyJoined) {
+        void triggerNotificationEvent({
+          type: 'pro_waitlist_joined',
+          payload: {
+            joined_at: joinedAt,
+          },
+        }).catch((error) => {
+          if (typeof console !== 'undefined' && typeof console.error === 'function') {
+            console.error('Failed to trigger waitlist notification:', error);
+          }
         });
       }
 

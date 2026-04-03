@@ -1,5 +1,6 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { User } from '@supabase/supabase-js';
+import { triggerNotificationEvent } from '../lib/notifications/client';
 import { AuthContext } from './auth-context';
 
 const areUsersEquivalent = (left: User | null, right: User | null): boolean => {
@@ -16,6 +17,7 @@ const areUsersEquivalent = (left: User | null, right: User | null): boolean => {
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const lastWelcomeNotificationUserIdRef = useRef<string | null>(null);
 
   useEffect(() => {
     let mounted = true;
@@ -61,6 +63,32 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       unsubscribe?.();
     };
   }, []);
+
+  useEffect(() => {
+    if (!user?.id || !user.email) {
+      return;
+    }
+
+    if (lastWelcomeNotificationUserIdRef.current === user.id) {
+      return;
+    }
+
+    lastWelcomeNotificationUserIdRef.current = user.id;
+
+    void triggerNotificationEvent({
+      type: 'welcome_email',
+      payload: {
+        full_name:
+          typeof user.user_metadata?.full_name === 'string'
+            ? user.user_metadata.full_name
+            : '',
+      },
+    }).catch((error) => {
+      if (typeof console !== 'undefined' && typeof console.error === 'function') {
+        console.error('Failed to trigger welcome notification:', error);
+      }
+    });
+  }, [user]);
 
   const signOut = useCallback(async () => {
     const { supabase } = await import('../lib/supabase');

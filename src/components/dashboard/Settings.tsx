@@ -1,13 +1,17 @@
 import React from 'react';
 import { toast } from 'sonner';
 import { useAuth } from '../../context/useAuth';
-import { useSettingsController } from '../../hooks/dashboard';
+import {
+  useNotificationSettingsController,
+  useSettingsController,
+} from '../../hooks/dashboard';
 import Sidebar from './Sidebar';
 import {
   SettingsAccountTab,
   SettingsComingSoon,
   SettingsHeader,
   SettingsLoading,
+  SettingsNotificationsTab,
   SettingsProfileTab,
   SettingsTabNavigation,
 } from './settings/index';
@@ -32,6 +36,19 @@ const Settings: React.FC = () => {
     saveProfile,
     resetForm,
   } = useSettingsController({ user });
+  const {
+    loading: notificationsLoading,
+    saving: notificationsSaving,
+    weeklyDigest,
+    aiUsageAlerts,
+    proWaitlistUpdates,
+    hasUnsavedChanges: notificationsHasUnsavedChanges,
+    setWeeklyDigest,
+    setAiUsageAlerts,
+    setProWaitlistUpdates,
+    savePreferences,
+    resetForm: resetNotificationForm,
+  } = useNotificationSettingsController({ user });
 
   if (loading) {
     return (
@@ -82,7 +99,25 @@ const Settings: React.FC = () => {
                   />
                 )}
 
-                {(activeTab === 'billing' || activeTab === 'notifications') && (
+                {activeTab === 'notifications' && (
+                  <SettingsNotificationsTab
+                    weeklyDigest={weeklyDigest}
+                    aiUsageAlerts={aiUsageAlerts}
+                    proWaitlistUpdates={proWaitlistUpdates}
+                    loading={notificationsLoading}
+                    saving={notificationsSaving}
+                    hasUnsavedChanges={notificationsHasUnsavedChanges}
+                    onWeeklyDigestChange={setWeeklyDigest}
+                    onAiUsageAlertsChange={setAiUsageAlerts}
+                    onProWaitlistUpdatesChange={setProWaitlistUpdates}
+                    onReset={resetNotificationForm}
+                    onSave={() => {
+                      void savePreferences();
+                    }}
+                  />
+                )}
+
+                {activeTab === 'billing' && (
                   <SettingsComingSoon activeTab={activeTab} />
                 )}
               </div>
