@@ -108,7 +108,7 @@ button:disabled,
     }
 
     body.resume-printing .resume-print-page {
-        margin: 0 auto;
+        margin: 0 !important;
         box-shadow: none !important;
         break-after: page;
         page-break-after: always;

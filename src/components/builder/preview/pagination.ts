@@ -1,5 +1,11 @@
-export const PAGE_WIDTH_PX = 794;
-export const PAGE_HEIGHT_PX = 1123;
+const MM_TO_CSS_PX = 96 / 25.4;
+export const A4_WIDTH_MM = 210;
+export const A4_HEIGHT_MM = 297;
+
+export const PAGE_WIDTH_PX = A4_WIDTH_MM * MM_TO_CSS_PX;
+export const PAGE_HEIGHT_PX = A4_HEIGHT_MM * MM_TO_CSS_PX;
+export const PAGE_WIDTH_PRINT_CSS = `${A4_WIDTH_MM}mm`;
+export const PAGE_HEIGHT_PRINT_CSS = `${A4_HEIGHT_MM}mm`;
 export const PAGE_PADDING_TOP_PX = 47;
 export const PAGE_PADDING_BOTTOM_PX = 47;
 export const PAGE_PADDING_SIDE_PX = 57;

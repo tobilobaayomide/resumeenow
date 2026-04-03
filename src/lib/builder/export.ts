@@ -120,6 +120,7 @@ export const downloadResumeAsPdf = async (
         zoom: 1,
         pageGap: 0,
         withShadow: false,
+        renderMode: 'print',
       }),
     );
 
