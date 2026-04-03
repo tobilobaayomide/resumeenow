@@ -1,4 +1,4 @@
-import type { ChangeEvent, ComponentType } from 'react';
+import type { ChangeEvent, ComponentType, ReactNode } from 'react';
 import type { TemplatePickerItem } from '../../domain/templates';
 import type { AiFlowFeature } from '../../domain/workflows';
 import type { ProFeature, PlanStatus, PlanTier } from '../context';
@@ -41,8 +41,33 @@ export interface DashboardHeaderProps {
   searchQuery: string;
   onSearchQueryChange: (value: string) => void;
   onNotificationsClick: () => void;
+  onNotificationsDismiss: () => void;
   onSettingsClick: () => void;
+  unreadNotificationsCount: number;
+  notificationsPanel?: ReactNode;
   username?: string;
+}
+
+export interface DashboardNotificationItem {
+  id: string;
+  title: string;
+  description: string;
+  timeLabel: string;
+  isUnread: boolean;
+}
+
+export interface DashboardNotificationsPanelProps {
+  items: DashboardNotificationItem[];
+  loading: boolean;
+}
+
+export interface UseDashboardNotificationsResult {
+  isOpen: boolean;
+  loading: boolean;
+  items: DashboardNotificationItem[];
+  unreadCount: number;
+  toggleNotifications: () => void;
+  closeNotifications: () => void;
 }
 
 export interface WorkspaceSnapshotProps {

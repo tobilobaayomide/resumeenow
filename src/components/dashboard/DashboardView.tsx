@@ -1,11 +1,11 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { toast } from 'sonner';
 import { TEMPLATE_PICKER_ITEMS } from '../../domain/templates';
 import { usePlan } from '../../context/usePlan';
 import {
   useDashboardActions,
   useDashboardExportStatus,
+  useDashboardNotifications,
   useDashboardResumeSearch,
 } from '../../hooks/dashboard';
 import {
@@ -20,6 +20,7 @@ import {
   AiWorkflowModal,
   AiWorkspaceSection,
   DashboardHeader,
+  DashboardNotificationsPanel,
   OnboardingPanel,
   ResumeGridSection,
   TemplatePickerModal,
@@ -51,6 +52,14 @@ const DashboardView: React.FC<DashboardViewProps> = ({
 
   const { searchQuery, setSearchQuery, filteredResumes, latestResume } = useDashboardResumeSearch(resumes);
   const { hasExportedPdf, lastExportResumeId } = useDashboardExportStatus();
+  const {
+    isOpen: notificationsOpen,
+    loading: notificationsLoading,
+    items: notificationItems,
+    unreadCount,
+    toggleNotifications,
+    closeNotifications,
+  } = useDashboardNotifications();
 
   const navigateTo: DashboardNavigateFn = (to, options) => {
     navigate(to, options ? { state: options.state } : undefined);
@@ -83,11 +92,8 @@ const DashboardView: React.FC<DashboardViewProps> = ({
   const dateLabel = getDashboardDateLabel();
   const documentCountLabel = isLoading ? '...' : resumeError ? '—' : String(resumes.length);
 
-  const handleNotificationsClick = () => {
-    toast.info('Notifications center is coming soon.');
-  };
-
   const handleSettingsClick = () => {
+    closeNotifications();
     navigate('/dashboard/settings');
   };
 
@@ -102,8 +108,18 @@ const DashboardView: React.FC<DashboardViewProps> = ({
           dateLabel={dateLabel}
           searchQuery={searchQuery}
           onSearchQueryChange={setSearchQuery}
-          onNotificationsClick={handleNotificationsClick}
+          onNotificationsClick={toggleNotifications}
+          onNotificationsDismiss={closeNotifications}
           onSettingsClick={handleSettingsClick}
+          unreadNotificationsCount={unreadCount}
+          notificationsPanel={
+            notificationsOpen ? (
+              <DashboardNotificationsPanel
+                items={notificationItems}
+                loading={notificationsLoading}
+              />
+            ) : undefined
+          }
           username={username}
         />
 
