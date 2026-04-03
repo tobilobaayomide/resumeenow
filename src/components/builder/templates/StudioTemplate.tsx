@@ -14,10 +14,12 @@ import {
 import HighlightedSkillTokens from "./HighlightedSkillTokens";
 import InlineFormattedText from "./InlineFormattedText";
 import { isBuilderAiTextHighlighted } from "../../../lib/builder/aiHighlights";
+import { FONT_STACKS } from "../../../fonts/registry";
 import { toDescriptionBullets } from "./utils";
 
 const ACCENT = "#1a1a2e";
 const ACCENT_RULE = "#e63946";
+const STUDIO_SANS = FONT_STACKS.sans;
 
 const SectionHeading: React.FC<{ children: React.ReactNode }> = ({
   children,
@@ -141,6 +143,7 @@ const StudioTemplate: React.FC<BuilderTemplateComponentProps> = ({
     <div
       ref={contentRef}
       className="font-sans text-black bg-white"
+      style={{ fontFamily: STUDIO_SANS }}
       data-self-padded="true"
        data-flush-header="true" 
     >
@@ -152,13 +155,16 @@ const StudioTemplate: React.FC<BuilderTemplateComponentProps> = ({
           backgroundImage: "linear-gradient(135deg, #1a1a2e 0%, #16213e 100%)",
         }}
       >
-        <h1 className="text-[36px] font-black tracking-tight leading-none text-white uppercase">
+        <h1
+          className="text-[36px] font-black tracking-tight leading-none text-white uppercase"
+          style={{ fontFamily: STUDIO_SANS, fontWeight: 900 }}
+        >
           {personalInfo.fullName || (
             <span className="opacity-30">Your Name</span>
           )}
         </h1>
         <p
-          style={{ color: ACCENT_RULE }}
+          style={{ color: ACCENT_RULE, fontFamily: STUDIO_SANS, fontWeight: 700 }}
           className="text-[12px] font-bold uppercase tracking-[0.25em] mt-2"
         >
           {personalInfo.jobTitle || (
