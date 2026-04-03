@@ -248,6 +248,48 @@ const getExistingOneTimeEvent = async (
   };
 };
 
+const getExistingAiUsageAlertForToday = async (
+  supabase: SupabaseClient,
+  userId: string,
+  threshold: number,
+): Promise<NotificationEventRecord | null> => {
+  const startOfUtcDay = new Date();
+  startOfUtcDay.setUTCHours(0, 0, 0, 0);
+
+  const { data, error } = await supabase
+    .from('notification_events')
+    .select('id, status, attempts')
+    .eq('user_id', userId)
+    .eq('type', 'ai_usage_alert')
+    .contains('payload', { threshold })
+    .gte('created_at', startOfUtcDay.toISOString())
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) {
+    throw error;
+  }
+
+  if (!isRecord(data)) {
+    return null;
+  }
+
+  const id = toString(data.id);
+  const status = data.status;
+  const attempts = typeof data.attempts === 'number' ? data.attempts : 0;
+
+  if (!id || typeof status !== 'string') {
+    return null;
+  }
+
+  return {
+    id,
+    status: status as NotificationEventStatus,
+    attempts,
+  };
+};
+
 const createNotificationEvent = async (
   supabase: SupabaseClient,
   userId: string,
@@ -533,6 +575,11 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
     const preferences = await getNotificationPreferences(supabase, user.id);
     const shouldSend = shouldSendNotification(requestBody.type, preferences);
     const isOneTimeType = ONE_TIME_NOTIFICATION_TYPES.has(requestBody.type);
+    const aiAlertThreshold =
+      requestBody.type === 'ai_usage_alert' &&
+      typeof requestBody.payload.threshold === 'number'
+        ? requestBody.payload.threshold
+        : null;
 
     let existingEvent: NotificationEventRecord | null = null;
     if (isOneTimeType) {
@@ -540,6 +587,16 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
         supabase,
         user.id,
         requestBody.type,
+      );
+      if (existingEvent && existingEvent.status !== 'failed') {
+        res.status(200).send('Notification already handled.');
+        return;
+      }
+    } else if (requestBody.type === 'ai_usage_alert' && aiAlertThreshold !== null) {
+      existingEvent = await getExistingAiUsageAlertForToday(
+        supabase,
+        user.id,
+        aiAlertThreshold,
       );
       if (existingEvent && existingEvent.status !== 'failed') {
         res.status(200).send('Notification already handled.');

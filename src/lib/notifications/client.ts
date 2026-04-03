@@ -2,6 +2,7 @@ import { getValidAccessToken } from '../auth/accessToken';
 import type { TriggerNotificationEventInput } from './types';
 
 const NOTIFICATION_EVENTS_ENDPOINT = '/api/notification-events';
+export const NOTIFICATION_EVENT_CREATED = 'resumeenow:notification-event-created';
 
 export const triggerNotificationEvent = async ({
   type,
@@ -26,5 +27,15 @@ export const triggerNotificationEvent = async ({
   if (!response.ok) {
     const errorText = await response.text();
     throw new Error(errorText || 'Failed to trigger notification.');
+  }
+
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(
+      new CustomEvent(NOTIFICATION_EVENT_CREATED, {
+        detail: {
+          type,
+        },
+      }),
+    );
   }
 };

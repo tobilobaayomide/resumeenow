@@ -14,7 +14,7 @@ const DashboardNotificationsPanel: React.FC<DashboardNotificationsPanelProps> = 
       </p>
     </div>
 
-    <div className="max-h-[26rem] overflow-y-auto">
+    <div className="max-h-104 overflow-y-auto">
       {loading ? (
         <div className="space-y-3 px-5 py-5">
           {Array.from({ length: 3 }).map((_, index) => (

@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { useAuth } from '../../context/useAuth';
 import { getErrorMessage } from '../../lib/errors';
+import { NOTIFICATION_EVENT_CREATED } from '../../lib/notifications/client';
 import {
   fetchNotificationEvents,
   getNotificationEventsQueryKey,
@@ -104,6 +105,31 @@ export const useDashboardNotifications = (): UseDashboardNotificationsResult => 
     staleTime: NOTIFICATION_EVENTS_QUERY_STALE_TIME,
     refetchOnWindowFocus: true,
   });
+
+  useEffect(() => {
+    if (!userId) {
+      return;
+    }
+
+    const handleNotificationCreated = () => {
+      void queryClient.invalidateQueries({
+        queryKey: notificationEventsQueryKey,
+        exact: true,
+      });
+    };
+
+    window.addEventListener(
+      NOTIFICATION_EVENT_CREATED,
+      handleNotificationCreated as EventListener,
+    );
+
+    return () => {
+      window.removeEventListener(
+        NOTIFICATION_EVENT_CREATED,
+        handleNotificationCreated as EventListener,
+      );
+    };
+  }, [notificationEventsQueryKey, queryClient, userId]);
 
   useEffect(() => {
     if (notificationsQuery.isError) {

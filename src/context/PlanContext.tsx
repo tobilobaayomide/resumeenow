@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import UpgradeModal from '../components/ui/UpgradeModal';
 import { getErrorMessage } from '../lib/errors';
 import { triggerNotificationEvent } from '../lib/notifications/client';
@@ -38,6 +38,7 @@ export const PlanProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [upgradeOpen, setUpgradeOpen] = useState(false);
   const [upgradeOwnerId, setUpgradeOwnerId] = useState<string | null>(null);
   const [pendingFeature, setPendingFeature] = useState<ProFeature | null>(null);
+  const triggeredAiAlertKeysRef = useRef<Set<string>>(new Set());
 
   const currentUserId = user?.id ?? null;
   const proWaitlistQueryKey = getProWaitlistQueryKey(currentUserId);
@@ -216,6 +217,45 @@ export const PlanProvider: React.FC<{ children: React.ReactNode }> = ({ children
       exact: true,
     });
   };
+
+  useEffect(() => {
+    if (!currentUserId || planStatus !== 'ready' || dailyCreditLimit <= 0) {
+      return;
+    }
+
+    const utcDayKey = new Date().toISOString().split('T')[0];
+    const utilization = usedCredits / dailyCreditLimit;
+    const reachedFullLimit = usedCredits >= dailyCreditLimit;
+    const reachedWarningLimit =
+      usedCredits > 0 && utilization >= 0.8 && usedCredits < dailyCreditLimit;
+
+    const threshold = reachedFullLimit ? 100 : reachedWarningLimit ? 80 : null;
+    if (threshold === null) {
+      return;
+    }
+
+    const alertKey = `${currentUserId}:${utcDayKey}:${threshold}`;
+    if (triggeredAiAlertKeysRef.current.has(alertKey)) {
+      return;
+    }
+
+    triggeredAiAlertKeysRef.current.add(alertKey);
+
+    void triggerNotificationEvent({
+      type: 'ai_usage_alert',
+      payload: {
+        used: usedCredits,
+        limit: dailyCreditLimit,
+        percent: Math.min(100, Math.round(utilization * 100)),
+        threshold,
+      },
+    }).catch((error) => {
+      triggeredAiAlertKeysRef.current.delete(alertKey);
+      if (typeof console !== 'undefined' && typeof console.error === 'function') {
+        console.error('Failed to trigger AI usage alert notification:', error);
+      }
+    });
+  }, [currentUserId, dailyCreditLimit, planStatus, usedCredits]);
 
   const value = {
     tier,
