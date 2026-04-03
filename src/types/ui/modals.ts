@@ -8,6 +8,7 @@ export interface AuthModalProps {
   open: boolean;
   onClose: (options?: { preservePendingTemplate?: boolean }) => void;
   mode: AuthModalMode;
+  postAuthPending?: boolean;
 }
 
 export interface UpgradeModalProps {

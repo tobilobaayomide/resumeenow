@@ -1,5 +1,5 @@
 import fs from 'node:fs';
-import type { Browser } from 'playwright-core';
+import type { Browser, Page } from 'playwright-core';
 import {
   PRINT_FONT_LOADS,
   PRINT_FONT_READY_TIMEOUT_MS,
@@ -31,6 +31,15 @@ interface ApiResponse {
 }
 
 type HttpHeaderMap = Record<string, string>;
+
+const PDF_PAGE_WIDTH_MM = '210mm';
+const PDF_PAGE_HEIGHT_MM = '297mm';
+const PRINT_VIEWPORT = {
+  width: 1100,
+  height: 1500,
+} as const;
+const PRINT_PAGE_SELECTOR = '.resume-print-page';
+const FLUSH_HEADER_SELECTOR = `${PRINT_PAGE_SELECTOR} [data-flush-header="true"]`;
 
 let supabaseAuthClientPromise: Promise<import('@supabase/supabase-js').SupabaseClient> | null = null;
 let exportSchemaModulePromise: Promise<typeof import('../src/schemas/builder/exportPayload.js')> | null = null;
@@ -211,6 +220,106 @@ const getLocalChromeExecutablePath = () => {
   return candidates.find((candidate) => fs.existsSync(candidate)) ?? null;
 };
 
+const buildRasterizedPdfHtml = (pageImages: readonly string[]) => `<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <style>
+      @page {
+        size: ${PDF_PAGE_WIDTH_MM} ${PDF_PAGE_HEIGHT_MM};
+        margin: 0;
+      }
+
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+        background: #fff;
+      }
+
+      .pdf-page {
+        width: ${PDF_PAGE_WIDTH_MM};
+        height: ${PDF_PAGE_HEIGHT_MM};
+        break-after: page;
+        page-break-after: always;
+      }
+
+      .pdf-page:last-child {
+        break-after: auto;
+        page-break-after: auto;
+      }
+
+      .pdf-page img {
+        display: block;
+        width: 100%;
+        height: 100%;
+      }
+    </style>
+  </head>
+  <body>
+    ${pageImages
+      .map(
+        (src, index) => `
+          <div class="pdf-page">
+            <img src="${src}" alt="Resume page ${index + 1}" />
+          </div>`,
+      )
+      .join('')}
+  </body>
+</html>`;
+
+const renderRasterizedPdf = async (
+  browser: Browser,
+  printPage: Page,
+): Promise<Buffer> => {
+  const pageLocator = printPage.locator(PRINT_PAGE_SELECTOR);
+  const pageCount = await pageLocator.count();
+
+  if (pageCount < 1) {
+    throw new Error('Resume print view did not render any pages.');
+  }
+
+  const pageImages: string[] = [];
+
+  for (let index = 0; index < pageCount; index += 1) {
+    const pageHandle = pageLocator.nth(index);
+    await pageHandle.scrollIntoViewIfNeeded();
+
+    const screenshotBuffer = await pageHandle.screenshot({
+      type: 'png',
+      animations: 'disabled',
+    });
+
+    pageImages.push(`data:image/png;base64,${screenshotBuffer.toString('base64')}`);
+  }
+
+  const pdfPage = await browser.newPage({
+    viewport: PRINT_VIEWPORT,
+    deviceScaleFactor: 1,
+  });
+
+  try {
+    await pdfPage.setContent(buildRasterizedPdfHtml(pageImages), {
+      waitUntil: 'load',
+    });
+
+    return await pdfPage.pdf({
+      width: PDF_PAGE_WIDTH_MM,
+      height: PDF_PAGE_HEIGHT_MM,
+      printBackground: true,
+      margin: {
+        top: '0',
+        right: '0',
+        bottom: '0',
+        left: '0',
+      },
+      preferCSSPageSize: true,
+    });
+  } finally {
+    await pdfPage.close();
+  }
+};
+
 const loadBrowserRuntimes = async (appOrigin: string) => {
   const host = new URL(appOrigin).host;
 
@@ -361,11 +470,8 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
     browser = await playwright.launch(launchOptions);
 
     const page = await browser.newPage({
-      viewport: {
-        width: 1100,
-        height: 1500,
-      },
-      deviceScaleFactor: 1,
+      viewport: PRINT_VIEWPORT,
+      deviceScaleFactor: 2,
     });
     const extraHeaders = getPdfExportExtraHeaders(appOrigin);
     const assetFailures = new Set<string>();
@@ -462,17 +568,21 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
       }
     }, fileName);
 
-    const pdfBuffer = await page.pdf({
-      format: 'A4',
-      printBackground: true,
-      margin: {
-        top: '0',
-        right: '0',
-        bottom: '0',
-        left: '0',
-      },
-      preferCSSPageSize: false,
-    });
+    const shouldRasterizePdf = (await page.locator(FLUSH_HEADER_SELECTOR).count()) > 0;
+    const pdfBuffer = shouldRasterizePdf
+      ? await renderRasterizedPdf(browser, page)
+      : await page.pdf({
+          width: PDF_PAGE_WIDTH_MM,
+          height: PDF_PAGE_HEIGHT_MM,
+          printBackground: true,
+          margin: {
+            top: '0',
+            right: '0',
+            bottom: '0',
+            left: '0',
+          },
+          preferCSSPageSize: true,
+        });
 
     const finalFileName = `${sanitizeFileName(fileName)}.pdf`;
     res.setHeader('Content-Type', 'application/pdf');

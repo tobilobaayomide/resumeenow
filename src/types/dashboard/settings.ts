@@ -18,6 +18,13 @@ export interface SettingsFormState {
   avatarUrl: string | null;
 }
 
+export interface NotificationPreferencesFormState {
+  weeklyDigest: boolean;
+  aiUsageAlerts: boolean;
+  proWaitlistUpdates: boolean;
+  productUpdates: boolean;
+}
+
 export interface SettingsTabNavigationProps {
   activeTab: SettingsTabId;
   onTabChange: (tab: SettingsTabId) => void;
@@ -44,6 +51,22 @@ export interface SettingsAccountTabProps {
   onDeleteAccount: () => void;
 }
 
+export interface SettingsNotificationsTabProps {
+  weeklyDigest: boolean;
+  aiUsageAlerts: boolean;
+  proWaitlistUpdates: boolean;
+  productUpdates: boolean;
+  loading: boolean;
+  saving: boolean;
+  hasUnsavedChanges: boolean;
+  onWeeklyDigestChange: (value: boolean) => void;
+  onAiUsageAlertsChange: (value: boolean) => void;
+  onProWaitlistUpdatesChange: (value: boolean) => void;
+  onProductUpdatesChange: (value: boolean) => void;
+  onReset: () => void;
+  onSave: () => void;
+}
+
 export interface UseSettingsControllerArgs {
   user: User | null;
 }
@@ -64,5 +87,25 @@ export interface UseSettingsControllerResult {
   setBio: (value: string) => void;
   handleAvatarUpload: (event: ChangeEvent<HTMLInputElement>) => Promise<void>;
   saveProfile: () => Promise<void>;
+  resetForm: () => void;
+}
+
+export interface UseNotificationSettingsControllerArgs {
+  user: User | null;
+}
+
+export interface UseNotificationSettingsControllerResult {
+  loading: boolean;
+  saving: boolean;
+  weeklyDigest: boolean;
+  aiUsageAlerts: boolean;
+  proWaitlistUpdates: boolean;
+  productUpdates: boolean;
+  hasUnsavedChanges: boolean;
+  setWeeklyDigest: (value: boolean) => void;
+  setAiUsageAlerts: (value: boolean) => void;
+  setProWaitlistUpdates: (value: boolean) => void;
+  setProductUpdates: (value: boolean) => void;
+  savePreferences: () => Promise<void>;
   resetForm: () => void;
 }

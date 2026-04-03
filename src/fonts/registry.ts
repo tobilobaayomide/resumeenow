@@ -14,7 +14,7 @@ export const FONT_STACKS = {
 export const APP_FONT_REGISTRY = [
   {
     family: "DM Sans",
-    weights: [400, 500, 700],
+    weights: [400, 500, 600, 700, 900],
     usage: ["App shell", "Default resume templates"],
   },
   {

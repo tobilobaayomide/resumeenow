@@ -4,10 +4,12 @@ import type { ResumeData } from "../../../domain/resume";
 import type { TemplateId } from "../../../domain/templates";
 import type { BuilderAiHighlights } from "../../../types/builder";
 import {
+  PAGE_HEIGHT_PRINT_CSS,
   PAGE_HEIGHT_PX,
   PAGE_PADDING_BOTTOM_PX,
   PAGE_PADDING_SIDE_PX,
   PAGE_PADDING_TOP_PX,
+  PAGE_WIDTH_PRINT_CSS,
   PAGE_WIDTH_PX,
   calculatePageBreaks,
 } from "./pagination";
@@ -30,6 +32,7 @@ interface HtmlTemplateDocumentProps {
   withShadow?: boolean;
   pageClassName?: string;
   pageLimit?: number;
+  renderMode?: "preview" | "print";
 }
 
 export const HtmlTemplateDocument: React.FC<HtmlTemplateDocumentProps> = ({
@@ -41,6 +44,7 @@ export const HtmlTemplateDocument: React.FC<HtmlTemplateDocumentProps> = ({
   withShadow = true,
   pageClassName = "",
   pageLimit,
+  renderMode = "preview",
 }) => {
   const measureRef = useRef<HTMLDivElement>(null);
   const [pageBreaks, setPageBreaks] = useState<number[]>([0]);
@@ -120,6 +124,101 @@ export const HtmlTemplateDocument: React.FC<HtmlTemplateDocumentProps> = ({
   );
   const scaledPreviewWidth = PAGE_WIDTH_PX * zoom;
   const scaledPreviewHeight = totalPreviewHeight * zoom;
+  const pageWidth = renderMode === "print" ? PAGE_WIDTH_PRINT_CSS : PAGE_WIDTH_PX;
+  const pageHeight = renderMode === "print" ? PAGE_HEIGHT_PRINT_CSS : PAGE_HEIGHT_PX;
+
+  const pages = (
+    <div className="flex flex-col" style={{ gap: `${pageGap}px` }}>
+      {Array.from({ length: totalPages }).map((_, pageIndex) => {
+        const pageStart = pageBreaks[pageIndex];
+        const nextPageStart = pageBreaks[pageIndex + 1];
+        const pageContentHeight = getContentHeightForPage(
+          pageIndex,
+          flushHeader,
+        );
+
+        const visibleContentHeight =
+          typeof nextPageStart === "number"
+            ? Math.min(
+                pageContentHeight,
+                Math.max(0, nextPageStart - pageStart),
+              )
+            : pageContentHeight;
+
+        const topPadding =
+          pageIndex === 0 && flushHeader ? 0 : PAGE_PADDING_TOP_PX;
+
+        return (
+          <div
+            key={`${templateId}-page-${pageIndex + 1}`}
+            className={`resume-print-page relative bg-white ${
+              withShadow ? "shadow-2xl" : ""
+            } ${pageClassName}`.trim()}
+            style={{
+              width: pageWidth,
+              height: pageHeight,
+              breakAfter: pageIndex < totalPages - 1 ? "page" : "auto",
+              pageBreakAfter:
+                pageIndex < totalPages - 1 ? "always" : "auto",
+            }}
+          >
+            <div
+              style={{
+                height: topPadding,
+                width: "100%",
+                backgroundColor: "white",
+              }}
+            />
+
+            <div
+              style={{
+                height: pageContentHeight,
+                overflow: "hidden",
+                paddingLeft: isSelfPadded ? 0 : PAGE_PADDING_SIDE_PX,
+                paddingRight: isSelfPadded ? 0 : PAGE_PADDING_SIDE_PX,
+              }}
+            >
+              <div
+                style={{
+                  height: visibleContentHeight,
+                  overflow: "hidden",
+                }}
+              >
+                <div
+                  style={{
+                    marginTop: `-${pageStart}px`,
+                    width: "100%",
+                  }}
+                >
+                  <TemplateRenderer
+                    templateId={templateId}
+                    data={data}
+                    aiHighlights={aiHighlights}
+                  />
+                </div>
+              </div>
+
+              {visibleContentHeight < pageContentHeight && (
+                <div
+                  style={{
+                    height: pageContentHeight - visibleContentHeight,
+                  }}
+                />
+              )}
+            </div>
+
+            <div
+              style={{
+                height: PAGE_PADDING_BOTTOM_PX,
+                width: "100%",
+                backgroundColor: "white",
+              }}
+            />
+          </div>
+        );
+      })}
+    </div>
+  );
 
   return (
     <>
@@ -145,107 +244,27 @@ export const HtmlTemplateDocument: React.FC<HtmlTemplateDocumentProps> = ({
         </div>
       </div>
 
-      <div
-        style={{
-          width: scaledPreviewWidth,
-          height: scaledPreviewHeight,
-          overflow: "hidden",
-        }}
-      >
+      {renderMode === "print" ? (
+        <div style={{ width: PAGE_WIDTH_PRINT_CSS }}>{pages}</div>
+      ) : (
         <div
           style={{
-            width: PAGE_WIDTH_PX,
-            transform: `scale(${zoom})`,
-            transformOrigin: "top left",
+            width: scaledPreviewWidth,
+            height: scaledPreviewHeight,
+            overflow: "hidden",
           }}
         >
-          <div className="flex flex-col" style={{ gap: `${pageGap}px` }}>
-            {Array.from({ length: totalPages }).map((_, pageIndex) => {
-              const pageStart = pageBreaks[pageIndex];
-              const nextPageStart = pageBreaks[pageIndex + 1];
-              const pageContentHeight = getContentHeightForPage(
-                pageIndex,
-                flushHeader,
-              );
-
-              const visibleContentHeight =
-                typeof nextPageStart === "number"
-                  ? Math.min(
-                      pageContentHeight,
-                      Math.max(0, nextPageStart - pageStart),
-                    )
-                  : pageContentHeight;
-
-              const topPadding =
-                pageIndex === 0 && flushHeader ? 0 : PAGE_PADDING_TOP_PX;
-
-              return (
-                <div
-                  key={`${templateId}-page-${pageIndex + 1}`}
-                  className={`resume-print-page relative bg-white ${
-                    withShadow ? "shadow-2xl" : ""
-                  } ${pageClassName}`.trim()}
-                  style={{
-                    width: PAGE_WIDTH_PX,
-                    height: PAGE_HEIGHT_PX,
-                    breakAfter: pageIndex < totalPages - 1 ? "page" : "auto",
-                    pageBreakAfter:
-                      pageIndex < totalPages - 1 ? "always" : "auto",
-                  }}
-                >
-                  <div
-                    style={{
-                      height: topPadding,
-                      width: "100%",
-                      backgroundColor: "white",
-                    }}
-                  />
-
-                  <div
-                    style={{
-                      height: pageContentHeight,
-                      overflow: "hidden",
-                      paddingLeft: isSelfPadded ? 0 : PAGE_PADDING_SIDE_PX,
-                      paddingRight: isSelfPadded ? 0 : PAGE_PADDING_SIDE_PX,
-                    }}
-                  >
-                    <div
-                      style={{
-                        height: visibleContentHeight,
-                        overflow: "hidden",
-                      }}
-                    >
-                      <div style={{ marginTop: `-${pageStart}px` }}>
-                        <TemplateRenderer
-                          templateId={templateId}
-                          data={data}
-                          aiHighlights={aiHighlights}
-                        />
-                      </div>
-                    </div>
-
-                    {visibleContentHeight < pageContentHeight && (
-                      <div
-                        style={{
-                          height: pageContentHeight - visibleContentHeight,
-                        }}
-                      />
-                    )}
-                  </div>
-
-                  <div
-                    style={{
-                      height: PAGE_PADDING_BOTTOM_PX,
-                      width: "100%",
-                      backgroundColor: "white",
-                    }}
-                  />
-                </div>
-              );
-            })}
+          <div
+            style={{
+              width: PAGE_WIDTH_PX,
+              transform: `scale(${zoom})`,
+              transformOrigin: "top left",
+            }}
+          >
+            {pages}
           </div>
         </div>
-      </div>
+      )}
     </>
   );
 };

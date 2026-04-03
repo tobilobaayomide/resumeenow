@@ -9,6 +9,7 @@ export const PlanContext = createContext<PlanContextType>({
   isPlanLoading: false,
   isPlanUnavailable: false,
   isPro: false,
+  hasUnlimitedAccess: false,
   isProWaitlistJoined: false,
   isJoiningProWaitlist: false,
   dailyCreditLimit: 5,

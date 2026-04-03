@@ -77,7 +77,7 @@ const DateBracket: React.FC<{ start?: string; end?: string }> = ({
       style={{ color: INK, fontFamily: MONO }}
     >
       [{start}
-      {end ? ` → ${end}` : " → now"}]
+      {end ? ` -> ${end}` : " -> now"}]
     </span>
   );
 };

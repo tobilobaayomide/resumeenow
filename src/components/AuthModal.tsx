@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { FiX, FiMail, FiLock, FiUser, FiEye, FiEyeOff, FiLinkedin } from "react-icons/fi";
+import { FiX, FiMail, FiLock, FiUser, FiEye, FiEyeOff, FiLinkedin, FiRefreshCw } from "react-icons/fi";
 import { FcGoogle } from "react-icons/fc";
 import { supabase } from "../lib/supabase";
 import { toast } from "sonner";
@@ -22,7 +22,7 @@ const OAUTH_PROVIDERS: ReadonlyArray<{
   },
 ];
 
-const AuthModal: React.FC<AuthModalProps> = ({ open, onClose, mode }) => {
+const AuthModal: React.FC<AuthModalProps> = ({ open, onClose, mode, postAuthPending = false }) => {
   const [currentMode, setCurrentMode] = useState<AuthModalMode>(mode);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -150,7 +150,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ open, onClose, mode }) => {
     onClose();
   };
 
-  const isBusy = loading || oauthLoading !== null;
+  const isBusy = loading || oauthLoading !== null || postAuthPending;
 
   return (
     <div className="fixed inset-0 z-100 flex items-center justify-center p-4">
@@ -191,130 +191,146 @@ const AuthModal: React.FC<AuthModalProps> = ({ open, onClose, mode }) => {
             </p>
           </div>
 
-          <>
-            <div className="grid grid-cols-2 gap-2.5 mb-5">
-              {OAUTH_PROVIDERS.map(({ provider, label, icon: Icon }) => (
-                <button
-                  key={provider}
-                  type="button"
-                  onClick={() => handleOAuthLogin(provider)}
-                  disabled={isBusy}
-                  className="h-11 flex items-center justify-center cursor-pointer gap-2 border border-gray-200 rounded-xl hover:bg-gray-50 hover:border-gray-300 transition-all duration-200 disabled:opacity-60 disabled:cursor-not-allowed"
-                >
-                  <Icon size={19} />
-                  <span className="text-sm font-medium text-gray-700">
-                    {oauthLoading === provider ? "Connecting..." : label}
-                  </span>
-                </button>
-              ))}
-            </div>
-
-            <div className="relative mb-5">
-              <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-gray-100" />
+          {postAuthPending ? (
+            <div className="rounded-2xl border border-black/8 bg-[#f7f7f5] px-5 py-10 text-center">
+              <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-black text-white">
+                <FiRefreshCw className="h-5 w-5 animate-spin" />
               </div>
-              <div className="relative flex justify-center text-xs uppercase">
-                <span className="bg-white px-3 text-gray-400 font-medium tracking-wider">Or continue with email</span>
-              </div>
+              <h3 className="mt-5 text-xl font-semibold tracking-tight text-gray-900">
+                Signing you in...
+              </h3>
+              <p className="mt-3 text-sm leading-7 text-gray-500">
+                Your workspace is loading. This should only take a moment.
+              </p>
             </div>
-          </>
-
-          <form key={currentMode} onSubmit={handleAuth} className="flex flex-col gap-3.5 animate-in fade-in duration-200">
-            {currentMode === "signup" && (
-              <div className="relative group">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400 group-focus-within:text-black transition-colors">
-                  <FiUser size={18} />
+          ) : (
+            <>
+              <>
+                <div className="grid grid-cols-2 gap-2.5 mb-5">
+                  {OAUTH_PROVIDERS.map(({ provider, label, icon: Icon }) => (
+                    <button
+                      key={provider}
+                      type="button"
+                      onClick={() => handleOAuthLogin(provider)}
+                      disabled={isBusy}
+                      className="h-11 flex items-center justify-center cursor-pointer gap-2 border border-gray-200 rounded-xl hover:bg-gray-50 hover:border-gray-300 transition-all duration-200 disabled:opacity-60 disabled:cursor-not-allowed"
+                    >
+                      <Icon size={19} />
+                      <span className="text-sm font-medium text-gray-700">
+                        {oauthLoading === provider ? "Connecting..." : label}
+                      </span>
+                    </button>
+                  ))}
                 </div>
-                <input
-                  id="auth-full-name"
-                  name="full_name"
-                  type="text"
-                  placeholder="Full name"
-                  required
-                  value={fullName}
-                  onChange={(e) => setFullName(e.target.value)}
-                  className="w-full bg-gray-50 text-gray-900 border border-transparent rounded-xl py-3 pl-10 pr-4 placeholder-gray-400 focus:ring-2 focus:ring-black/5 focus:border-black/10 focus:bg-white transition-all duration-200 font-medium text-sm outline-none"
-                />
-              </div>
-            )}
 
-            <div className="relative group">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400 group-focus-within:text-black transition-colors">
-                <FiMail size={18} />
-              </div>
-              <input
-                id="auth-email"
-                name="email"
-                type="email"
-                placeholder="Email address"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="w-full bg-gray-50 text-gray-900 border border-transparent rounded-xl py-3 pl-10 pr-4 placeholder-gray-400 focus:ring-2 focus:ring-black/5 focus:border-black/10 focus:bg-white transition-all duration-200 font-medium text-sm outline-none"
-              />
-            </div>
+                <div className="relative mb-5">
+                  <div className="absolute inset-0 flex items-center">
+                    <div className="w-full border-t border-gray-100" />
+                  </div>
+                  <div className="relative flex justify-center text-xs uppercase">
+                    <span className="bg-white px-3 text-gray-400 font-medium tracking-wider">Or continue with email</span>
+                  </div>
+                </div>
+              </>
 
-            <div className="relative group">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400 group-focus-within:text-black transition-colors">
-                <FiLock size={18} />
-              </div>
-              <input
-                id="auth-password"
-                name="password"
-                type={showPassword ? "text" : "password"}
-                placeholder="Password"
-                required
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                minLength={6}
-                className="w-full bg-gray-50 text-gray-900 border border-transparent rounded-xl py-3 pl-10 pr-10 placeholder-gray-400 focus:ring-2 focus:ring-black/5 focus:border-black/10 focus:bg-white transition-all duration-200 font-medium text-sm outline-none"
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword((prev) => !prev)}
-                className="absolute inset-y-0 right-0 pr-3 flex items-center cursor-pointer text-gray-400 hover:text-gray-700 transition-colors"
-                tabIndex={-1}
-                aria-label={showPassword ? "Hide password" : "Show password"}
-              >
-                {showPassword ? <FiEyeOff size={17} /> : <FiEye size={17} />}
-              </button>
-            </div>
+              <form key={currentMode} onSubmit={handleAuth} className="flex flex-col gap-3.5 animate-in fade-in duration-200">
+                {currentMode === "signup" && (
+                  <div className="relative group">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400 group-focus-within:text-black transition-colors">
+                      <FiUser size={18} />
+                    </div>
+                    <input
+                      id="auth-full-name"
+                      name="full_name"
+                      type="text"
+                      placeholder="Full name"
+                      required
+                      value={fullName}
+                      onChange={(e) => setFullName(e.target.value)}
+                      className="w-full bg-gray-50 text-gray-900 border border-transparent rounded-xl py-3 pl-10 pr-4 placeholder-gray-400 focus:ring-2 focus:ring-black/5 focus:border-black/10 focus:bg-white transition-all duration-200 font-medium text-sm outline-none"
+                    />
+                  </div>
+                )}
 
-            {currentMode === "login" && (
-              <div className="flex justify-end -mt-0.5">
+                <div className="relative group">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400 group-focus-within:text-black transition-colors">
+                    <FiMail size={18} />
+                  </div>
+                  <input
+                    id="auth-email"
+                    name="email"
+                    type="email"
+                    placeholder="Email address"
+                    required
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className="w-full bg-gray-50 text-gray-900 border border-transparent rounded-xl py-3 pl-10 pr-4 placeholder-gray-400 focus:ring-2 focus:ring-black/5 focus:border-black/10 focus:bg-white transition-all duration-200 font-medium text-sm outline-none"
+                  />
+                </div>
+
+                <div className="relative group">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400 group-focus-within:text-black transition-colors">
+                    <FiLock size={18} />
+                  </div>
+                  <input
+                    id="auth-password"
+                    name="password"
+                    type={showPassword ? "text" : "password"}
+                    placeholder="Password"
+                    required
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    minLength={6}
+                    className="w-full bg-gray-50 text-gray-900 border border-transparent rounded-xl py-3 pl-10 pr-10 placeholder-gray-400 focus:ring-2 focus:ring-black/5 focus:border-black/10 focus:bg-white transition-all duration-200 font-medium text-sm outline-none"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword((prev) => !prev)}
+                    className="absolute inset-y-0 right-0 pr-3 flex items-center cursor-pointer text-gray-400 hover:text-gray-700 transition-colors"
+                    tabIndex={-1}
+                    aria-label={showPassword ? "Hide password" : "Show password"}
+                  >
+                    {showPassword ? <FiEyeOff size={17} /> : <FiEye size={17} />}
+                  </button>
+                </div>
+
+                {currentMode === "login" && (
+                  <div className="flex justify-end -mt-0.5">
+                    <button
+                      type="button"
+                      onClick={handleForgotPassword}
+                      disabled={isBusy}
+                      className="text-xs font-medium text-gray-500 hover:text-gray-900 cursor-pointer transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                    >
+                      Forgot password?
+                    </button>
+                  </div>
+                )}
+
                 <button
-                  type="button"
-                  onClick={handleForgotPassword}
+                  type="submit"
                   disabled={isBusy}
-                  className="text-xs font-medium text-gray-500 hover:text-gray-900 cursor-pointer transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                  className="mt-1 bg-black hover:bg-zinc-900 text-white rounded-xl cursor-pointer py-3.5 font-semibold text-sm transition-all duration-200 shadow-[0_14px_30px_rgba(0,0,0,0.24)] hover:-translate-y-0.5 flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed"
                 >
-                  Forgot password?
+                  {loading ? "Processing..." : (currentMode === "login" ? "Sign In" : "Create Account")}
                 </button>
+              </form>
+
+              <div className="mt-6 text-center">
+                <p className="text-sm text-gray-500">
+                  {currentMode === "login" ? "Don't have an account?" : "Already have an account?"}
+                  <button
+                    type="button"
+                    className="ml-2 text-gray-900 hover:text-gray-600 cursor-pointer font-semibold transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                    onClick={toggleMode}
+                    disabled={isBusy}
+                  >
+                    {currentMode === "login" ? "Sign Up" : "Log In"}
+                  </button>
+                </p>
               </div>
-            )}
-
-            <button
-              type="submit"
-              disabled={isBusy}
-              className="mt-1 bg-black hover:bg-zinc-900 text-white rounded-xl cursor-pointer py-3.5 font-semibold text-sm transition-all duration-200 shadow-[0_14px_30px_rgba(0,0,0,0.24)] hover:-translate-y-0.5 flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed"
-            >
-              {loading ? "Processing..." : (currentMode === "login" ? "Sign In" : "Create Account")}
-            </button>
-          </form>
-
-          <div className="mt-6 text-center">
-            <p className="text-sm text-gray-500">
-              {currentMode === "login" ? "Don't have an account?" : "Already have an account?"}
-              <button
-                type="button"
-                className="ml-2 text-gray-900 hover:text-gray-600 cursor-pointer font-semibold transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
-                onClick={toggleMode}
-                disabled={isBusy}
-              >
-                {currentMode === "login" ? "Sign Up" : "Log In"}
-              </button>
-            </p>
-          </div>
+            </>
+          )}
         </div>
       </div>
     </div>

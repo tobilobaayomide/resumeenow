@@ -17,11 +17,13 @@ import {
 import HighlightedSkillTokens from "./HighlightedSkillTokens";
 import InlineFormattedText from "./InlineFormattedText";
 import { isBuilderAiTextHighlighted } from "../../../lib/builder/aiHighlights";
+import { FONT_STACKS } from "../../../fonts/registry";
 import { toDescriptionBullets } from "./utils";
 
 const ACCENT = "#1B2A4A";
 const GOLD = "#B08D57";
 const SIDEBAR_BG = "#F4F6F9";
+const EXECUTIVE_SANS = FONT_STACKS.sans;
 
 const SectionTitle: React.FC<TemplateSectionTitleProps> = ({ children }) => (
   <div className="flex items-center gap-2.5 mb-3">
@@ -102,6 +104,7 @@ const ExecutiveTemplate: React.FC<BuilderTemplateComponentProps> = ({
     <div
       ref={contentRef}
       className="font-sans text-black bg-white"
+      style={{ fontFamily: EXECUTIVE_SANS }}
       data-self-padded="true"
     >
       <header
@@ -117,7 +120,7 @@ const ExecutiveTemplate: React.FC<BuilderTemplateComponentProps> = ({
           <div className="flex-1">
             <h1
               className="text-[38px] font-black tracking-tight leading-none uppercase"
-              style={{ color: ACCENT }}
+              style={{ color: ACCENT, fontFamily: EXECUTIVE_SANS, fontWeight: 900 }}
             >
               {personalInfo.fullName || (
                 <span className="text-gray-200">Your Name</span>
@@ -126,7 +129,7 @@ const ExecutiveTemplate: React.FC<BuilderTemplateComponentProps> = ({
 
             <p
               className="text-[11px] font-bold uppercase tracking-[0.28em] mt-1.5"
-              style={{ color: GOLD }}
+              style={{ color: GOLD, fontFamily: EXECUTIVE_SANS, fontWeight: 700 }}
             >
               {personalInfo.jobTitle || (
                 <span className="text-gray-300">Job Title</span>

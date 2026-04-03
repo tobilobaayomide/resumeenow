@@ -1,5 +1,6 @@
 export { default as AiWorkspaceSection } from './AiWorkspaceSection';
 export { default as DashboardHeader } from './DashboardHeader';
+export { default as DashboardNotificationsPanel } from './DashboardNotificationsPanel';
 export { default as OnboardingPanel } from './OnboardingPanel';
 export { default as ResumeCardPreview } from './ResumeCardPreview';
 export { default as ResumeGridSection } from './ResumeGridSection';

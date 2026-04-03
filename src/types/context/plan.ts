@@ -14,6 +14,7 @@ export interface PlanContextType {
   isPlanLoading: boolean;
   isPlanUnavailable: boolean;
   isPro: boolean;
+  hasUnlimitedAccess: boolean;
   isProWaitlistJoined: boolean;
   isJoiningProWaitlist: boolean;
   dailyCreditLimit: number;

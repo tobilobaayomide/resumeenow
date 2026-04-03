@@ -121,13 +121,14 @@ const ResumePrintPage: React.FC = () => {
           path="/print/resume"
           robots="noindex,nofollow"
         />
-        <div className="flex min-h-screen justify-center bg-white">
+        <div className="min-h-screen bg-white">
           <HtmlTemplateDocument
             data={payload.data}
             templateId={payload.templateId}
             zoom={1}
             pageGap={0}
             withShadow={false}
+            renderMode="print"
           />
         </div>
       </>
