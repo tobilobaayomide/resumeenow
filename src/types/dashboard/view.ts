@@ -76,6 +76,7 @@ export interface WorkspaceSnapshotProps {
   documentCountLabel: string;
   tier: PlanTier;
   planStatus: PlanStatus;
+  hasUnlimitedAccess: boolean;
   usedCredits: number;
   dailyCreditLimit: number;
   resumeCount: number;

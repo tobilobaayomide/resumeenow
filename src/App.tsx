@@ -9,12 +9,15 @@ const ProFeatures = lazy(() => import('./components/dashboard/ProFeatures'));
 const CareerProfile = lazy(() => import('./components/dashboard/CareerProfile'));
 const Settings = lazy(() => import('./components/dashboard/Settings'));
 const BuilderPage = lazy(() => import('./components/builder/BuilderPage'));
+const Admin = lazy(() => import('./pages/Admin'));
+const AdminUsers = lazy(() => import('./pages/AdminUsers'));
 const ResetPasswordPage = lazy(() => import('./pages/ResetPasswordPage'));
 const ResumePrintPage = lazy(() => import('./pages/ResumePrintPage'));
 const PrivacyPolicyPage = lazy(() => import('./pages/PrivacyPolicyPage'));
 const TermsOfServicePage = lazy(() => import('./pages/TermsOfServicePage'));
 const AppToaster = lazy(() => import('./components/ui/AppToaster'));
 const ProtectedAppLayout = lazy(() => import('./components/app/ProtectedAppLayout'));
+const AdminRouteLayout = lazy(() => import('./components/app/AdminRouteLayout'));
 
 const AppFallback = () => <div className="h-screen bg-white" />;
 
@@ -36,6 +39,10 @@ export default function App() {
             <Route path="/dashboard/profile" element={<CareerProfile />} />
             <Route path="/dashboard/settings" element={<Settings />} />
             <Route path="/builder/:id" element={<BuilderPage />} />
+            <Route element={<AdminRouteLayout />}>
+              <Route path="/admin" element={<Admin />} />
+              <Route path="/admin/users" element={<AdminUsers />} />
+            </Route>
           </Route>
           <Route path="/reset-password" element={<ResetPasswordPage />} />
           <Route path="/privacy" element={<PrivacyPolicyPage />} />

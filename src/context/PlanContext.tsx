@@ -18,6 +18,7 @@ import {
 } from '../lib/queries/proWaitlist';
 import { PlanContext, type PlanTier, type ProFeature } from './plan-context';
 import { useAuth } from './useAuth';
+import { useCurrentUserRole } from '../hooks/useCurrentUserRole';
 
 const showToast = (type: 'success' | 'error' | 'info', message: string): void => {
     void import('sonner')
@@ -33,6 +34,7 @@ const showToast = (type: 'success' | 'error' | 'info', message: string): void =>
 
 export const PlanProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user } = useAuth();
+  const { isAdmin, loading: roleLoading } = useCurrentUserRole();
   const queryClient = useQueryClient();
 
   const [upgradeOpen, setUpgradeOpen] = useState(false);
@@ -55,25 +57,40 @@ export const PlanProvider: React.FC<{ children: React.ReactNode }> = ({ children
     isPending: planSnapshotQuery.isPending,
     isError: planSnapshotQuery.isError,
   });
-  const tier: PlanTier = planSnapshot.tier;
+  const effectivePlanStatus =
+    currentUserId === null
+      ? planStatus
+      : roleLoading
+        ? 'loading'
+        : isAdmin
+          ? 'ready'
+          : planStatus;
+  const tier: PlanTier = isAdmin ? 'pro' : planSnapshot.tier;
   const usedCredits = planSnapshot.usedCredits;
-  const isPlanLoading = planStatus === 'loading';
-  const isPlanUnavailable = planStatus === 'unavailable';
+  const isPlanLoading = effectivePlanStatus === 'loading';
+  const isPlanUnavailable = effectivePlanStatus === 'unavailable';
   const isPro = tier === 'pro';
+  const hasUnlimitedAccess = isAdmin;
   const proWaitlistQuery = useQuery({
     queryKey: proWaitlistQueryKey,
     queryFn: () => fetchProWaitlistStatus(currentUserId as string),
-    enabled: currentUserId !== null && planStatus === 'ready' && !isPro,
+    enabled: currentUserId !== null && effectivePlanStatus === 'ready' && !isPro,
     staleTime: PRO_WAITLIST_QUERY_STALE_TIME,
     refetchOnWindowFocus: false,
   });
   const isProWaitlistJoined = !isPro && (proWaitlistQuery.data ?? false);
-  const dailyCreditLimit = getPlanDailyCreditLimit(planSnapshot);
+  const dailyCreditLimit = hasUnlimitedAccess
+    ? Number.POSITIVE_INFINITY
+    : getPlanDailyCreditLimit(planSnapshot);
 
   const hasAccess = (feature: ProFeature): boolean => {
     void feature;
-    if (planStatus !== 'ready') {
+    if (effectivePlanStatus !== 'ready') {
       return false;
+    }
+
+    if (hasUnlimitedAccess) {
+      return true;
     }
 
     return usedCredits < dailyCreditLimit;
@@ -154,13 +171,17 @@ export const PlanProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return false;
     }
 
-    if (planStatus === 'loading') {
+    if (hasUnlimitedAccess) {
+      return true;
+    }
+
+    if (effectivePlanStatus === 'loading') {
       void feature;
       showToast('info', 'Checking your plan. Try again in a moment.');
       return false;
     }
 
-    if (planStatus === 'unavailable') {
+    if (effectivePlanStatus === 'unavailable') {
       void feature;
       void retryPlan();
       showToast('error', 'We could not verify your plan right now. Retrying now.');
@@ -219,7 +240,13 @@ export const PlanProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   useEffect(() => {
-    if (!currentUserId || planStatus !== 'ready' || dailyCreditLimit <= 0) {
+    if (
+      !currentUserId ||
+      effectivePlanStatus !== 'ready' ||
+      hasUnlimitedAccess ||
+      !Number.isFinite(dailyCreditLimit) ||
+      dailyCreditLimit <= 0
+    ) {
       return;
     }
 
@@ -255,14 +282,15 @@ export const PlanProvider: React.FC<{ children: React.ReactNode }> = ({ children
         console.error('Failed to trigger AI usage alert notification:', error);
       }
     });
-  }, [currentUserId, dailyCreditLimit, planStatus, usedCredits]);
+  }, [currentUserId, dailyCreditLimit, effectivePlanStatus, hasUnlimitedAccess, usedCredits]);
 
   const value = {
     tier,
-    planStatus,
+    planStatus: effectivePlanStatus,
     isPlanLoading,
     isPlanUnavailable,
     isPro,
+    hasUnlimitedAccess,
     isProWaitlistJoined,
     isJoiningProWaitlist: joinProWaitlistMutation.isPending,
     dailyCreditLimit,

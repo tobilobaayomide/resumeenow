@@ -2,11 +2,13 @@ import React from 'react';
 import { 
   FiLogOut, 
   FiLock,
+  FiShield,
   FiStar,
 } from 'react-icons/fi';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/useAuth';
 import { usePlan } from '../../context/usePlan';
+import { useCurrentUserRole } from '../../hooks/useCurrentUserRole';
 import {
     DASHBOARD_MAIN_MENU_ITEMS,
     DASHBOARD_MOBILE_DOCK_ITEMS,
@@ -16,7 +18,8 @@ import type { DashboardNavItem } from '../../types/dashboard';
 
 const Sidebar: React.FC = () => {
     const { user, signOut } = useAuth();
-    const { isPro, planStatus, tier } = usePlan();
+    const { isPro, planStatus, tier, hasUnlimitedAccess } = usePlan();
+    const { isAdmin } = useCurrentUserRole();
     const navigate = useNavigate();
     const location = useLocation();
     const showFreeTierPlanUi = planStatus === 'ready' && !isPro;
@@ -25,7 +28,11 @@ const Sidebar: React.FC = () => {
             ? 'syncing'
             : planStatus === 'unavailable'
                 ? 'unavailable'
-                : tier;
+                : isAdmin
+                    ? 'admin'
+                    : hasUnlimitedAccess
+                        ? 'unlimited'
+                        : tier;
     const tierClassName =
         planStatus === 'unavailable'
             ? 'bg-red-500/10 text-red-300 border border-red-500/20'
@@ -134,6 +141,22 @@ const Sidebar: React.FC = () => {
 
                 {/* 3. User Aesthetic Footer */}
                 <div className="p-5">
+                    {isAdmin && (
+                        <button
+                            onClick={() => navigate('/admin')}
+                            className="mb-3 flex w-full items-center gap-3 rounded-xl border border-[#2a2a2a] bg-[#111] px-4 py-3 text-left text-sm font-medium text-zinc-300 transition-all hover:border-[#3a3a3a] hover:text-white"
+                        >
+                            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/5 text-white">
+                                <FiShield size={16} />
+                            </span>
+                            <span className="flex min-w-0 flex-1 flex-col">
+                                <span className="truncate">Admin Console</span>
+                                <span className="text-[10px] uppercase tracking-[0.16em] text-zinc-500">
+                                    Internal controls
+                                </span>
+                            </span>
+                        </button>
+                    )}
                     <div className="bg-[#111] rounded-xl p-3 border border-[#222] hover:border-[#333] transition-all group flex items-center justify-between cursor-default">
                         <div className="flex items-center gap-3 overflow-hidden">
                              {/* Initials Avatar */}
@@ -186,6 +209,16 @@ const Sidebar: React.FC = () => {
                     
                     <div className="w-px h-8 bg-white/10 mx-1 rounded-full"></div>
                     
+                    {isAdmin && (
+                        <button
+                            onClick={() => navigate('/admin')}
+                            aria-label="Open admin console"
+                            title="Open admin console"
+                            className="group flex flex-col items-center justify-center w-12 h-12 rounded-2xl text-zinc-500 hover:text-white hover:bg-neutral-800/50 transition-colors"
+                        >
+                            <FiShield size={20} />
+                        </button>
+                    )}
                     <button 
                          onClick={handleSignOut}
                          aria-label="Sign out"

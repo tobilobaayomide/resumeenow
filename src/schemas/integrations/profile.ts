@@ -15,6 +15,7 @@ import {
   ResumeEducationItemSchema,
   ResumeExperienceItemSchema,
 } from '../domain/resume.js';
+import type { ProfileRole } from '../../types/profile.js';
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null;
@@ -120,6 +121,8 @@ export const SettingsProfileUpdateSchema = z.object({
   updated_at: z.string(),
 });
 
+export const ProfileRoleSchema = z.enum(['user', 'admin']);
+
 export const AvatarProfileUpdateSchema = z.object({
   id: z.string(),
   avatar_url: z.string(),
@@ -189,6 +192,13 @@ export const parseSettingsFormState = (
 
 export const parseSettingsProfileUpdate = (value: unknown) =>
   SettingsProfileUpdateSchema.parse(value);
+
+export const parseProfileRole = (value: unknown): ProfileRole => {
+  const record = isRecord(value) ? value : {};
+  const result = ProfileRoleSchema.safeParse(record.role);
+
+  return result.success ? result.data : 'user';
+};
 
 export const parseAvatarProfileUpdate = (value: unknown) =>
   AvatarProfileUpdateSchema.parse(value);

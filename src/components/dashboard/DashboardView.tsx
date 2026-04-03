@@ -43,6 +43,7 @@ const DashboardView: React.FC<DashboardViewProps> = ({
     planStatus,
     isPro,
     isProWaitlistJoined,
+    hasUnlimitedAccess,
     dailyCreditLimit,
     usedCredits,
     requestAccess,
@@ -131,6 +132,7 @@ const DashboardView: React.FC<DashboardViewProps> = ({
               documentCountLabel={documentCountLabel}
               tier={tier}
               planStatus={planStatus}
+              hasUnlimitedAccess={hasUnlimitedAccess}
               usedCredits={usedCredits}
               dailyCreditLimit={dailyCreditLimit}
               resumeCount={resumes.length}

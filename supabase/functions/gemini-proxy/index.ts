@@ -52,6 +52,10 @@ type BeginAiRequestResult = {
   counted: boolean | null;
 };
 
+type GeminiProfileRoleRecord = {
+  role?: string | null;
+};
+
 type GeminiProgressPhase = "checking_limits" | "generating" | "finalizing";
 
 type GeminiProgressEmitter = (
@@ -158,17 +162,53 @@ const executeGeminiRequest = async ({
 
   await emitStatus?.("checking_limits");
 
-  const { data: aiGate, error: aiGateError } = await supabaseClient
-    .rpc("begin_ai_request", { user_id_param: user.id })
-    .single();
+  const { data: profileData, error: profileError } = await supabaseClient
+    .from("profiles")
+    .select("role")
+    .eq("id", user.id)
+    .maybeSingle();
 
-  const beginRequest = aiGate as BeginAiRequestResult | null;
-
-  if (aiGateError || !beginRequest) {
-    throw new HttpError(500, "Failed to begin AI request.", {
-      error: "AI_GATE_FAILED",
-      details: aiGateError?.message || "Unknown error",
+  if (profileError) {
+    throw new HttpError(500, "Failed to verify admin access.", {
+      error: "PROFILE_LOOKUP_FAILED",
+      details: profileError.message,
     });
+  }
+
+  const profileRole = (profileData as GeminiProfileRoleRecord | null)?.role ?? null;
+  const isAdminUser = profileRole === "admin";
+
+  let beginRequest: BeginAiRequestResult | null = null;
+
+  if (isAdminUser) {
+    beginRequest = {
+      allowed: true,
+      error_code: null,
+      plan_tier: "pro",
+      reason: "ADMIN_BYPASS",
+      retry_after_seconds: null,
+      active_requests: null,
+      concurrent_limit: null,
+      request_count: null,
+      burst_limit: null,
+      window_seconds: null,
+      used_credits: 0,
+      credit_limit: null,
+      counted: false,
+    };
+  } else {
+    const { data: aiGate, error: aiGateError } = await supabaseClient
+      .rpc("begin_ai_request", { user_id_param: user.id })
+      .single();
+
+    beginRequest = aiGate as BeginAiRequestResult | null;
+
+    if (aiGateError || !beginRequest) {
+      throw new HttpError(500, "Failed to begin AI request.", {
+        error: "AI_GATE_FAILED",
+        details: aiGateError?.message || "Unknown error",
+      });
+    }
   }
 
   if (!beginRequest.allowed) {
@@ -198,9 +238,13 @@ const executeGeminiRequest = async ({
     );
   }
 
-  const shouldRefundCredit = Boolean(beginRequest.counted);
+  const shouldRefundCredit = !isAdminUser && Boolean(beginRequest.counted);
 
   const completeAiRequest = async (refundCredit: boolean) => {
+    if (isAdminUser) {
+      return;
+    }
+
     const { error: completeError } = await supabaseClient.rpc("complete_ai_request", {
       user_id_param: user.id,
       refund_credit: refundCredit,

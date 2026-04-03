@@ -21,26 +21,37 @@ const ProFeatures: React.FC = () => {
   } = usePlan();
   const isPlanReady = planStatus === 'ready';
   const isPlanUnavailable = planStatus === 'unavailable';
+  const hasUnlimitedAccess = !Number.isFinite(dailyCreditLimit);
   const showFreeTierPlanUi = isPlanReady && !isPro;
   const creditPercent =
-    isPlanReady && dailyCreditLimit > 0 ? Math.min((usedCredits / dailyCreditLimit) * 100, 100) : 0;
+    hasUnlimitedAccess
+      ? 100
+      : isPlanReady && dailyCreditLimit > 0
+        ? Math.min((usedCredits / dailyCreditLimit) * 100, 100)
+        : 0;
   const tierLabel =
     planStatus === 'loading'
       ? 'Checking plan'
       : planStatus === 'unavailable'
         ? 'Plan unavailable'
+        : hasUnlimitedAccess
+          ? 'Admin Access'
         : `${tier} Plan`;
   const usageLabel =
     planStatus === 'loading'
       ? 'Checking AI usage...'
       : planStatus === 'unavailable'
         ? 'Usage unavailable'
+        : hasUnlimitedAccess
+          ? 'Unlimited AI access'
         : `${usedCredits} / ${dailyCreditLimit}`;
   const featureStatusLabel =
     planStatus === 'loading'
       ? 'Checking'
       : planStatus === 'unavailable'
         ? 'Sync needed'
+        : hasUnlimitedAccess
+          ? 'Unlimited'
         : isPro
           ? 'Enabled'
           : 'Locked';

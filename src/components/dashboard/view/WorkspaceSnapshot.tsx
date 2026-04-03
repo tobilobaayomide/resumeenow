@@ -8,6 +8,7 @@ const WorkspaceSnapshot: React.FC<WorkspaceSnapshotProps> = ({
   documentCountLabel,
   tier,
   planStatus,
+  hasUnlimitedAccess,
   usedCredits,
   dailyCreditLimit,
   resumeCount,
@@ -27,12 +28,16 @@ const WorkspaceSnapshot: React.FC<WorkspaceSnapshotProps> = ({
       ? 'SYNCING'
       : planStatus === 'unavailable'
         ? 'UNAVAILABLE'
+        : hasUnlimitedAccess
+          ? 'ADMIN'
         : tier.toUpperCase();
   const aiUsageLabel =
     planStatus === 'loading'
       ? 'Checking AI usage...'
       : planStatus === 'unavailable'
         ? 'AI usage unavailable'
+        : hasUnlimitedAccess
+          ? 'Unlimited AI access'
         : `AI used today: ${usedCredits} / ${dailyCreditLimit}`;
 
   return (
