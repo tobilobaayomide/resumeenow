@@ -1,7 +1,8 @@
-import React, { lazy, Suspense, useState } from 'react';
+import React, { useState } from 'react';
 import { useAuth } from '../context/useAuth';
 import { useNavigate } from 'react-router-dom';
 import Navbar from '../components/landing/Navbar';
+import AuthModal from '../components/AuthModal';
 import HeroSection from '../components/landing/HeroSection';
 import FeaturesSection from '../components/landing/FeaturesSection';
 import TemplatesSection from '../components/landing/TemplatesSection';
@@ -14,8 +15,6 @@ import type { TemplateId } from '../types/resume';
 import type { AuthModalMode } from '../types';
 import { buildSeoImageUrl, buildSeoUrl } from '../lib/seo';
 import { LEGAL_CONTACT_EMAIL, LEGAL_COMPANY_NAME } from '../data/legal';
-
-const AuthModal = lazy(() => import('../components/AuthModal'));
 const PENDING_TEMPLATE_STORAGE_KEY = 'resumeenow:pending-template';
 const LANDING_TITLE = 'AI Resume Builder & Resume Parser | ResumeeNow';
 const LANDING_DESCRIPTION =
@@ -133,21 +132,19 @@ const LandingPage: React.FC = () => {
         }}
       />
       <Footer />
-      <Suspense fallback={null}>
-        {authOpen ? (
-          <AuthModal
-            open={authOpen}
-            onClose={(options) => {
-              setAuthOpen(false);
-              if (!user && !options?.preservePendingTemplate) {
-                setPendingTemplate(null);
-                syncPendingTemplate(null);
-              }
-            }}
-            mode={authMode}
-          />
-        ) : null}
-      </Suspense>
+      {authOpen ? (
+        <AuthModal
+          open={authOpen}
+          onClose={(options) => {
+            setAuthOpen(false);
+            if (!user && !options?.preservePendingTemplate) {
+              setPendingTemplate(null);
+              syncPendingTemplate(null);
+            }
+          }}
+          mode={authMode}
+        />
+      ) : null}
     </div>
   );
 };
