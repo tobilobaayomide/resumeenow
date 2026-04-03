@@ -13,6 +13,7 @@ import {
 import HighlightedSkillTokens from "./HighlightedSkillTokens";
 import InlineFormattedText from "./InlineFormattedText";
 import { isBuilderAiTextHighlighted } from "../../../lib/builder/aiHighlights";
+import { FONT_STACKS } from "../../../fonts/registry";
 import { toDescriptionBullets } from "./utils";
 
 const INK = "#111111";
@@ -20,6 +21,7 @@ const BODY = "#222222";
 const MUTED = "#7d7d7d";
 const RULE = "#d8d6d3";
 const SECTION_ACCENT = "#2f2f2b";
+const ATS_SANS = FONT_STACKS.sans;
 
 const NAME_SIZE = 28;
 const SECTION_SIZE = 10;
@@ -289,7 +291,7 @@ const AtsTemplate: React.FC<BuilderTemplateComponentProps> = ({
       ref={contentRef}
       data-self-padded="true"
       style={{
-        fontFamily: "Helvetica, Arial, sans-serif",
+        fontFamily: ATS_SANS,
         color: INK,
         paddingBottom: 28,
         paddingLeft: 36,
