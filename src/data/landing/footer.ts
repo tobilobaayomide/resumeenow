@@ -9,6 +9,7 @@ export const LANDING_FOOTER_PRODUCT_LINKS: FooterLinkItem[] = [
 export const LANDING_FOOTER_COMPANY_LINKS: FooterLinkItem[] = [
   { label: 'How It Works', href: '/#steps' },
   { label: 'Templates', href: '/#templates' },
+  { label: 'Docs', href: '/doc' },
   { label: 'Get Started', href: '/#get-started' },
 ];
 
