@@ -39,6 +39,7 @@ import { isAdminProfileRole } from '../../types/profile';
 import { useCurrentUserRole } from '../../hooks/useCurrentUserRole';
 
 const EMPTY_USERS: AdminUserRecord[] = [];
+const INITIAL_VISIBLE_USERS = 10;
 
 type AccessFilter = 'all' | 'admins' | 'pro' | 'free' | 'waitlist';
 type StatusFilter = 'all' | 'active' | 'suspended';
@@ -336,6 +337,10 @@ const AdminUsersView = () => {
   const [sortKey, setSortKey] = useState<UsersSortKey>('newest');
   const [activityTab, setActivityTab] = useState<ActivityTab>('resumes');
   const [preferredSelectedUserId, setPreferredSelectedUserId] = useState<string | null>(null);
+  const [visibleUsersState, setVisibleUsersState] = useState({
+    scope: '',
+    count: INITIAL_VISIBLE_USERS,
+  });
   const [pendingConfirmation, setPendingConfirmation] =
     useState<PendingConfirmationState | null>(null);
   const [confirmationText, setConfirmationText] = useState('');
@@ -404,8 +409,16 @@ const AdminUsersView = () => {
     });
   }, [accessFilter, normalizedQuery, sortKey, statusFilter, users]);
 
+  const visibleUsersScope = `${accessFilter}:${statusFilter}:${sortKey}:${normalizedQuery}:${users.length}`;
+  const visibleUsersCount =
+    visibleUsersState.scope === visibleUsersScope
+      ? visibleUsersState.count
+      : INITIAL_VISIBLE_USERS;
+  const visibleUsers = filteredUsers.slice(0, visibleUsersCount);
+  const hasMoreUsers = filteredUsers.length > visibleUsers.length;
+
   const selectedUser =
-    filteredUsers.find((record) => record.id === preferredSelectedUserId) ?? filteredUsers[0] ?? null;
+    visibleUsers.find((record) => record.id === preferredSelectedUserId) ?? visibleUsers[0] ?? null;
   const selectedUserId = selectedUser?.id ?? null;
 
   const userDetailQuery = useQuery({
@@ -503,9 +516,11 @@ const AdminUsersView = () => {
   ] as const;
 
   const visibleCountLabel =
-    filteredUsers.length === totalUsers
-      ? `${filteredUsers.length} visible`
-      : `${filteredUsers.length} of ${totalUsers} visible`;
+    filteredUsers.length === 0
+      ? '0 shown'
+      : filteredUsers.length === visibleUsers.length
+        ? `${visibleUsers.length} shown`
+        : `${visibleUsers.length} of ${filteredUsers.length} shown`;
 
   const getRoleAction = (record: AdminUserRecord): UserActionDescriptor => {
     if (!isSuperAdmin) {
@@ -905,8 +920,8 @@ const AdminUsersView = () => {
 
             {!usersQuery.isPending && !usersQuery.isError && filteredUsers.length > 0 && (
               <div className="mt-5 overflow-hidden rounded-[1.7rem] border border-black/8 bg-white">
-                <div className="max-h-[calc(100vh-23rem)] overflow-y-auto">
-                  {filteredUsers.map((record) => {
+                <div>
+                  {visibleUsers.map((record) => {
                     const isSelected = record.id === selectedUserId;
 
                     return (
@@ -1012,6 +1027,22 @@ const AdminUsersView = () => {
                     );
                   })}
                 </div>
+                {hasMoreUsers && (
+                  <div className="border-t border-black/8 bg-[#fbf9f4] px-4 py-4 md:px-5">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setVisibleUsersState({
+                          scope: visibleUsersScope,
+                          count: Math.min(visibleUsersCount + INITIAL_VISIBLE_USERS, filteredUsers.length),
+                        })
+                      }
+                      className="inline-flex min-h-11 items-center justify-center rounded-2xl border border-black/10 bg-white px-4 text-sm font-semibold text-zinc-700 transition hover:border-black/20 hover:bg-[#f7f7f5]"
+                    >
+                      Load 10 more users
+                    </button>
+                  </div>
+                )}
               </div>
             )}
           </section>
