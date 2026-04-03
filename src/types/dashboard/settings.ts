@@ -22,6 +22,7 @@ export interface NotificationPreferencesFormState {
   weeklyDigest: boolean;
   aiUsageAlerts: boolean;
   proWaitlistUpdates: boolean;
+  productUpdates: boolean;
 }
 
 export interface SettingsTabNavigationProps {
@@ -54,12 +55,14 @@ export interface SettingsNotificationsTabProps {
   weeklyDigest: boolean;
   aiUsageAlerts: boolean;
   proWaitlistUpdates: boolean;
+  productUpdates: boolean;
   loading: boolean;
   saving: boolean;
   hasUnsavedChanges: boolean;
   onWeeklyDigestChange: (value: boolean) => void;
   onAiUsageAlertsChange: (value: boolean) => void;
   onProWaitlistUpdatesChange: (value: boolean) => void;
+  onProductUpdatesChange: (value: boolean) => void;
   onReset: () => void;
   onSave: () => void;
 }
@@ -97,10 +100,12 @@ export interface UseNotificationSettingsControllerResult {
   weeklyDigest: boolean;
   aiUsageAlerts: boolean;
   proWaitlistUpdates: boolean;
+  productUpdates: boolean;
   hasUnsavedChanges: boolean;
   setWeeklyDigest: (value: boolean) => void;
   setAiUsageAlerts: (value: boolean) => void;
   setProWaitlistUpdates: (value: boolean) => void;
+  setProductUpdates: (value: boolean) => void;
   savePreferences: () => Promise<void>;
   resetForm: () => void;
 }

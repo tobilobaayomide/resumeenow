@@ -82,6 +82,22 @@ const resolveNotificationContent = (
         title: 'Weekly digest',
         description: 'A quick reminder to refresh your resume and keep momentum this week.',
       };
+    case 'campaign': {
+      const title =
+        typeof event.payload.title === 'string' && event.payload.title.trim()
+          ? event.payload.title.trim()
+          : 'Product update';
+      const description =
+        typeof event.payload.body === 'string' && event.payload.body.trim()
+          ? event.payload.body.trim()
+          : 'There is a new update from ResumeNow.';
+
+      return {
+        id: event.id,
+        title,
+        description,
+      };
+    }
     default:
       return {
         id: event.id,
@@ -187,7 +203,15 @@ export const useDashboardNotifications = (): UseDashboardNotificationsResult => 
 
   const items = useMemo<DashboardNotificationItem[]>(
     () =>
-      (notificationsQuery.data ?? []).map((event) => {
+      (notificationsQuery.data ?? [])
+        .filter((event) => {
+          if (event.type !== 'campaign') {
+            return true;
+          }
+
+          return event.payload.deliverInApp !== false;
+        })
+        .map((event) => {
         const content = resolveNotificationContent(event);
 
         return {
@@ -195,7 +219,7 @@ export const useDashboardNotifications = (): UseDashboardNotificationsResult => 
           timeLabel: formatNotificationTime(event.createdAt),
           isUnread: event.readAt === null,
         };
-      }),
+        }),
     [notificationsQuery.data],
   );
 

@@ -56,12 +56,14 @@ const SettingsNotificationsTab: React.FC<SettingsNotificationsTabProps> = ({
   weeklyDigest,
   aiUsageAlerts,
   proWaitlistUpdates,
+  productUpdates,
   loading,
   saving,
   hasUnsavedChanges,
   onWeeklyDigestChange,
   onAiUsageAlertsChange,
   onProWaitlistUpdatesChange,
+  onProductUpdatesChange,
   onReset,
   onSave,
 }) => (
@@ -90,9 +92,18 @@ const SettingsNotificationsTab: React.FC<SettingsNotificationsTabProps> = ({
         </div>
 
         <NotificationRow
+          title="Product updates"
+          description="Get release notes, launch announcements, and other product-news emails without waiting for in-app discovery."
+          icon={FiMail}
+          checked={productUpdates}
+          disabled={loading || saving}
+          onChange={onProductUpdatesChange}
+        />
+
+        <NotificationRow
           title="Weekly digest"
           description="A short weekly recap with progress nudges and reminders to keep your resume current."
-          icon={FiMail}
+          icon={FiBell}
           checked={weeklyDigest}
           disabled={loading || saving}
           onChange={onWeeklyDigestChange}

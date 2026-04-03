@@ -42,10 +42,12 @@ const Settings: React.FC = () => {
     weeklyDigest,
     aiUsageAlerts,
     proWaitlistUpdates,
+    productUpdates,
     hasUnsavedChanges: notificationsHasUnsavedChanges,
     setWeeklyDigest,
     setAiUsageAlerts,
     setProWaitlistUpdates,
+    setProductUpdates,
     savePreferences,
     resetForm: resetNotificationForm,
   } = useNotificationSettingsController({ user });
@@ -104,12 +106,14 @@ const Settings: React.FC = () => {
                     weeklyDigest={weeklyDigest}
                     aiUsageAlerts={aiUsageAlerts}
                     proWaitlistUpdates={proWaitlistUpdates}
+                    productUpdates={productUpdates}
                     loading={notificationsLoading}
                     saving={notificationsSaving}
                     hasUnsavedChanges={notificationsHasUnsavedChanges}
                     onWeeklyDigestChange={setWeeklyDigest}
                     onAiUsageAlertsChange={setAiUsageAlerts}
                     onProWaitlistUpdatesChange={setProWaitlistUpdates}
+                    onProductUpdatesChange={setProductUpdates}
                     onReset={resetNotificationForm}
                     onSave={() => {
                       void savePreferences();

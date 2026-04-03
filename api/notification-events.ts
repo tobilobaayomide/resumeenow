@@ -173,6 +173,20 @@ const authenticateRequest = async (req: ApiRequest) => {
     throw new HttpError(401, 'Invalid or expired session. Please sign in again.');
   }
 
+  const { data: profile, error: profileError } = await supabase
+    .from('profiles')
+    .select('account_status')
+    .eq('id', user.id)
+    .maybeSingle();
+
+  if (profileError) {
+    throw new HttpError(500, 'Failed to verify account status.');
+  }
+
+  if (isRecord(profile) && profile.account_status === 'suspended') {
+    throw new HttpError(403, 'This account is suspended.');
+  }
+
   return { supabase, user };
 };
 

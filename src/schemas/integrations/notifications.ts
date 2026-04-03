@@ -19,6 +19,10 @@ const normalizeNotificationPreferencesFormState = (
       record.pro_waitlist_updates ?? record.proWaitlistUpdates,
       true,
     ),
+    productUpdates: toBoolean(
+      record.product_updates ?? record.productUpdates,
+      true,
+    ),
   };
 };
 
@@ -26,6 +30,7 @@ export const NotificationPreferencesFormStateSchema = z.object({
   weeklyDigest: z.boolean(),
   aiUsageAlerts: z.boolean(),
   proWaitlistUpdates: z.boolean(),
+  productUpdates: z.boolean(),
 });
 
 export const NotificationPreferencesUpdateSchema = z.object({
@@ -33,6 +38,7 @@ export const NotificationPreferencesUpdateSchema = z.object({
   weekly_digest: z.boolean(),
   ai_usage_alerts: z.boolean(),
   pro_waitlist_updates: z.boolean(),
+  product_updates: z.boolean(),
   updated_at: z.string(),
 });
 

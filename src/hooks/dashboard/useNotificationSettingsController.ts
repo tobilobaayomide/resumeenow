@@ -23,6 +23,7 @@ const EMPTY_NOTIFICATION_PREFERENCES_STATE: NotificationPreferencesFormState = {
   weeklyDigest: false,
   aiUsageAlerts: true,
   proWaitlistUpdates: true,
+  productUpdates: true,
 };
 
 const resolveNotificationPreferencesFormState = (
@@ -38,7 +39,8 @@ const areNotificationPreferencesEqual = (
 ): boolean =>
   left.weeklyDigest === right.weeklyDigest &&
   left.aiUsageAlerts === right.aiUsageAlerts &&
-  left.proWaitlistUpdates === right.proWaitlistUpdates;
+  left.proWaitlistUpdates === right.proWaitlistUpdates &&
+  left.productUpdates === right.productUpdates;
 
 export const useNotificationSettingsController = ({
   user,
@@ -98,6 +100,7 @@ export const useNotificationSettingsController = ({
         weekly_digest: nextFormState.weeklyDigest,
         ai_usage_alerts: nextFormState.aiUsageAlerts,
         pro_waitlist_updates: nextFormState.proWaitlistUpdates,
+        product_updates: nextFormState.productUpdates,
         updated_at: new Date().toISOString(),
       });
 
@@ -136,6 +139,7 @@ export const useNotificationSettingsController = ({
     weeklyDigest: formState.weeklyDigest,
     aiUsageAlerts: formState.aiUsageAlerts,
     proWaitlistUpdates: formState.proWaitlistUpdates,
+    productUpdates: formState.productUpdates,
     hasUnsavedChanges,
     setWeeklyDigest: (value) =>
       updateDraftFormState((current) => ({
@@ -151,6 +155,11 @@ export const useNotificationSettingsController = ({
       updateDraftFormState((current) => ({
         ...current,
         proWaitlistUpdates: value,
+      })),
+    setProductUpdates: (value) =>
+      updateDraftFormState((current) => ({
+        ...current,
+        productUpdates: value,
       })),
     savePreferences,
     resetForm: () => setDraftFormState(null),
