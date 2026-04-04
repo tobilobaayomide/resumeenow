@@ -727,7 +727,7 @@ const AdminCampaignsView = () => {
 
         <section className="overflow-hidden rounded-[1.85rem] border border-black/8 bg-white/92 shadow-[0_26px_72px_-56px_rgba(15,17,21,0.22)]">
           <div className="grid xl:grid-cols-[22rem_minmax(0,1fr)]">
-            <section className="border-b border-black/8 px-4 py-4 xl:min-h-152 xl:border-b-0 xl:border-r xl:px-5">
+            <section className="border-b border-black/8 px-4 py-4 xl:border-b-0 xl:border-r xl:px-5">
               <div className="flex items-end justify-between gap-4 border-b border-black/8 pb-4">
                 <div>
                   <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-zinc-500">
@@ -753,109 +753,111 @@ const AdminCampaignsView = () => {
                 </button>
               </div>
 
-              {campaignHistoryQuery.isPending && (
-                <div className="mt-4 rounded-[1.35rem] border border-dashed border-black/10 bg-[#f9fafb] px-5 py-8 text-center text-sm text-zinc-600">
-                  Loading campaign history…
-                </div>
-              )}
-
-              {campaignHistoryQuery.isError && (
-                <div className="mt-4 rounded-[1.35rem] border border-rose-200 bg-rose-50 px-5 py-5">
-                  <p className="text-sm font-semibold text-rose-700">Failed to load campaign history.</p>
-                  <p className="mt-2 text-sm leading-7 text-rose-700/80">
-                    {campaignHistoryQuery.error instanceof Error
-                      ? campaignHistoryQuery.error.message
-                      : 'An unexpected admin API error occurred.'}
-                  </p>
-                </div>
-              )}
-
-              {!campaignHistoryQuery.isPending &&
-                !campaignHistoryQuery.isError &&
-                recentCampaigns.length === 0 && (
-                  <div className="mt-4 rounded-[1.35rem] border border-dashed border-black/10 bg-[#f9fafb] px-5 py-8 text-center text-sm text-zinc-600">
-                    No campaigns sent yet.
+              <div className="mt-4 overflow-y-auto pr-1 overscroll-contain max-h-100">
+                {campaignHistoryQuery.isPending && (
+                  <div className="rounded-[1.35rem] border border-dashed border-black/10 bg-[#f9fafb] px-5 py-8 text-center text-sm text-zinc-600">
+                    Loading campaign history…
                   </div>
                 )}
 
-              {!campaignHistoryQuery.isPending &&
-                !campaignHistoryQuery.isError &&
-                recentCampaigns.length > 0 && (
-                  <div className="mt-4 space-y-2.5">
-                    {recentCampaigns.map((campaign) => {
-                      const isSelected = campaign.campaignId === selectedCampaign?.campaignId;
+                {campaignHistoryQuery.isError && (
+                  <div className="rounded-[1.35rem] border border-rose-200 bg-rose-50 px-5 py-5">
+                    <p className="text-sm font-semibold text-rose-700">Failed to load campaign history.</p>
+                    <p className="mt-2 text-sm leading-7 text-rose-700/80">
+                      {campaignHistoryQuery.error instanceof Error
+                        ? campaignHistoryQuery.error.message
+                        : 'An unexpected admin API error occurred.'}
+                    </p>
+                  </div>
+                )}
 
-                      return (
-                        <button
-                          key={campaign.campaignId}
-                          type="button"
-                          onClick={() => setSelectedCampaignId(campaign.campaignId)}
-                          className={`w-full rounded-[1.35rem] border px-4 py-3.5 text-left transition ${
-                            isSelected
-                              ? 'border-black bg-[#0f1115] text-white shadow-[0_24px_56px_-42px_rgba(15,17,21,0.48)]'
-                              : 'border-black/8 bg-[#f8f8f7] text-[#111111] hover:border-black/15 hover:bg-white'
-                          }`}
-                        >
-                          <div className="flex items-start justify-between gap-3">
-                            <div className="min-w-0 flex-1">
-                              <div className="flex flex-wrap items-center gap-2">
-                                <h4 className="truncate text-[14px] font-semibold">
-                                  {campaign.title}
-                                </h4>
-                                <span
-                                  className={`rounded-full border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] ${
-                                    isSelected
-                                      ? 'border-white/20 bg-white/10 text-white'
-                                      : 'border-black/10 bg-white text-zinc-700'
+                {!campaignHistoryQuery.isPending &&
+                  !campaignHistoryQuery.isError &&
+                  recentCampaigns.length === 0 && (
+                    <div className="rounded-[1.35rem] border border-dashed border-black/10 bg-[#f9fafb] px-5 py-8 text-center text-sm text-zinc-600">
+                      No campaigns sent yet.
+                    </div>
+                  )}
+
+                {!campaignHistoryQuery.isPending &&
+                  !campaignHistoryQuery.isError &&
+                  recentCampaigns.length > 0 && (
+                    <div className="space-y-2.5">
+                      {recentCampaigns.map((campaign) => {
+                        const isSelected = campaign.campaignId === selectedCampaign?.campaignId;
+
+                        return (
+                          <button
+                            key={campaign.campaignId}
+                            type="button"
+                            onClick={() => setSelectedCampaignId(campaign.campaignId)}
+                            className={`w-full rounded-[1.35rem] border px-4 py-3.5 text-left transition ${
+                              isSelected
+                                ? 'border-black bg-[#0f1115] text-white shadow-[0_24px_56px_-42px_rgba(15,17,21,0.48)]'
+                                : 'border-black/8 bg-[#f8f8f7] text-[#111111] hover:border-black/15 hover:bg-white'
+                            }`}
+                          >
+                            <div className="flex items-start justify-between gap-3">
+                              <div className="min-w-0 flex-1">
+                                <div className="flex flex-wrap items-center gap-2">
+                                  <h4 className="truncate text-[14px] font-semibold">
+                                    {campaign.title}
+                                  </h4>
+                                  <span
+                                    className={`rounded-full border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] ${
+                                      isSelected
+                                        ? 'border-white/20 bg-white/10 text-white'
+                                        : 'border-black/10 bg-white text-zinc-700'
+                                    }`}
+                                  >
+                                    {audienceLabelMap.get(campaign.audience)}
+                                  </span>
+                                </div>
+                                <p
+                                  className={`mt-1 truncate text-[12px] ${
+                                    isSelected ? 'text-zinc-300' : 'text-zinc-600'
                                   }`}
                                 >
-                                  {audienceLabelMap.get(campaign.audience)}
-                                </span>
+                                  {campaign.subject}
+                                </p>
                               </div>
-                              <p
-                                className={`mt-1 truncate text-[12px] ${
-                                  isSelected ? 'text-zinc-300' : 'text-zinc-600'
+                              <span
+                                className={`shrink-0 text-[12px] font-medium ${
+                                  isSelected ? 'text-zinc-300' : 'text-zinc-500'
                                 }`}
                               >
-                                {campaign.subject}
-                              </p>
+                                {formatAdminDateLabel(campaign.createdAt)}
+                              </span>
                             </div>
-                            <span
-                              className={`shrink-0 text-[12px] font-medium ${
-                                isSelected ? 'text-zinc-300' : 'text-zinc-500'
-                              }`}
-                            >
-                              {formatAdminDateLabel(campaign.createdAt)}
-                            </span>
-                          </div>
 
-                          <div className="mt-2.5 flex flex-wrap gap-2">
-                            <HistoryChip selected={isSelected}>
-                              {campaign.targetedRecipients} targeted
-                            </HistoryChip>
-                            <HistoryChip selected={isSelected}>
-                              {getCampaignChannelLabel(campaign)}
-                            </HistoryChip>
-                            <HistoryChip selected={isSelected}>
-                              {campaign.deliverEmail
-                                ? campaign.failedRecipients > 0
-                                  ? `${campaign.failedRecipients} email issue${
-                                      campaign.failedRecipients === 1 ? '' : 's'
-                                    }`
-                                  : `${campaign.emailedRecipients} emailed`
-                                : 'Email off'}
-                            </HistoryChip>
-                            <HistoryChip selected={isSelected}>
-                              {campaign.deliverInApp
-                                ? `${campaign.inAppRecipients} in-app`
-                                : 'In-app off'}
-                            </HistoryChip>
-                          </div>
-                        </button>
-                      );
-                    })}
-                  </div>
-                )}
+                            <div className="mt-2.5 flex flex-wrap gap-2">
+                              <HistoryChip selected={isSelected}>
+                                {campaign.targetedRecipients} targeted
+                              </HistoryChip>
+                              <HistoryChip selected={isSelected}>
+                                {getCampaignChannelLabel(campaign)}
+                              </HistoryChip>
+                              <HistoryChip selected={isSelected}>
+                                {campaign.deliverEmail
+                                  ? campaign.failedRecipients > 0
+                                    ? `${campaign.failedRecipients} email issue${
+                                        campaign.failedRecipients === 1 ? '' : 's'
+                                      }`
+                                    : `${campaign.emailedRecipients} emailed`
+                                  : 'Email off'}
+                              </HistoryChip>
+                              <HistoryChip selected={isSelected}>
+                                {campaign.deliverInApp
+                                  ? `${campaign.inAppRecipients} in-app`
+                                  : 'In-app off'}
+                              </HistoryChip>
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+              </div>
             </section>
 
             <section className="px-4 py-4 xl:min-h-152 xl:px-6 xl:py-5">

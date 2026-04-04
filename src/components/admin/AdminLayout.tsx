@@ -215,7 +215,7 @@ const AdminLayout = ({ eyebrow, title, description, children }: AdminLayoutProps
             </nav>
           </div>
 
-          <div className="mx-auto max-w-[1550px] px-4 py-5 sm:px-6 lg:px-10 lg:py-10">
+          <div className="mx-auto max-w-387.5 px-4 py-5 sm:px-6 lg:px-10 lg:py-10">
             <section className="relative overflow-hidden rounded-[2.25rem] border border-black/8 bg-white/85 px-5 py-6 shadow-[0_26px_80px_-52px_rgba(15,17,21,0.28)] sm:px-6 sm:py-7 lg:px-10 lg:py-10">
               <div className="pointer-events-none absolute inset-0">
                 <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,rgba(15,23,42,0.08),transparent_54%)]" />

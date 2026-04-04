@@ -444,7 +444,7 @@ const buildEmailShell = ({
               <td style="padding:0 32px 32px;">
                 <div style="height:1px;background:#e7e5e4;"></div>
                 <p style="margin:20px 0 0;font-size:12px;line-height:1.8;color:#9ca3af;">
-                  ResumeNow • Build better resumes, faster
+                  ResumeeNow • Build better resumes, faster
                 </p>
               </td>
             </tr>
@@ -465,30 +465,30 @@ const buildNotificationEmail = (
   switch (type) {
     case 'welcome_email':
       return {
-        subject: 'Welcome to ResumeNow',
+        subject: 'Welcome to ResumeeNow',
         html: buildEmailShell({
-          eyebrow: 'ResumeNow',
+          eyebrow: 'ResumeeNow',
           title: 'Your workspace is ready',
           intro: 'Start building polished, job-ready resumes from one focused workspace.',
           body: `
             <p style="margin:0 0 16px;font-size:16px;line-height:1.8;color:#374151;">Hi ${displayName},</p>
-            <p style="margin:0 0 16px;font-size:16px;line-height:1.8;color:#374151;">Welcome to <strong style="color:#111827;">ResumeNow</strong>. You can now parse an existing resume, tailor it with AI, and export recruiter-ready versions from one place.</p>
+            <p style="margin:0 0 16px;font-size:16px;line-height:1.8;color:#374151;">Welcome to <strong style="color:#111827;">ResumeeNow</strong>. You can now parse an existing resume, tailor it with AI, and export recruiter-ready versions from one place.</p>
             <p style="margin:0;font-size:15px;line-height:1.8;color:#6b7280;">If you have not finished your first resume yet, now is the best time to set up your profile and create a solid base draft.</p>
           `,
-          ctaLabel: 'Open ResumeNow',
+          ctaLabel: 'Open ResumeeNow',
           ctaHref: 'https://resumeenow.xyz/dashboard',
         }),
       };
     case 'pro_waitlist_joined':
       return {
-        subject: 'You joined the ResumeNow Pro waitlist',
+        subject: 'You joined the ResumeeNow Pro waitlist',
         html: buildEmailShell({
-          eyebrow: 'ResumeNow Pro',
+          eyebrow: 'ResumeeNow Pro',
           title: 'You are on the waitlist',
           intro: 'We will let you know when early access and billing go live.',
           body: `
             <p style="margin:0 0 16px;font-size:16px;line-height:1.8;color:#374151;">Hi ${displayName},</p>
-            <p style="margin:0 0 16px;font-size:16px;line-height:1.8;color:#374151;">Your spot on the <strong style="color:#111827;">ResumeNow Pro</strong> waitlist is confirmed. We will notify you as soon as paid plans, early access, and new premium workflows are available.</p>
+            <p style="margin:0 0 16px;font-size:16px;line-height:1.8;color:#374151;">Your spot on the <strong style="color:#111827;">ResumeeNow Pro</strong> waitlist is confirmed. We will notify you as soon as paid plans, early access, and new premium workflows are available.</p>
             <p style="margin:0;font-size:15px;line-height:1.8;color:#6b7280;">For now, you can keep using your current plan while we finish the rollout.</p>
           `,
           ctaLabel: 'Open Dashboard',
@@ -499,9 +499,9 @@ const buildNotificationEmail = (
       const used = Number(payload.used) || 0;
       const limit = Number(payload.limit) || 0;
       return {
-        subject: 'ResumeNow AI usage alert',
+        subject: 'ResumeeNow AI usage alert',
         html: buildEmailShell({
-          eyebrow: 'ResumeNow AI',
+          eyebrow: 'ResumeeNow AI',
           title: 'You are close to today’s AI limit',
           intro: 'A quick heads-up so you are not surprised mid-session.',
           body: `
@@ -516,14 +516,14 @@ const buildNotificationEmail = (
     }
     case 'weekly_digest':
       return {
-        subject: 'Your ResumeNow weekly digest',
+        subject: 'Your ResumeeNow weekly digest',
         html: buildEmailShell({
-          eyebrow: 'ResumeNow',
+          eyebrow: 'ResumeeNow',
           title: 'Your weekly resume check-in',
           intro: 'A short reminder to keep your job-search materials moving forward.',
           body: `
             <p style="margin:0 0 16px;font-size:16px;line-height:1.8;color:#374151;">Hi ${displayName},</p>
-            <p style="margin:0 0 16px;font-size:16px;line-height:1.8;color:#374151;">This is your weekly ResumeNow digest. Take a few minutes to refresh your summary, tighten your recent bullets, or export a role-specific version before your next application.</p>
+            <p style="margin:0 0 16px;font-size:16px;line-height:1.8;color:#374151;">This is your weekly ResumeeNow digest. Take a few minutes to refresh your summary, tighten your recent bullets, or export a role-specific version before your next application.</p>
             <p style="margin:0;font-size:15px;line-height:1.8;color:#6b7280;">Small weekly updates usually beat big last-minute rewrites.</p>
           `,
           ctaLabel: 'Review Your Resume',
@@ -545,7 +545,7 @@ const sendEmailWithResend = async ({
   const resendApiKey = process.env.RESEND_API_KEY;
   const fromEmail =
     process.env.NOTIFICATION_FROM_EMAIL || 'no-reply@auth.resumeenow.xyz';
-  const fromName = process.env.NOTIFICATION_FROM_NAME || 'ResumeNow';
+  const fromName = process.env.NOTIFICATION_FROM_NAME || 'ResumeeNow';
 
   if (!resendApiKey) {
     throw new Error('RESEND_API_KEY is not configured.');

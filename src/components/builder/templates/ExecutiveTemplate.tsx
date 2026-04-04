@@ -143,7 +143,7 @@ const ExecutiveTemplate: React.FC<BuilderTemplateComponentProps> = ({
               {personalInfo.email && (
                 <a
                   href={`mailto:${personalInfo.email}`}
-                  className="flex items-center gap-1.5 text-[10px] text-gray-800 break-all"
+                  className="flex items-center gap-1.5 text-[10px] text-[#2563eb] break-all"
                 >
                   <FiMail
                     size={9}
@@ -179,7 +179,7 @@ const ExecutiveTemplate: React.FC<BuilderTemplateComponentProps> = ({
                   href={toExternalLinkHref(link.url)}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex items-center gap-1.5 text-[10px] text-gray-800 break-all"
+                  className="flex items-center gap-1.5 text-[10px] text-[#2563eb] break-all"
                 >
                   <FiGlobe
                     size={9}
@@ -308,7 +308,7 @@ const ExecutiveTemplate: React.FC<BuilderTemplateComponentProps> = ({
                             href={toExternalLinkHref(project.link)}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="text-[9.5px] text-gray-800 mt-0.5 break-all"
+                            className="text-[9.5px] text-[#2563eb] mt-0.5 break-all"
                           >
                             {project.link}
                           </a>

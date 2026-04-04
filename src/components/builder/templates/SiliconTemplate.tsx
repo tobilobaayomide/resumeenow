@@ -147,7 +147,7 @@ const SiliconTemplate: React.FC<BuilderTemplateComponentProps> = ({
           style={{ borderTop: `1px solid ${BORDER}`, color: INK }}
         >
           {personalInfo.email && (
-            <a href={`mailto:${personalInfo.email}`} style={{ color: INK }}>
+            <a href={`mailto:${personalInfo.email}`} style={{ color: "green" }}>
               @ {personalInfo.email}
             </a>
           )}
@@ -159,7 +159,7 @@ const SiliconTemplate: React.FC<BuilderTemplateComponentProps> = ({
               href={toExternalLinkHref(link.url)}
               target="_blank"
               rel="noopener noreferrer"
-              style={{ color: INK }}
+              style={{ color: "green" }}
             >
               &gt; {getPersonalLinkDisplayLabel(link)}
             </a>
