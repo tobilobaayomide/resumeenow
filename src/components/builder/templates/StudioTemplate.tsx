@@ -19,6 +19,7 @@ import { toDescriptionBullets } from "./utils";
 
 const ACCENT = "#1a1a2e";
 const ACCENT_RULE = "#e63946";
+const LINK = "#2563eb";
 const STUDIO_SANS = FONT_STACKS.sans;
 
 const SectionHeading: React.FC<{ children: React.ReactNode }> = ({
@@ -176,7 +177,7 @@ const StudioTemplate: React.FC<BuilderTemplateComponentProps> = ({
           {personalInfo.email && (
             <a
               href={`mailto:${personalInfo.email}`}
-              className="flex items-center gap-1.5 text-[10px] text-white/65 hover:text-white transition-colors"
+              className="flex items-center gap-1.5 text-[10px] text-white"
             >
               <FiMail size={9} className="shrink-0" />
               {personalInfo.email}
@@ -200,7 +201,7 @@ const StudioTemplate: React.FC<BuilderTemplateComponentProps> = ({
               href={toExternalLinkHref(link.url)}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center gap-1.5 text-[10px] text-white/65 hover:text-white transition-colors break-all"
+              className="flex items-center gap-1.5 text-[10px] text-white break-all"
             >
               <FiGlobe size={9} className="shrink-0" />
               {getPersonalLinkDisplayLabel(link)}
@@ -299,9 +300,15 @@ const StudioTemplate: React.FC<BuilderTemplateComponentProps> = ({
                     )}
                   </div>
                   {project.link && (
-                    <p className="text-[9.5px] text-gray-400 mt-0.5 break-all">
+                    <a
+                      href={toExternalLinkHref(project.link)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="mt-0.5 block break-all text-[9.5px]"
+                      style={{ color: LINK }}
+                    >
                       {project.link}
-                    </p>
+                    </a>
                   )}
                   {project.description &&
                     (() => {

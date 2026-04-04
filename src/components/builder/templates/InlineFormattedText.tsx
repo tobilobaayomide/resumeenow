@@ -70,7 +70,7 @@ const renderInlineSegments = (
         rel="noopener noreferrer"
         className={linkClassName}
         style={{
-          color: "inherit",
+          color: "#2563eb",
           textDecoration: "underline",
           textUnderlineOffset: "2px",
           overflowWrap: "anywhere",

@@ -19,7 +19,7 @@ import { toDescriptionBullets } from "./utils";
 const INK = "#111111";
 const BODY = "#222222";
 const MUTED = "#7d7d7d";
-const RULE = "#d8d6d3";
+const RULE = "black";
 const SECTION_ACCENT = "#2f2f2b";
 const ATS_SANS = FONT_STACKS.sans;
 
@@ -202,7 +202,7 @@ const EntryBlock: React.FC<{
               display: "block",
               marginTop: 4,
               fontSize: META_SIZE,
-              color: MUTED,
+              color: '#2563eb',
               textDecoration: "none",
               wordBreak: "break-all",
               lineHeight: 1.5,
@@ -336,7 +336,7 @@ const AtsTemplate: React.FC<BuilderTemplateComponentProps> = ({
           {personalInfo.email ? (
             <a
               href={`mailto:${personalInfo.email}`}
-              style={{ fontSize: META_SIZE, color: MUTED, textDecoration: "none" }}
+              style={{ fontSize: META_SIZE, color: "#2563eb", textDecoration: "none" }}
             >
               {personalInfo.email}
             </a>
@@ -345,35 +345,35 @@ const AtsTemplate: React.FC<BuilderTemplateComponentProps> = ({
           {personalInfo.phone ? (
             <>
               {personalInfo.email ? (
-                <span style={{ fontSize: META_SIZE, color: RULE, marginLeft: 4, marginRight: 4 }}>
-                  ·
+                <span style={{ fontSize: META_SIZE, color: MUTED, marginLeft: 10, marginRight: 10 }}>
+                  •
                 </span>
               ) : null}
-              <span style={{ fontSize: META_SIZE, color: MUTED }}>{personalInfo.phone}</span>
+              <span style={{ fontSize: META_SIZE, color: RULE }}>{personalInfo.phone}</span>
             </>
           ) : null}
 
           {personalInfo.location ? (
             <>
               {personalInfo.email || personalInfo.phone ? (
-                <span style={{ fontSize: META_SIZE, color: RULE, marginLeft: 4, marginRight: 4 }}>
-                  ·
+                <span style={{ fontSize: META_SIZE, color: MUTED, marginLeft: 10, marginRight: 10 }}>
+                  •
                 </span>
               ) : null}
-              <span style={{ fontSize: META_SIZE, color: MUTED }}>{personalInfo.location}</span>
+              <span style={{ fontSize: META_SIZE, color: RULE }}>{personalInfo.location}</span>
             </>
           ) : null}
 
           {visibleLinks.map((link) => (
             <React.Fragment key={link.id}>
-              <span style={{ fontSize: META_SIZE, color: RULE, marginLeft: 4, marginRight: 4 }}>
-                ·
+              <span style={{ fontSize: META_SIZE, color: MUTED, marginLeft: 10, marginRight: 10 }}>
+                •
               </span>
               <a
                 href={toExternalLinkHref(link.url)}
                 target="_blank"
                 rel="noopener noreferrer"
-                style={{ fontSize: META_SIZE, color: MUTED, textDecoration: "none" }}
+                style={{ fontSize: META_SIZE, color: "#2563eb", textDecoration: "none" }}
               >
                 {getPersonalLinkDisplayLabel(link)}
               </a>

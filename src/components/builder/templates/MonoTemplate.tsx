@@ -21,6 +21,7 @@ const DATE_COL = "#4a4a48";
 const BODY_TEXT = "#30302e";
 const MUTED = "#70706c";
 const RULE = "#e0dedd";
+const LINK = "#2563eb";
 const MONO = FONT_STACKS.mono;
 
 const DATE_COL_WIDTH = 82;
@@ -45,10 +46,12 @@ const monoBodyCopyStyle: React.CSSProperties = {
   wordBreak: "normal",
 };
 
-const monoMutedWrapStyle: React.CSSProperties = {
-  color: MUTED,
+const monoLinkStyle: React.CSSProperties = {
+  color: LINK,
   overflowWrap: "anywhere",
   wordBreak: "normal",
+  textDecoration: "underline",
+  textUnderlineOffset: "2px",
 };
 
 const SectionHeading: React.FC<{ children: React.ReactNode; index: number }> = ({
@@ -145,7 +148,7 @@ const BulletList: React.FC<{
         }`}
         style={monoBodyCopyStyle}
       >
-        <InlineFormattedText value={line} />
+        <InlineFormattedText value={line} linkStyle={monoLinkStyle} />
       </li>
     ))}
   </ul>
@@ -224,13 +227,13 @@ const MonoTemplate: React.FC<BuilderTemplateComponentProps> = ({
 
             <div
               className="mt-3 flex flex-wrap gap-x-4 gap-y-1 pt-3 text-[10px]"
-              style={{ borderTop: `1px solid ${RULE}`, color: MUTED }}
+              style={{ borderTop: `1px solid ${RULE}`, color: 'black' }}
             >
               {personalInfo.email ? (
                 <a
                   href={`mailto:${personalInfo.email}`}
                   className="wrap-break-word"
-                  style={monoMutedWrapStyle}
+                  style={monoLinkStyle}
                 >
                   {personalInfo.email}
                 </a>
@@ -244,7 +247,7 @@ const MonoTemplate: React.FC<BuilderTemplateComponentProps> = ({
                   target="_blank"
                   rel="noopener noreferrer"
                   className="wrap-break-word"
-                  style={monoMutedWrapStyle}
+                  style={monoLinkStyle}
                 >
                   {getPersonalLinkDisplayLabel(link)}
                 </a>
@@ -365,7 +368,7 @@ const MonoTemplate: React.FC<BuilderTemplateComponentProps> = ({
                             className="mt-2 text-[11.5px] leading-[1.7] text-justify whitespace-pre-line"
                             style={monoBodyCopyStyle}
                           >
-                            <InlineFormattedText value={exp.description} />
+                            <InlineFormattedText value={exp.description} linkStyle={monoLinkStyle} />
                           </p>
                         );
                       })()
@@ -400,7 +403,7 @@ const MonoTemplate: React.FC<BuilderTemplateComponentProps> = ({
     target="_blank"
     rel="noopener noreferrer"
     className="mt-1 block text-[10px] wrap-break-word hover:underline"
-    style={monoMutedWrapStyle}
+    style={monoLinkStyle}
   >
     {project.link}
   </a>
@@ -420,7 +423,7 @@ const MonoTemplate: React.FC<BuilderTemplateComponentProps> = ({
                             className="mt-2 text-[11.5px] leading-[1.7] text-justify"
                             style={monoBodyCopyStyle}
                           >
-                            <InlineFormattedText value={project.description} />
+                            <InlineFormattedText value={project.description} linkStyle={monoLinkStyle} />
                           </p>
                         );
                       })()
@@ -471,7 +474,7 @@ const MonoTemplate: React.FC<BuilderTemplateComponentProps> = ({
                             className="mt-2 text-[11.5px] leading-[1.7] text-justify whitespace-pre-line"
                             style={monoBodyCopyStyle}
                           >
-                            <InlineFormattedText value={item.description} />
+                            <InlineFormattedText value={item.description} linkStyle={monoLinkStyle} />
                           </p>
                         );
                       })()
@@ -517,7 +520,7 @@ const MonoTemplate: React.FC<BuilderTemplateComponentProps> = ({
                       className="mt-2 text-[11.5px] leading-[1.7] text-justify whitespace-pre-line"
                       style={monoBodyCopyStyle}
                     >
-                      <InlineFormattedText value={edu.description} />
+                      <InlineFormattedText value={edu.description} linkStyle={monoLinkStyle} />
                     </p>
                   ) : null}
                 </EntryRow>
