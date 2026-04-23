@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useLayoutEffect, useMemo, useRef, useState } from "react";
 import TemplateRenderer from "../templates/TemplateRenderer";
 import type { ResumeData } from "../../../domain/resume";
 import type { TemplateId } from "../../../domain/templates";
@@ -51,7 +51,7 @@ export const HtmlTemplateDocument: React.FC<HtmlTemplateDocumentProps> = ({
   const [isSelfPadded, setIsSelfPadded] = useState(false);
   const [flushHeader, setFlushHeader] = useState(false);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const element = measureRef.current;
     if (!element) return;
 
@@ -83,8 +83,16 @@ export const HtmlTemplateDocument: React.FC<HtmlTemplateDocumentProps> = ({
 
     scheduleMeasurement(0);
 
-    const observer = new ResizeObserver(() => scheduleMeasurement());
-    observer.observe(element);
+    const resizeObserver = new ResizeObserver(() => scheduleMeasurement());
+    resizeObserver.observe(element);
+
+    const mutationObserver = new MutationObserver(() => scheduleMeasurement(0));
+    mutationObserver.observe(element, {
+      subtree: true,
+      childList: true,
+      characterData: true,
+      attributes: true,
+    });
 
     const fonts = "fonts" in document ? document.fonts : null;
     const handleFontsSettled = () => scheduleMeasurement(0);
@@ -104,7 +112,8 @@ export const HtmlTemplateDocument: React.FC<HtmlTemplateDocumentProps> = ({
       cancelled = true;
       clearTimeout(timeoutId);
       window.cancelAnimationFrame(animationFrameId);
-      observer.disconnect();
+      resizeObserver.disconnect();
+      mutationObserver.disconnect();
 
       if (fonts && "removeEventListener" in fonts) {
         fonts.removeEventListener("loadingdone", handleFontsSettled);

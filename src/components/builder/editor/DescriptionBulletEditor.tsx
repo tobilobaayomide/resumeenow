@@ -15,6 +15,7 @@ import {
   normalizeDescriptionBulletText,
   toEditableDescriptionBullets,
 } from "../../../lib/descriptionBullets";
+import { toExternalLinkHref } from "../../../domain/resume";
 import {
   renderInlineFormattingHtml,
   serializeInlineFormattingRoot,
@@ -24,6 +25,9 @@ const buildInitialBulletDrafts = (value: string): string[] => {
   const bullets = toEditableDescriptionBullets(value);
   return bullets.length > 0 ? bullets : [""];
 };
+
+const createDraftBulletKey = (nextKeyIndex: number): string =>
+  `bullet-draft-${nextKeyIndex}`;
 
 const isSelectionWithinRoot = (root: HTMLElement): boolean => {
   const selection = window.getSelection();
@@ -182,9 +186,63 @@ const findClosestAnchor = (node: Node | null): HTMLAnchorElement | null => {
   return (node.parentElement?.closest("a") as HTMLAnchorElement | null) ?? null;
 };
 
-const runEditorCommand = (command: string, value?: string) => {
+const findClosestFormattingElement = (
+  node: Node | null,
+  root: HTMLElement,
+  tagNames: readonly string[],
+): HTMLElement | null => {
+  if (!node) return null;
+
+  const startingElement =
+    node.nodeType === Node.ELEMENT_NODE
+      ? (node as HTMLElement)
+      : node.parentElement;
+
+  let current = startingElement;
+  while (current && current !== root) {
+    if (tagNames.includes(current.tagName.toLowerCase())) {
+      return current;
+    }
+
+    current = current.parentElement;
+  }
+
+  return null;
+};
+
+const getSelectionFormattingState = (
+  root: HTMLElement,
+): ActiveInlineFormattingState => {
+  if (!isSelectionWithinRoot(root)) {
+    return EMPTY_ACTIVE_FORMATTING;
+  }
+
+  const selection = window.getSelection();
+  const anchorNode = selection?.anchorNode ?? null;
+  const focusNode = selection?.focusNode ?? null;
+
+  return {
+    bold: Boolean(
+      findClosestFormattingElement(anchorNode, root, ["strong", "b"]) ??
+        findClosestFormattingElement(focusNode, root, ["strong", "b"]),
+    ),
+    italic: Boolean(
+      findClosestFormattingElement(anchorNode, root, ["em", "i"]) ??
+        findClosestFormattingElement(focusNode, root, ["em", "i"]),
+    ),
+    link: Boolean(
+      findClosestAnchor(anchorNode) ?? findClosestAnchor(focusNode),
+    ),
+  };
+};
+
+const runEditorCommand = (command: string, value?: string): boolean => {
+  if (typeof document.execCommand !== "function") {
+    return false;
+  }
+
   document.execCommand("styleWithCSS", false, "false");
-  document.execCommand(command, false, value);
+  return document.execCommand(command, false, value);
 };
 
 type LinkPopoverState = {
@@ -223,8 +281,13 @@ const DescriptionBulletEditor: React.FC<DescriptionBulletEditorProps> = ({
   const autoId = useId();
   const textareaId = id ?? autoId;
   const textareaName = name ?? textareaId;
+  const fieldLabelId = `${textareaId}-label`;
   const lastCommittedValueRef = useRef(value);
   const draftBulletsRef = useRef<string[]>(buildInitialBulletDrafts(value));
+  const bulletKeyCounterRef = useRef(draftBulletsRef.current.length);
+  const draftBulletKeysRef = useRef<string[]>(
+    draftBulletsRef.current.map((_, index) => createDraftBulletKey(index)),
+  );
   const editorRefs = useRef<Array<HTMLDivElement | null>>([]);
   const pendingFocusIndexRef = useRef<number | null>(null);
   const pendingSelectionRef = useRef<{
@@ -251,6 +314,9 @@ const DescriptionBulletEditor: React.FC<DescriptionBulletEditorProps> = ({
     const nextDraftBullets = buildInitialBulletDrafts(value);
     lastCommittedValueRef.current = value;
     draftBulletsRef.current = nextDraftBullets;
+    draftBulletKeysRef.current = nextDraftBullets.map(() =>
+      createDraftBulletKey(bulletKeyCounterRef.current++),
+    );
     setDraftBullets(nextDraftBullets);
   }, [value]);
 
@@ -316,17 +382,7 @@ const DescriptionBulletEditor: React.FC<DescriptionBulletEditorProps> = ({
         return;
       }
 
-      const selection = window.getSelection();
-      const linkActive = Boolean(
-        findClosestAnchor(selection?.anchorNode ?? null) ??
-          findClosestAnchor(selection?.focusNode ?? null),
-      );
-
-      setActiveInlineFormatting({
-        bold: document.queryCommandState("bold"),
-        italic: document.queryCommandState("italic"),
-        link: linkActive,
-      });
+      setActiveInlineFormatting(getSelectionFormattingState(editor));
     };
 
     document.addEventListener("selectionchange", updateSelectionFormatting);
@@ -342,8 +398,12 @@ const DescriptionBulletEditor: React.FC<DescriptionBulletEditorProps> = ({
     onChange(nextValue);
   };
 
-  const syncDraftBullets = (nextDraftBullets: string[]) => {
+  const syncDraftBullets = (
+    nextDraftBullets: string[],
+    nextDraftBulletKeys = draftBulletKeysRef.current,
+  ) => {
     draftBulletsRef.current = nextDraftBullets;
+    draftBulletKeysRef.current = nextDraftBulletKeys;
     setDraftBullets(nextDraftBullets);
   };
 
@@ -359,12 +419,7 @@ const DescriptionBulletEditor: React.FC<DescriptionBulletEditorProps> = ({
     const nextDraftBullets = [...draftBulletsRef.current];
     nextDraftBullets[index] = nextBullet;
     syncDraftBullets(nextDraftBullets);
-
-    if (
-      nextDraftBullets.every((bullet) => normalizeDescriptionBulletText(bullet))
-    ) {
-      commitBulletDrafts(nextDraftBullets);
-    }
+    commitBulletDrafts(nextDraftBullets);
   };
 
   const syncBulletFromEditor = (index: number) => {
@@ -377,13 +432,21 @@ const DescriptionBulletEditor: React.FC<DescriptionBulletEditorProps> = ({
   const handleBulletBlur = (index: number) => {
     syncBulletFromEditor(index);
 
-    const nextDraftBullets = draftBulletsRef.current.filter((bullet) =>
-      normalizeDescriptionBulletText(bullet),
-    );
+    const nextDraftBullets: string[] = [];
+    const nextDraftBulletKeys: string[] = [];
+    draftBulletsRef.current.forEach((bullet, bulletIndex) => {
+      if (!normalizeDescriptionBulletText(bullet)) return;
+      nextDraftBullets.push(bullet);
+      nextDraftBulletKeys.push(draftBulletKeysRef.current[bulletIndex]);
+    });
     const resolvedDraftBullets =
       nextDraftBullets.length > 0 ? nextDraftBullets : [""];
+    const resolvedDraftBulletKeys =
+      nextDraftBulletKeys.length > 0
+        ? nextDraftBulletKeys
+        : [createDraftBulletKey(bulletKeyCounterRef.current++)];
 
-    syncDraftBullets(resolvedDraftBullets);
+    syncDraftBullets(resolvedDraftBullets, resolvedDraftBulletKeys);
     commitBulletDrafts(nextDraftBullets);
   };
 
@@ -397,7 +460,13 @@ const DescriptionBulletEditor: React.FC<DescriptionBulletEditorProps> = ({
     }
 
     const nextIndex = draftBulletsRef.current.length;
-    syncDraftBullets([...draftBulletsRef.current, ""]);
+    syncDraftBullets(
+      [...draftBulletsRef.current, ""],
+      [
+        ...draftBulletKeysRef.current,
+        createDraftBulletKey(bulletKeyCounterRef.current++),
+      ],
+    );
     requestBulletFocus(nextIndex);
   };
 
@@ -421,10 +490,17 @@ const DescriptionBulletEditor: React.FC<DescriptionBulletEditorProps> = ({
     const nextDraftBullets = draftBulletsRef.current.filter(
       (_bullet, bulletIndex) => bulletIndex !== index,
     );
+    const nextDraftBulletKeys = draftBulletKeysRef.current.filter(
+      (_key, bulletIndex) => bulletIndex !== index,
+    );
     const resolvedDraftBullets =
       nextDraftBullets.length > 0 ? nextDraftBullets : [""];
+    const resolvedDraftBulletKeys =
+      nextDraftBulletKeys.length > 0
+        ? nextDraftBulletKeys
+        : [createDraftBulletKey(bulletKeyCounterRef.current++)];
 
-    syncDraftBullets(resolvedDraftBullets);
+    syncDraftBullets(resolvedDraftBullets, resolvedDraftBulletKeys);
     commitBulletDrafts(nextDraftBullets);
     requestBulletFocus(Math.max(0, index - 1));
   };
@@ -453,9 +529,12 @@ const DescriptionBulletEditor: React.FC<DescriptionBulletEditorProps> = ({
     });
 
     const nextDraftBullets = [...draftBulletsRef.current];
+    const nextDraftBulletKeys = [...draftBulletKeysRef.current];
     const [movedBullet] = nextDraftBullets.splice(index, 1);
+    const [movedBulletKey] = nextDraftBulletKeys.splice(index, 1);
     nextDraftBullets.splice(targetIndex, 0, movedBullet);
-    syncDraftBullets(nextDraftBullets);
+    nextDraftBulletKeys.splice(targetIndex, 0, movedBulletKey);
+    syncDraftBullets(nextDraftBullets, nextDraftBulletKeys);
     commitBulletDrafts(nextDraftBullets);
     requestBulletFocus(targetIndex);
   };
@@ -468,7 +547,10 @@ const DescriptionBulletEditor: React.FC<DescriptionBulletEditorProps> = ({
   const toggleRawMode = () => {
     if (isRawMode) {
       const nextDraftBullets = buildInitialBulletDrafts(value);
-      syncDraftBullets(nextDraftBullets);
+      const nextDraftBulletKeys = nextDraftBullets.map(() =>
+        createDraftBulletKey(bulletKeyCounterRef.current++),
+      );
+      syncDraftBullets(nextDraftBullets, nextDraftBulletKeys);
       commitBulletDrafts(nextDraftBullets);
       setIsRawMode(false);
       requestBulletFocus(0);
@@ -486,7 +568,7 @@ const DescriptionBulletEditor: React.FC<DescriptionBulletEditorProps> = ({
   ) => {
     if (event.key === "Enter" && event.shiftKey) {
       event.preventDefault();
-      runEditorCommand("insertLineBreak");
+      insertPlainTextAtSelection(event.currentTarget, "\n");
       syncBulletFromEditor(index);
       return;
     }
@@ -502,8 +584,14 @@ const DescriptionBulletEditor: React.FC<DescriptionBulletEditorProps> = ({
       }
 
       const nextDraftBullets = [...draftBulletsRef.current];
+      const nextDraftBulletKeys = [...draftBulletKeysRef.current];
       nextDraftBullets.splice(index + 1, 0, "");
-      syncDraftBullets(nextDraftBullets);
+      nextDraftBulletKeys.splice(
+        index + 1,
+        0,
+        createDraftBulletKey(bulletKeyCounterRef.current++),
+      );
+      syncDraftBullets(nextDraftBullets, nextDraftBulletKeys);
       requestBulletFocus(index + 1);
       return;
     }
@@ -523,7 +611,10 @@ const DescriptionBulletEditor: React.FC<DescriptionBulletEditorProps> = ({
       const nextDraftBullets = draftBulletsRef.current.filter(
         (_bullet, bulletIndex) => bulletIndex !== index,
       );
-      syncDraftBullets(nextDraftBullets);
+      const nextDraftBulletKeys = draftBulletKeysRef.current.filter(
+        (_key, bulletIndex) => bulletIndex !== index,
+      );
+      syncDraftBullets(nextDraftBullets, nextDraftBulletKeys);
       commitBulletDrafts(nextDraftBullets);
       requestBulletFocus(Math.max(0, index - 1));
     }
@@ -550,17 +641,7 @@ const DescriptionBulletEditor: React.FC<DescriptionBulletEditorProps> = ({
       return;
     }
 
-    const selection = window.getSelection();
-    const linkActive = Boolean(
-      findClosestAnchor(selection?.anchorNode ?? null) ??
-        findClosestAnchor(selection?.focusNode ?? null),
-    );
-
-    setActiveInlineFormatting({
-      bold: document.queryCommandState("bold"),
-      italic: document.queryCommandState("italic"),
-      link: linkActive,
-    });
+    setActiveInlineFormatting(getSelectionFormattingState(editor));
   };
 
   const handleBold = (index: number) => {
@@ -568,7 +649,7 @@ const DescriptionBulletEditor: React.FC<DescriptionBulletEditorProps> = ({
     if (!editor) return;
 
     focusEditorSelection(editor);
-    runEditorCommand("bold");
+    if (!runEditorCommand("bold")) return;
     syncBulletFromEditor(index);
     syncActiveFormattingForEditor(index);
   };
@@ -578,7 +659,7 @@ const DescriptionBulletEditor: React.FC<DescriptionBulletEditorProps> = ({
     if (!editor) return;
 
     focusEditorSelection(editor);
-    runEditorCommand("italic");
+    if (!runEditorCommand("italic")) return;
     syncBulletFromEditor(index);
     syncActiveFormattingForEditor(index);
   };
@@ -587,16 +668,18 @@ const DescriptionBulletEditor: React.FC<DescriptionBulletEditorProps> = ({
     const editor = editorRefs.current[index];
     if (!editor) return;
 
+    const selectionWithinEditor = isSelectionWithinRoot(editor);
     const currentSelection =
-      getSelectionOffsets(editor) ??
+      (selectionWithinEditor ? getSelectionOffsets(editor) : null) ??
       (() => {
         const contentLength = editor.textContent?.length ?? 0;
         return { start: contentLength, end: contentLength };
       })();
-    const selection = window.getSelection();
-    const existingLink =
-      findClosestAnchor(selection?.anchorNode ?? null) ??
-      findClosestAnchor(selection?.focusNode ?? null);
+    const selection = selectionWithinEditor ? window.getSelection() : null;
+    const existingLink = selectionWithinEditor
+      ? findClosestAnchor(selection?.anchorNode ?? null) ??
+        findClosestAnchor(selection?.focusNode ?? null)
+      : null;
 
     setLinkPopoverState({
       index,
@@ -634,18 +717,20 @@ const DescriptionBulletEditor: React.FC<DescriptionBulletEditorProps> = ({
 
     const trimmedUrl = activeState.url.trim();
     if (!trimmedUrl || !activeState.canApply) return;
+    const safeHref = toExternalLinkHref(trimmedUrl);
+    if (!safeHref) return;
 
     const targetSelection = activeState.linkRange ?? activeState.selection;
     restoreSelectionOffsets(editor, targetSelection.start, targetSelection.end);
     focusEditorSelection(editor);
-    runEditorCommand("createLink", trimmedUrl);
+    if (!runEditorCommand("createLink", safeHref)) return;
 
     const selection = window.getSelection();
     const link =
       findClosestAnchor(selection?.anchorNode ?? null) ??
       findClosestAnchor(selection?.focusNode ?? null);
     if (link) {
-      link.setAttribute("href", trimmedUrl);
+      link.setAttribute("href", safeHref);
       link.setAttribute("data-link-url", trimmedUrl);
     }
 
@@ -670,7 +755,7 @@ const DescriptionBulletEditor: React.FC<DescriptionBulletEditorProps> = ({
       activeState.linkRange.start,
       activeState.linkRange.end,
     );
-    runEditorCommand("unlink");
+    if (!runEditorCommand("unlink")) return;
     syncBulletFromEditor(activeState.index);
     setLinkPopoverState(null);
     requestBulletFocus(activeState.index, activeState.linkRange);
@@ -699,6 +784,10 @@ const DescriptionBulletEditor: React.FC<DescriptionBulletEditorProps> = ({
     syncActiveFormattingForEditor(index);
   };
 
+  const linkPopoverSafeHref = linkPopoverState
+    ? toExternalLinkHref(linkPopoverState.url)
+    : "";
+
   const showAddBulletAction =
     typeof maxBullets !== "number" || draftBullets.length < maxBullets;
 
@@ -707,6 +796,7 @@ const DescriptionBulletEditor: React.FC<DescriptionBulletEditorProps> = ({
       <div className="flex items-center justify-between gap-2">
         {label ? (
           <label
+            id={fieldLabelId}
             htmlFor={textareaId}
             className="block text-[10.5px] font-semibold text-gray-500 tracking-wide"
           >
@@ -750,7 +840,7 @@ const DescriptionBulletEditor: React.FC<DescriptionBulletEditorProps> = ({
         <div className="space-y-2">
           {draftBullets.map((bullet, index) => (
             <div
-              key={`${textareaId}-bullet-${index}`}
+              key={draftBulletKeysRef.current[index] ?? `${textareaId}-bullet-${index}`}
               className="rounded-xl border border-gray-200 bg-white p-2.5 shadow-[0_1px_2px_rgba(0,0,0,0.03)]"
             >
               <div className="flex items-start gap-2.5">
@@ -774,6 +864,11 @@ const DescriptionBulletEditor: React.FC<DescriptionBulletEditorProps> = ({
                       id={index === 0 ? textareaId : undefined}
                       role="textbox"
                       aria-multiline="true"
+                      aria-label={
+                        label
+                          ? `${label} bullet ${index + 1}`
+                          : `Description bullet ${index + 1}`
+                      }
                       contentEditable
                       suppressContentEditableWarning
                       spellCheck
@@ -803,8 +898,8 @@ const DescriptionBulletEditor: React.FC<DescriptionBulletEditorProps> = ({
                           : `${textareaName}-bullet-${index + 1}`
                       }
                       className="
-                        relative z-[1] w-full rounded-lg border border-gray-200 bg-gray-50/70 px-3 py-2 text-[12.5px] leading-relaxed text-gray-800
-                        whitespace-pre-wrap break-words [overflow-wrap:anywhere]
+                        relative z-1 w-full rounded-lg border border-gray-200 bg-gray-50/70 px-3 py-2 text-[12.5px] leading-relaxed text-gray-800
+                        whitespace-pre-wrap wrap-break-word
                         transition-all duration-150
                         hover:border-gray-300 hover:bg-white
                         focus:border-gray-400 focus:bg-white focus:outline-none focus:ring-1 focus:ring-gray-300
@@ -896,10 +991,14 @@ const DescriptionBulletEditor: React.FC<DescriptionBulletEditorProps> = ({
                     <div className="rounded-lg border border-gray-200 bg-gray-50/90 p-2.5">
                       <div className="flex items-start justify-between gap-2">
                         <div className="space-y-2 min-w-0 flex-1">
-                          <label className="block text-[10px] font-semibold tracking-wide text-gray-500">
+                          <label
+                            htmlFor={`${textareaId}-link-url-${index}`}
+                            className="block text-[10px] font-semibold tracking-wide text-gray-500"
+                          >
                             {linkPopoverState.linkRange ? "Edit Link" : "Add Link"}
                           </label>
                           <input
+                            id={`${textareaId}-link-url-${index}`}
                             ref={linkInputRef}
                             type="url"
                             inputMode="url"
@@ -941,7 +1040,9 @@ const DescriptionBulletEditor: React.FC<DescriptionBulletEditorProps> = ({
                           type="button"
                           onClick={handleApplyLink}
                           disabled={
-                            !linkPopoverState.url.trim() || !linkPopoverState.canApply
+                            !linkPopoverState.url.trim() ||
+                            !linkPopoverState.canApply ||
+                            !linkPopoverSafeHref
                           }
                           className="inline-flex items-center gap-1 rounded-md bg-gray-900 px-2.5 py-1 text-[10px] font-semibold tracking-wide text-white transition-colors hover:bg-black disabled:cursor-not-allowed disabled:opacity-40"
                         >
@@ -970,6 +1071,11 @@ const DescriptionBulletEditor: React.FC<DescriptionBulletEditorProps> = ({
                       {!linkPopoverState.canApply ? (
                         <p className="mt-2 text-[10px] leading-relaxed text-gray-500">
                           Select text in the bullet first, then add a link.
+                        </p>
+                      ) : linkPopoverState.url.trim() && !linkPopoverSafeHref ? (
+                        <p className="mt-2 text-[10px] leading-relaxed text-gray-500">
+                          Use a bare domain or a URL that starts with http://,
+                          https://, mailto:, or tel:.
                         </p>
                       ) : null}
                     </div>

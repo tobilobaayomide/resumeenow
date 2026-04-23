@@ -136,17 +136,33 @@ const mergePersistedBuilderState = (
   };
 };
 
-const debouncedLocalStorage = createDebouncedStateStorage({
+const getBuilderSessionStorage = () => {
+  if (typeof window === 'undefined' || !('sessionStorage' in window)) {
+    return {
+      getItem: () => null,
+      setItem: () => {},
+      removeItem: () => {},
+    };
+  }
+
+  return window.sessionStorage;
+};
+
+const debouncedSessionStorage = createDebouncedStateStorage({
   delayMs: 1000,
   storage: {
-    getItem: (name) => localStorage.getItem(name),
-    setItem: (name, value) => localStorage.setItem(name, value),
-    removeItem: (name) => localStorage.removeItem(name),
+    getItem: (name) => getBuilderSessionStorage().getItem(name),
+    setItem: (name, value) => getBuilderSessionStorage().setItem(name, value),
+    removeItem: (name) => getBuilderSessionStorage().removeItem(name),
   },
 });
 
 export const flushBuilderStorageWrites = () => {
-  debouncedLocalStorage.flushAll();
+  debouncedSessionStorage.flushAll();
+};
+
+export const clearBuilderStorage = () => {
+  debouncedSessionStorage.removeItem(BUILDER_STORAGE_NAME);
 };
 
 export const useBuilderStore = create<BuilderStore>()(
@@ -372,7 +388,7 @@ export const useBuilderStore = create<BuilderStore>()(
     }),
     {
       name: BUILDER_STORAGE_NAME,
-      storage: createJSONStorage(() => debouncedLocalStorage),
+      storage: createJSONStorage(() => debouncedSessionStorage),
       version: BUILDER_PERSIST_VERSION,
       migrate: migrateBuilderPersistedState,
       merge: mergePersistedBuilderState,

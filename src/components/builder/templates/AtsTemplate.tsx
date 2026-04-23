@@ -113,9 +113,8 @@ const BulletList: React.FC<{
           ...(isBuilderAiTextHighlighted(highlightedBullets, line)
             ? {
                 backgroundColor: "rgba(254, 243, 199, 0.85)",
-                border: "1px solid rgba(245, 158, 11, 0.28)",
                 borderRadius: 6,
-                padding: "2px 4px",
+                boxShadow: "inset 0 0 0 1px rgba(245, 158, 11, 0.28)",
               }
             : {}),
         }}

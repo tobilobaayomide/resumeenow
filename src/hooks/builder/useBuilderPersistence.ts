@@ -5,14 +5,14 @@ import type { NavigateFunction } from 'react-router-dom';
 import { toast } from 'sonner';
 import { AUTOSAVE_DELAY_MS, clampSummary, serializeDraft } from '../../lib/builder/page';
 import { getErrorMessage } from '../../lib/errors';
-import { reportRuntimeValidationIssue } from '../../lib/observability/runtimeValidation';
-import { getResumesQueryKey } from '../../lib/queries/resumes';
-import type { BuilderLocationState } from '../../schemas/builder/locationState';
 import {
-  parseResumeData,
-  safeParseResumeRecord,
-} from '../../schemas/domain/resume';
-import { supabase } from '../../lib/supabase';
+  createResumeRecord,
+  fetchResumeRecord,
+  getResumesQueryKey,
+  updateResumeRecord,
+} from '../../lib/queries/resumes';
+import type { BuilderLocationState } from '../../schemas/builder/locationState';
+import { parseResumeData } from '../../schemas/domain/resume';
 import {
   INITIAL_RESUME_DATA,
   normalizeTemplateId,
@@ -125,45 +125,22 @@ export const useBuilderPersistence = ({
   useEffect(() => {
     if (!isNew && id && user && !hasHydratedInitialState.current) {
       const fetchResume = async () => {
-        const { data, error } = await supabase
-          .from('resumes')
-          .select('*')
-          .eq('id', id)
-          .eq('user_id', user.id)
-          .single();
-
-        if (error) {
+        try {
+          const resume = await fetchResumeRecord(user.id, id);
+          setLoadedResumeState(
+            {
+              ...resume.content,
+              summary: clampSummary(resume.content.summary),
+            },
+            resume.template_id,
+            resume.title || 'Untitled Resume',
+            resume.updated_at,
+          );
+          hasHydratedInitialState.current = true;
+        } catch {
           toast.error("Couldn't open that resume.");
           navigate('/dashboard');
-          return;
         }
-
-        const resume = safeParseResumeRecord(data);
-        if (!resume.success) {
-          reportRuntimeValidationIssue({
-            key: `builder.resume.invalid-row:${user.id}:${id}`,
-            source: 'builder.resume',
-            action: 'Rejected an invalid resume row while hydrating the builder.',
-            details: {
-              userId: user.id,
-              resumeId: id,
-            },
-          });
-          toast.error("Couldn't parse that resume.");
-          navigate('/dashboard');
-          return;
-        }
-
-        setLoadedResumeState(
-          {
-            ...resume.data.content,
-            summary: clampSummary(resume.data.content.summary),
-          },
-          resume.data.template_id,
-          resume.data.title || 'Untitled Resume',
-          resume.data.updated_at,
-        );
-        hasHydratedInitialState.current = true;
       };
 
       void fetchResume();
@@ -260,60 +237,42 @@ export const useBuilderPersistence = ({
 
       try {
         const payload = {
-          user_id: user.id,
           title: title.trim() || 'Untitled Resume',
           template_id: templateId,
           content: resumeData,
-          updated_at: new Date().toISOString(),
         };
 
         if (isNew) {
-          const { data, error } = await supabase
-            .from('resumes')
-            .insert([payload])
-            .select()
-            .single();
-
-          if (error) throw error;
-
-          const createdResume = safeParseResumeRecord(data);
-          if (!createdResume.success) {
-            reportRuntimeValidationIssue({
-              key: `builder.resume.create.invalid-row:${user.id}`,
-              source: 'builder.resume.create',
-              action: 'Received an invalid resume row after builder create.',
-              details: {
-                userId: user.id,
-              },
-            });
-            throw new Error('Failed to parse created resume.');
-          }
+          const createdResume = await createResumeRecord(
+            user.id,
+            payload.title,
+            payload.template_id,
+            payload.content,
+          );
 
           setSavedSnapshot(
             serializeDraft(payload.title, payload.template_id, payload.content),
           );
-          setLastSavedAt(createdResume.data.updated_at || payload.updated_at);
+          setLastSavedAt(createdResume.updated_at || new Date().toISOString());
           setIsDirty(false);
           void queryClient.invalidateQueries({
             queryKey: getResumesQueryKey(user.id),
             exact: true,
           });
           if (!silent) toast.success('Resume created successfully!');
-          navigate(`/builder/${createdResume.data.id}?template=${createdResume.data.template_id}`, {
+          navigate(`/builder/${createdResume.id}?template=${createdResume.template_id}`, {
             replace: true,
           });
           return;
         }
 
-        const { error } = await supabase
-          .from('resumes')
-          .update(payload)
-          .eq('id', id)
-          .eq('user_id', user.id);
-
-        if (error) throw error;
+        const updatedResume = await updateResumeRecord(user.id, id as string, {
+          title: payload.title,
+          templateId: payload.template_id,
+          content: payload.content,
+        });
         setSavedSnapshot(serializeDraft(payload.title, payload.template_id, payload.content));
-        setLastSavedAt(payload.updated_at);
+        setLastSavedAt(updatedResume.updated_at);
         setIsDirty(false);
         void queryClient.invalidateQueries({
           queryKey: getResumesQueryKey(user.id),

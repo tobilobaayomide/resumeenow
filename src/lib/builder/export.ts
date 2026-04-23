@@ -4,7 +4,6 @@ import { toast } from 'sonner';
 import type { ResumeData } from '../../domain/resume/types';
 import type { TemplateId } from '../../domain/templates';
 import { HtmlTemplateDocument } from '../../components/builder/preview/HtmlTemplateDocument';
-import { getValidAccessToken } from '../auth/accessToken';
 import { ensurePrintFontsReady } from './printFonts';
 
 const PRINT_HOST_ID = 'resume-print-host';
@@ -37,11 +36,9 @@ const requestPdfExport = async (
   data: ResumeData,
   templateId: TemplateId,
 ): Promise<Blob> => {
-  const accessToken = await getValidAccessToken('Please sign in again to continue.');
   const response = await fetch(PDF_EXPORT_ENDPOINT, {
     method: 'POST',
     headers: {
-      Authorization: `Bearer ${accessToken}`,
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
