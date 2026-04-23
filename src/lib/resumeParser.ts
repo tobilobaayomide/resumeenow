@@ -1,7 +1,6 @@
 import type { ParsedResumeResult } from '../types/parser';
 import { parseResumeText } from './resume-parser/parse';
 import { parseResumeApiResponse } from '../schemas/integrations/parser';
-import { getValidAccessToken } from './auth/accessToken';
 
 const PDF_PARSE_ENDPOINT = '/api/parse-resume';
 
@@ -38,11 +37,9 @@ const shouldFallbackToBrowserParse = (error: unknown): boolean => {
 };
 
 const parsePdfFileOnServer = async (file: File): Promise<ParsedResumeResult> => {
-  const accessToken = await getValidAccessToken('Please sign in again to continue.');
   const response = await fetch(PDF_PARSE_ENDPOINT, {
     method: 'POST',
     headers: {
-      Authorization: `Bearer ${accessToken}`,
       'Content-Type': file.type || 'application/pdf',
       'X-Resume-File-Name': encodeURIComponent(file.name),
     },
