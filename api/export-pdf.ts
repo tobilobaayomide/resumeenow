@@ -1,5 +1,13 @@
 import fs from 'node:fs';
 import type { Browser, Page } from 'playwright-core';
+import { Buffer } from 'node:buffer';
+import {
+  buildRateLimitKey,
+  enforceInMemoryRateLimit,
+  getClientIpFromHeaderRecord,
+  RateLimitError,
+} from './_lib/rate-limit.js';
+import { applySetCookieHeaders, resolveSessionFromApiRequest } from './_lib/session.js';
 import {
   PRINT_FONT_LOADS,
   PRINT_FONT_READY_TIMEOUT_MS,
@@ -25,7 +33,7 @@ interface ApiRequest {
 }
 
 interface ApiResponse {
-  setHeader: (name: string, value: string) => void;
+  setHeader: (name: string, value: string | string[]) => void;
   status: (code: number) => ApiResponse;
   send: (body: string | Buffer) => void;
 }
@@ -40,8 +48,12 @@ const PRINT_VIEWPORT = {
 } as const;
 const PRINT_PAGE_SELECTOR = '.resume-print-page';
 const FLUSH_HEADER_SELECTOR = `${PRINT_PAGE_SELECTOR} [data-flush-header="true"]`;
+const MAX_EXPORT_REQUEST_BYTES = 1024 * 1024;
+const PDF_EXPORT_RATE_LIMIT = {
+  limit: 8,
+  windowMs: 5 * 60 * 1000,
+} as const;
 
-let supabaseAuthClientPromise: Promise<import('@supabase/supabase-js').SupabaseClient> | null = null;
 let exportSchemaModulePromise: Promise<typeof import('../src/schemas/builder/exportPayload.js')> | null = null;
 
 interface PrintPageGlobals {
@@ -63,14 +75,6 @@ const sanitizeFileName = (value: string | undefined) =>
     .replace(/[. ]+$/g, '') || 'Resume';
 
 const isLocalHost = (host: string) => /^(localhost|127\.0\.0\.1)(:\d+)?$/i.test(host);
-
-const normalizeHeaderValue = (value: string | string[] | undefined): string | null => {
-  if (Array.isArray(value)) {
-    return value[0]?.trim() || null;
-  }
-
-  return typeof value === 'string' && value.trim() ? value.trim() : null;
-};
 
 const normalizeOrigin = (value: string | undefined): string | null => {
   const trimmed = String(value || '').trim();
@@ -123,35 +127,11 @@ const getConfiguredAppOrigin = (env: NodeJS.ProcessEnv = process.env) =>
       env.VERCEL_PROJECT_PRODUCTION_URL,
   );
 
-const getRequestAppOrigin = (req: ApiRequest): string | null => {
-  const forwardedHost = normalizeHeaderValue(req.headers['x-forwarded-host']);
-  const host = forwardedHost || normalizeHeaderValue(req.headers.host);
-
-  if (!host) {
-    return null;
-  }
-
-  const forwardedProto = normalizeHeaderValue(req.headers['x-forwarded-proto']);
-  const protocol =
-    forwardedProto && /^https?$/i.test(forwardedProto)
-      ? forwardedProto.toLowerCase()
-      : isLocalHost(host)
-        ? 'http'
-        : 'https';
-
-  return normalizeOrigin(`${protocol}://${host}`);
-};
-
 export const resolvePdfExportAppOrigin = (
   req: ApiRequest,
   env: NodeJS.ProcessEnv = process.env,
 ) => {
-  // Prefer the actual request host so preview deployments export from the
-  // same build the user is currently viewing.
-  const requestOrigin = getRequestAppOrigin(req);
-  if (requestOrigin) {
-    return requestOrigin;
-  }
+  void req;
 
   const configuredOrigin = getConfiguredAppOrigin(env);
   if (configuredOrigin) {
@@ -367,6 +347,16 @@ const getExportSchemaModule = async () => {
 
 const parseBody = (req: ApiRequest) => {
   if (typeof req.body === 'string') {
+    if (Buffer.byteLength(req.body, 'utf8') > MAX_EXPORT_REQUEST_BYTES) {
+      throw new HttpError(413, 'PDF export payload is too large.');
+    }
+  } else if (req.body && typeof req.body === 'object') {
+    if (Buffer.byteLength(JSON.stringify(req.body), 'utf8') > MAX_EXPORT_REQUEST_BYTES) {
+      throw new HttpError(413, 'PDF export payload is too large.');
+    }
+  }
+
+  if (typeof req.body === 'string') {
     try {
       return JSON.parse(req.body) as unknown;
     } catch {
@@ -388,66 +378,16 @@ const parseExportRequest = async (req: ApiRequest) => {
   }
 };
 
-const getSupabaseServerConfig = () => {
-  const url = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
-  const anonKey =
-    process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY;
+const authenticateRequest = async (
+  req: ApiRequest,
+  res: ApiResponse,
+): Promise<{ userId: string }> => {
+  const session = await resolveSessionFromApiRequest(req);
+  applySetCookieHeaders((name, value) => res.setHeader(name, value), session.setCookieHeaders);
 
-  if (!url || !anonKey) {
-    throw new HttpError(
-      500,
-      'Server authentication is not configured. Set SUPABASE_URL and SUPABASE_ANON_KEY.',
-    );
-  }
-
-  return { url, anonKey };
-};
-
-const getSupabaseAuthClient = async () => {
-  if (!supabaseAuthClientPromise) {
-    supabaseAuthClientPromise = (async () => {
-      const { url, anonKey } = getSupabaseServerConfig();
-      const { createClient } = await import('@supabase/supabase-js');
-
-      return createClient(url, anonKey, {
-        auth: {
-          autoRefreshToken: false,
-          persistSession: false,
-        },
-      });
-    })();
-  }
-
-  return supabaseAuthClientPromise;
-};
-
-const getBearerToken = (authorizationHeader: string | string[] | undefined) => {
-  if (!authorizationHeader) return null;
-
-  const authorization = Array.isArray(authorizationHeader)
-    ? authorizationHeader[0]
-    : authorizationHeader;
-  const [scheme, token] = String(authorization).trim().split(/\s+/, 2);
-
-  if (!/^Bearer$/i.test(scheme) || !token) return null;
-  return token;
-};
-
-const authenticateRequest = async (req: ApiRequest) => {
-  const accessToken = getBearerToken(req.headers.authorization);
-  if (!accessToken) {
-    throw new HttpError(401, 'Authentication required. Please sign in again.');
-  }
-
-  const supabase = await getSupabaseAuthClient();
-  const {
-    data: { user },
-    error,
-  } = await supabase.auth.getUser(accessToken);
-
-  if (error || !user) {
-    throw new HttpError(401, 'Invalid or expired session. Please sign in again.');
-  }
+  return {
+    userId: session.user.id,
+  };
 };
 
 export default async function handler(req: ApiRequest, res: ApiResponse) {
@@ -460,7 +400,16 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
   let browser: Browser | null = null;
 
   try {
-    await authenticateRequest(req);
+    const { userId } = await authenticateRequest(req, res);
+    enforceInMemoryRateLimit({
+      key: buildRateLimitKey({
+        namespace: 'pdf-export',
+        userId,
+        ipAddress: getClientIpFromHeaderRecord(req.headers),
+      }),
+      limit: PDF_EXPORT_RATE_LIMIT.limit,
+      windowMs: PDF_EXPORT_RATE_LIMIT.windowMs,
+    });
 
     const { data, templateId, fileName } = await parseExportRequest(req);
     const appOrigin = resolvePdfExportAppOrigin(req);
@@ -597,13 +546,16 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
       error instanceof Error ? error.message : 'Failed to export PDF.';
     const shouldExposeInternalError =
       process.env.NODE_ENV !== 'production' || process.env.VERCEL_ENV === 'preview';
+    if (error instanceof RateLimitError) {
+      res.setHeader('Retry-After', String(error.retryAfterSeconds));
+    }
 
     res
-      .status(error instanceof HttpError ? error.status : 500)
+      .status(error instanceof HttpError || error instanceof RateLimitError ? error.status : 500)
       .send(
         shouldExposeInternalError
           ? `Failed to export PDF: ${message}`
-          : error instanceof HttpError
+          : error instanceof HttpError || error instanceof RateLimitError
             ? message
             : 'Failed to export PDF.'
       );

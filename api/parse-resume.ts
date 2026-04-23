@@ -1,6 +1,17 @@
 import { Buffer } from 'node:buffer';
+import {
+  buildRateLimitKey,
+  enforceInMemoryRateLimit,
+  getClientIpFromHeaders,
+  RateLimitError,
+} from './_lib/rate-limit.js';
+import { resolveSessionFromRequest } from './_lib/session.js';
 
 const MAX_FILE_BYTES = 8 * 1024 * 1024;
+const PARSE_RESUME_RATE_LIMIT = {
+  limit: 6,
+  windowMs: 10 * 60 * 1000,
+} as const;
 
 class HttpError extends Error {
   status: number;
@@ -21,64 +32,14 @@ type ParserModules = {
 };
 
 let parserModulesPromise: Promise<ParserModules> | null = null;
-let supabaseAuthClientPromise: Promise<import('@supabase/supabase-js').SupabaseClient> | null = null;
-
-const getSupabaseServerConfig = (): { url: string; anonKey: string } => {
-  const url = process.env.SUPABASE_URL ?? process.env.VITE_SUPABASE_URL;
-  const anonKey = process.env.SUPABASE_ANON_KEY ?? process.env.VITE_SUPABASE_ANON_KEY;
-
-  if (!url || !anonKey) {
-    throw new HttpError(
-      500,
-      'Server authentication is not configured. Set SUPABASE_URL and SUPABASE_ANON_KEY.',
-    );
-  }
-
-  return { url, anonKey };
-};
-
-const getSupabaseAuthClient = async (): Promise<import('@supabase/supabase-js').SupabaseClient> => {
-  if (!supabaseAuthClientPromise) {
-    supabaseAuthClientPromise = (async () => {
-      const { url, anonKey } = getSupabaseServerConfig();
-      const { createClient } = await import('@supabase/supabase-js');
-
-      return createClient(url, anonKey, {
-        auth: {
-          autoRefreshToken: false,
-          persistSession: false,
-        },
-      });
-    })();
-  }
-
-  return supabaseAuthClientPromise;
-};
-
-const getBearerToken = (authorization: string | null): string | null => {
-  if (!authorization) return null;
-
-  const [scheme, token] = authorization.trim().split(/\s+/, 2);
-  if (!/^Bearer$/i.test(scheme) || !token) return null;
-
-  return token;
-};
-
-const authenticateRequest = async (request: Request): Promise<void> => {
-  const accessToken = getBearerToken(request.headers.get('authorization'));
-  if (!accessToken) {
-    throw new HttpError(401, 'Authentication required. Please sign in again.');
-  }
-
-  const supabase = await getSupabaseAuthClient();
-  const {
-    data: { user },
-    error,
-  } = await supabase.auth.getUser(accessToken);
-
-  if (error || !user) {
-    throw new HttpError(401, 'Invalid or expired session. Please sign in again.');
-  }
+const authenticateRequest = async (
+  request: Request,
+): Promise<{ userId: string; setCookieHeaders: string[] }> => {
+  const session = await resolveSessionFromRequest(request);
+  return {
+    userId: session.user.id,
+    setCookieHeaders: session.setCookieHeaders,
+  };
 };
 
 const loadParserModules = async (): Promise<ParserModules> => {
@@ -113,13 +74,16 @@ const createTextResponse = (status: number, message: string): Response =>
     },
   });
 
-const createJsonResponse = (status: number, payload: unknown): Response =>
-  new Response(JSON.stringify(payload), {
-    status,
-    headers: {
-      'Content-Type': 'application/json',
-    },
+const withSetCookieHeaders = (
+  headersInit: Record<string, string>,
+  setCookieHeaders: string[],
+): Headers => {
+  const headers = new Headers(headersInit);
+  setCookieHeaders.forEach((value) => {
+    headers.append('Set-Cookie', value);
   });
+  return headers;
+};
 
 const decodeFileNameHeader = (value: string | null): string => {
   if (!value) return 'resume.pdf';
@@ -202,7 +166,16 @@ const handleRequest = async (request: Request): Promise<Response> => {
   }
 
   try {
-    await authenticateRequest(request);
+    const { userId, setCookieHeaders } = await authenticateRequest(request);
+    enforceInMemoryRateLimit({
+      key: buildRateLimitKey({
+        namespace: 'resume-parse',
+        userId,
+        ipAddress: getClientIpFromHeaders(request.headers),
+      }),
+      limit: PARSE_RESUME_RATE_LIMIT.limit,
+      windowMs: PARSE_RESUME_RATE_LIMIT.windowMs,
+    });
 
     console.info('[ResumeParser] Server parse started.', { fileName });
 
@@ -215,17 +188,33 @@ const handleRequest = async (request: Request): Promise<Response> => {
 
     const rawText = await extractPdfTextFromBuffer(buffer, modules);
     const result = modules.parseResumeText(rawText, fileName);
-    return createJsonResponse(200, result);
+    return new Response(JSON.stringify(result), {
+      status: 200,
+      headers: withSetCookieHeaders(
+        {
+          'Content-Type': 'application/json',
+        },
+        setCookieHeaders,
+      ),
+    });
   } catch (error) {
     console.error('[ResumeParser] Server PDF parse failed:', error);
     const message = error instanceof Error ? error.message : 'Failed to parse uploaded PDF.';
     const statusCode =
-      error instanceof HttpError ? error.status
+      error instanceof HttpError || error instanceof RateLimitError ? error.status
       : /too large/i.test(message) ? 413
       : /reliable text|image-based|scanned/i.test(message) ? 422
       : 500;
 
-    return createTextResponse(statusCode, message);
+    return new Response(message, {
+      status: statusCode,
+      headers: {
+        'Content-Type': 'text/plain; charset=utf-8',
+        ...(error instanceof RateLimitError
+          ? { 'Retry-After': String(error.retryAfterSeconds) }
+          : {}),
+      },
+    });
   }
 };
 

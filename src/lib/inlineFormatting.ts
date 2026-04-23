@@ -1,3 +1,5 @@
+import { toExternalLinkHref } from "../domain/resume/links.js";
+
 export type InlineFormattingSegment =
   | { type: "text"; text: string }
   | { type: "bold"; text: string }
@@ -193,10 +195,15 @@ const renderInlineFormattingSegmentsToHtml = (
         )}</em></strong>`;
       }
 
-      const safeUrl = escapeHtml(segment.url.trim());
-      return `<a href="${safeUrl}" data-link-url="${safeUrl}">${renderInlineFormattingHtml(
-        segment.text,
-      )}</a>`;
+      const rawUrl = segment.url.trim();
+      const safeHref = toExternalLinkHref(rawUrl);
+      if (!safeHref) {
+        return renderInlineFormattingHtml(segment.text);
+      }
+
+      return `<a href="${escapeHtml(safeHref)}" data-link-url="${escapeHtml(
+        rawUrl,
+      )}">${renderInlineFormattingHtml(segment.text)}</a>`;
     })
     .join("");
 

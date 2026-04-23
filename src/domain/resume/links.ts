@@ -1,11 +1,14 @@
 import type { ResumeLinkItem, ResumePersonalInfo } from "./types.js";
 
 const normalizeLinkUrl = (value: string): string => value.trim();
+const EXTERNAL_LINK_PROTOCOL_PATTERN = /^(https?:\/\/|mailto:|tel:)/i;
+const HAS_SCHEME_PATTERN = /^[a-z][a-z0-9+.-]*:/i;
 
 export const toExternalLinkHref = (value: string): string => {
   const url = normalizeLinkUrl(value);
   if (!url) return "";
-  if (/^(https?:\/\/|mailto:|tel:)/i.test(url)) return url;
+  if (EXTERNAL_LINK_PROTOCOL_PATTERN.test(url)) return url;
+  if (HAS_SCHEME_PATTERN.test(url)) return "";
   return `https://${url}`;
 };
 
