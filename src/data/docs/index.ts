@@ -199,11 +199,11 @@ export const REPO_STRUCTURE_CARDS: DocsFeatureCard[] = [
 export const BACKEND_OWNER_CARDS: DocsFeatureCard[] = [
   {
     title: 'Authentication',
-    description: 'Supabase Auth is the current auth provider and bearer-token source for every protected server route.',
+    description: 'Supabase Auth is the current auth provider, while the app now authenticates same-origin routes through secure server cookies.',
     bullets: [
-      'AuthContext manages session boot, auth change subscriptions, and sign-out behavior',
-      'src/lib/auth/accessToken.ts is the client-side token handoff used before calling protected routes',
-      'Any backend replacement must still provide a client-readable access token path for these calls',
+      'AuthContext boots from /api/auth-session and only treats local Supabase sessions as transient exchange state',
+      'src/lib/auth/serverSession.ts exchanges OAuth/email sign-ins into HttpOnly cookies for protected routes',
+      'Any backend replacement should preserve the server-owned session boundary instead of reintroducing browser-readable bearer tokens',
     ],
     icon: FiLock,
   },
@@ -284,9 +284,9 @@ export const DATA_MODEL_CARDS: DocsFeatureCard[] = [
 
 export const CUSTOM_BACKEND_TIMELINE: DocsTimelineItem[] = [
   {
-    title: '1. Preserve auth token flow first',
+    title: '1. Preserve server-session auth first',
     body:
-      'Before changing data storage, preserve the current ability for the client to fetch a bearer token and call protected routes. AuthContext, accessToken helpers, and server route guards already assume that shape.',
+      'Before changing data storage, preserve the current secure-cookie session flow for protected routes. AuthContext, /api/auth-session, and server route guards now assume a server-owned auth boundary.',
   },
   {
     title: '2. Move privileged routes before direct table reads',

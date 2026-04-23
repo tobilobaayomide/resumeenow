@@ -5,11 +5,11 @@ import {
   resolvePdfExportAppOrigin,
 } from '../api/export-pdf.js';
 
-test('resolvePdfExportAppOrigin prefers the current request host over APP_URL', () => {
+test('resolvePdfExportAppOrigin ignores request host headers and uses configured origins', () => {
   const origin = resolvePdfExportAppOrigin(
     {
       headers: {
-        host: 'resumeenow-git-feature-123.vercel.app',
+        host: 'attacker-controlled.example.com',
         'x-forwarded-host': 'resumeenow-git-feature-123.vercel.app',
         'x-forwarded-proto': 'https',
       },
@@ -19,7 +19,7 @@ test('resolvePdfExportAppOrigin prefers the current request host over APP_URL', 
     },
   );
 
-  assert.equal(origin, 'https://resumeenow-git-feature-123.vercel.app');
+  assert.equal(origin, 'https://resumeenow.xyz');
 });
 
 test('resolvePdfExportAppOrigin falls back to configured origins when request headers are unavailable', () => {
@@ -35,14 +35,16 @@ test('resolvePdfExportAppOrigin falls back to configured origins when request he
   assert.equal(origin, 'https://resumeenow.xyz');
 });
 
-test('resolvePdfExportAppOrigin uses http for localhost requests', () => {
+test('resolvePdfExportAppOrigin uses configured localhost origins for development', () => {
   const origin = resolvePdfExportAppOrigin(
     {
       headers: {
-        host: 'localhost:3000',
+        host: 'resumeenow.xyz',
       },
     },
-    {},
+    {
+      APP_URL: 'http://localhost:3000',
+    },
   );
 
   assert.equal(origin, 'http://localhost:3000');

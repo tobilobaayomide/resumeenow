@@ -10,6 +10,12 @@ import {
   safeParseResumeRecord,
 } from '../src/schemas/domain/resume.js';
 import {
+  parseSelfNotificationPreferencesUpdate,
+} from '../src/schemas/integrations/notifications.js';
+import {
+  parseSelfProfileUpdate,
+} from '../src/schemas/integrations/profile.js';
+import {
   BUILDER_PERSIST_VERSION,
   getDefaultBuilderPersistedState,
   migrateBuilderPersistedState,
@@ -165,6 +171,41 @@ test('parseResumeData preserves supported legacy normalization', () => {
 
 test('parseTemplateId keeps compatibility by falling back to the default template', () => {
   assert.equal(parseTemplateId('not-a-template'), DEFAULT_TEMPLATE_ID);
+});
+
+test('parseSelfProfileUpdate only accepts editable self-service fields', () => {
+  const parsed = parseSelfProfileUpdate({
+    full_name: 'Alex Morgan',
+    bio: 'Product designer',
+    avatar_url: null,
+    role: 'super_admin',
+    account_status: 'suspended',
+  });
+
+  assert.deepEqual(parsed, {
+    full_name: 'Alex Morgan',
+    bio: 'Product designer',
+    avatar_url: null,
+  });
+
+  assert.throws(() => parseSelfProfileUpdate({ role: 'admin' }));
+});
+
+test('parseSelfNotificationPreferencesUpdate excludes ownership fields', () => {
+  const parsed = parseSelfNotificationPreferencesUpdate({
+    weekly_digest: true,
+    ai_usage_alerts: false,
+    pro_waitlist_updates: true,
+    product_updates: false,
+    user_id: 'attacker-controlled',
+  });
+
+  assert.deepEqual(parsed, {
+    weekly_digest: true,
+    ai_usage_alerts: false,
+    pro_waitlist_updates: true,
+    product_updates: false,
+  });
 });
 
 test('safeParseResumeRecord drops malformed rows instead of fabricating identifiers', () => {

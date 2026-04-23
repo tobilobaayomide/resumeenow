@@ -7,6 +7,7 @@ import {
   renderInlineFormattingHtml,
   stripInlineFormattingText,
 } from "../src/lib/inlineFormatting.js";
+import { toExternalLinkHref } from "../src/domain/resume/links.js";
 
 test("stripInlineFormattingText removes markdown-like markers but keeps visible text", () => {
   assert.equal(
@@ -126,4 +127,17 @@ test("renderInlineFormattingHtml preserves nested formatting combinations", () =
     ),
     'Built <strong><em>faster</em></strong> flows with <strong><a href="https://example.com" data-link-url="https://example.com">demo</a></strong>.',
   );
+});
+
+test("renderInlineFormattingHtml drops unsafe javascript links instead of emitting anchors", () => {
+  assert.equal(
+    renderInlineFormattingHtml("Read [more](javascript:alert%281%29) today."),
+    "Read more today.",
+  );
+});
+
+test("toExternalLinkHref rejects unsupported URL schemes", () => {
+  assert.equal(toExternalLinkHref("javascript:alert('xss')"), "");
+  assert.equal(toExternalLinkHref("data:text/html,<script>alert(1)</script>"), "");
+  assert.equal(toExternalLinkHref("example.com"), "https://example.com");
 });
