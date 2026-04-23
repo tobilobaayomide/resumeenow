@@ -63,8 +63,19 @@ const buildCoverLetterFileName = (
   return owner === 'Cover Letter' ? owner : `${owner} - Cover Letter`;
 };
 
-const getErrorMessage = (error: unknown, fallback: string): string =>
-  error instanceof Error && error.message.trim() ? error.message : fallback;
+const getErrorMessage = (error: unknown, fallback: string): string => {
+  const message = error instanceof Error && error.message.trim() ? error.message.trim() : '';
+
+  if (!message) return fallback;
+
+  if (
+    /currently experiencing high demand|spikes in demand|temporarily unavailable/i.test(message)
+  ) {
+    return 'Gemini is busy right now. We retried automatically, but it is still overloaded. Please try again in a moment.';
+  }
+
+  return message;
+};
 
 const AI_PROGRESS_SUCCESS_LABELS: Record<AiFlowFeature, string> = {
   ai_tailor: 'Tailor strategy ready.',
@@ -113,6 +124,23 @@ const getAiProgressLabel = (
   }
 };
 
+const getBoundAiProgressLabel = (
+  flow: AiFlowFeature,
+  progress: AiRequestProgress,
+): string => {
+  if (/switching to flash-lite|gemini .*busy right now/i.test(progress.label)) {
+    return progress.label;
+  }
+
+  if (/retrying in \d+s/i.test(progress.label)) {
+    return `Gemini is busy right now. ${progress.label}`;
+  }
+
+  return getAiProgressLabel(flow, progress);
+};
+
+const AI_RETRY_TOAST_ID = 'builder-ai-retry';
+
 export function useBuilderAiFlows() {
   const [isExportingCoverLetter, setIsExportingCoverLetter] = useState(false);
   const [aiProgress, setAiProgress] = useState<AiRequestProgress | null>(null);
@@ -154,6 +182,22 @@ export function useBuilderAiFlows() {
 
   const { requestAccess, refreshCredits } = usePlan();
 
+  const dismissAiRetryToast = () => {
+    toast.dismiss(AI_RETRY_TOAST_ID);
+  };
+
+  const syncAiRetryToast = (label: string) => {
+    if (/retrying in \d+s|switching to flash-lite|gemini .*busy right now/i.test(label)) {
+      toast.loading(label, {
+        id: AI_RETRY_TOAST_ID,
+        duration: Infinity,
+      });
+      return;
+    }
+
+    dismissAiRetryToast();
+  };
+
   const clearAiProgressReset = () => {
     if (aiProgressResetTimeoutRef.current !== null) {
       window.clearTimeout(aiProgressResetTimeoutRef.current);
@@ -166,14 +210,18 @@ export function useBuilderAiFlows() {
       window.clearTimeout(aiProgressResetTimeoutRef.current);
       aiProgressResetTimeoutRef.current = null;
     }
+
+    dismissAiRetryToast();
   }, []);
 
   const bindAiProgress = (flow: AiFlowFeature) => {
     return (progress: AiRequestProgress) => {
       clearAiProgressReset();
+      const label = getBoundAiProgressLabel(flow, progress);
+      syncAiRetryToast(label);
       setAiProgress({
         ...progress,
-        label: getAiProgressLabel(flow, progress),
+        label,
       });
       setAiProgressStatus('active');
     };
@@ -181,6 +229,7 @@ export function useBuilderAiFlows() {
 
   const resetAiProgress = () => {
     clearAiProgressReset();
+    dismissAiRetryToast();
     setAiProgress(null);
     setAiProgressStatus(null);
   };
@@ -190,6 +239,7 @@ export function useBuilderAiFlows() {
     label = AI_PROGRESS_SUCCESS_LABELS[flow],
   ) => {
     clearAiProgressReset();
+    dismissAiRetryToast();
     setAiProgress((current) => ({
       phase: current?.phase === 'cached' ? 'cached' : 'finalizing',
       label,

@@ -1,6 +1,5 @@
 import { findMatchingDescriptionBullet } from './descriptionBullets';
 import { stripInlineFormattingText } from './inlineFormatting';
-import { supabaseAnonKey, supabaseUrl } from './supabase';
 import {
   parseAtsAuditResult,
   parseTailoredSummaryResult,
@@ -12,10 +11,17 @@ import {
   formatAtsAuditReferenceDate,
   sanitizeAtsAuditResult,
 } from './ai/atsAudit';
+import {
+  GeminiProxyError,
+  type GeminiProxyErrorPayload,
+  getGeminiRetryDelayMs,
+  shouldRetryGeminiError,
+} from './ai/geminiRetry';
 import { createPersistentTimedLruCache } from './ai/persistentCache';
+import { supabaseAnonKey, supabaseUrl } from './supabase';
+import { getValidAccessToken } from './auth/accessToken';
 import { getActiveSkillItems } from '../types/resume';
 import { parseAiGroupedSkills } from './aiResumeApply';
-import { getValidAccessToken } from './auth/accessToken';
 import { createRequestScheduler, createTimedLruCache } from './ai/requestControl';
 import type { ResumeData } from '../types/resume';
 import type { AtsAuditResult } from '../types/builder';
@@ -24,6 +30,7 @@ import type { AtsAuditResult } from '../types/builder';
 const CACHE_TTL_MS = 10 * 60 * 1000;
 const MAX_CACHE_ENTRIES = 50;
 const MAX_CONCURRENT = 2;
+const AI_REQUEST_TIMEOUT_MS = 75_000;
 const PERSISTENT_CACHE_NAMESPACE = 'resumeenow:ai-cache:v1';
 const GEMINI_PROXY_ENDPOINT = `${supabaseUrl}/functions/v1/gemini-proxy`;
 
@@ -94,8 +101,21 @@ const deleteCachedResponse = (cacheKey: string) => {
   persistentResponseCache.delete(cacheKey);
 };
 
+export const clearAiResponseCaches = () => {
+  responseCache.clear();
+  persistentResponseCache.clear();
+  inFlightRequests.clear();
+};
+
 const normalizeErrorMessage = (message: string): string =>
   message.replace(/^(Error:\s*)+/i, '').trim();
+
+const isAbortError = (error: unknown): boolean =>
+  error instanceof DOMException
+    ? error.name === 'AbortError'
+    : error instanceof Error
+      ? error.name === 'AbortError'
+      : false;
 
 // ─── Error handler ────────────────────────────────────────────────────────────
 const handleError = (error: unknown): never => {
@@ -105,6 +125,9 @@ const handleError = (error: unknown): never => {
   }
   if (message.includes('Please sign in again to use AI tools.')) {
     throw new Error('Your session expired. Please sign in again and retry.');
+  }
+  if (message.includes('AI request timed out.')) {
+    throw new Error('AI request timed out. Check the AI server setup and try again.');
   }
   if (message.includes('AI provider model is unavailable right now.')) {
     throw new Error('AI provider is temporarily unavailable. Please try again in a moment.');
@@ -129,17 +152,30 @@ const handleError = (error: unknown): never => {
   throw new Error(message || 'AI Provider Failed. See console for details.');
 };
 
-// ─── Retry delays ─────────────────────────────────────────────────────────────
-const RETRY_DELAYS = [5000, 15000, 45000];
+const buildGeminiProxyError = (
+  payload: GeminiProxyErrorPayload,
+  fallback: {
+    message?: string;
+    status?: number;
+  } = {},
+): GeminiProxyError => {
+  const message =
+    (typeof payload.message === 'string' && payload.message.trim()) ||
+    fallback.message ||
+    (typeof fallback.status === 'number' ? `AI request failed with status ${fallback.status}.` : '') ||
+    'AI request failed.';
 
-const readProxyErrorMessage = async (response: Response): Promise<string> => {
+  return new GeminiProxyError(message, {
+    ...payload,
+    status: payload.status ?? fallback.status,
+  });
+};
+
+const readProxyError = async (response: Response): Promise<GeminiProxyError> => {
   try {
-    const payload = await response.clone().json();
-    if (typeof payload?.message === 'string' && payload.message.trim()) {
-      return payload.message.trim();
-    }
-    if (typeof payload?.error === 'string' && payload.error.trim()) {
-      return payload.error.trim();
+    const payload = (await response.clone().json()) as GeminiProxyErrorPayload;
+    if (payload && typeof payload === 'object') {
+      return buildGeminiProxyError(payload, { status: response.status });
     }
   } catch {
     // Fall through to text parsing below.
@@ -147,12 +183,14 @@ const readProxyErrorMessage = async (response: Response): Promise<string> => {
 
   try {
     const text = (await response.clone().text()).trim();
-    if (text) return text;
+    if (text) {
+      return buildGeminiProxyError({}, { message: text, status: response.status });
+    }
   } catch {
     // Ignore text parsing failures.
   }
 
-  return `AI request failed with status ${response.status}.`;
+  return buildGeminiProxyError({}, { status: response.status });
 };
 
 const parseSseChunk = (rawEvent: string): { event: string; data: string } | null => {
@@ -227,13 +265,13 @@ const consumeGeminiProxyStream = async (
 
         if (parsedEvent.event === 'error') {
           try {
-            const payload = JSON.parse(parsedEvent.data) as { message?: string };
-            throw new Error(payload.message || 'AI request failed.');
+            const payload = JSON.parse(parsedEvent.data) as GeminiProxyErrorPayload;
+            throw buildGeminiProxyError(payload);
           } catch (error) {
             if (error instanceof Error) {
               throw error;
             }
-            throw new Error('AI request failed.');
+            throw buildGeminiProxyError({});
           }
         }
       }
@@ -255,37 +293,53 @@ const invokeGeminiProxy = async (
   accessToken: string,
   onProgress?: AiProgressListener,
 ): Promise<GeminiProxySuccessPayload> => {
-  const response = await fetch(GEMINI_PROXY_ENDPOINT, {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-      apikey: supabaseAnonKey,
-      Accept: onProgress ? 'text/event-stream' : 'application/json',
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      prompt,
-      expectJson,
-      stream: Boolean(onProgress),
-    }),
-  });
+  const controller = new AbortController();
+  const timeoutId = window.setTimeout(() => {
+    controller.abort();
+  }, AI_REQUEST_TIMEOUT_MS);
 
-  if (!response.ok) {
-    throw new Error(await readProxyErrorMessage(response));
+  try {
+    const response = await fetch(GEMINI_PROXY_ENDPOINT, {
+      method: 'POST',
+      signal: controller.signal,
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        apikey: supabaseAnonKey,
+        Accept: onProgress ? 'text/event-stream' : 'application/json',
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        prompt,
+        expectJson,
+        stream: Boolean(onProgress),
+      }),
+    });
+
+    if (!response.ok) {
+      throw await readProxyError(response);
+    }
+
+    const contentType = response.headers.get('content-type') || '';
+    if (contentType.includes('text/event-stream')) {
+      return await consumeGeminiProxyStream(response, onProgress);
+    }
+
+    const payload = (await response.json()) as GeminiProxySuccessPayload & { error?: string };
+    if (payload.error) {
+      throw new Error(payload.error);
+    }
+
+    emitAiProgress(onProgress, 'finalizing');
+    return payload;
+  } catch (error) {
+    if (isAbortError(error)) {
+      throw new Error('AI request timed out.');
+    }
+
+    throw error;
+  } finally {
+    window.clearTimeout(timeoutId);
   }
-
-  const contentType = response.headers.get('content-type') || '';
-  if (contentType.includes('text/event-stream')) {
-    return consumeGeminiProxyStream(response, onProgress);
-  }
-
-  const payload = (await response.json()) as GeminiProxySuccessPayload & { error?: string };
-  if (payload.error) {
-    throw new Error(payload.error);
-  }
-
-  emitAiProgress(onProgress, 'finalizing');
-  return payload;
 };
 
 const callWithRetry = async (
@@ -307,7 +361,9 @@ const callWithRetry = async (
     const message = normalizeErrorMessage(error instanceof Error ? error.message : String(error));
     if (
       !hasRefreshedSession &&
-      (message.includes('Invalid JWT') || message.includes('invalid JWT') || message.includes('auth token'))
+      (message.includes('Invalid JWT') ||
+        message.includes('invalid JWT') ||
+        message.includes('auth token'))
     ) {
       try {
         await getValidAccessToken('Please sign in again to use AI tools.');
@@ -316,9 +372,9 @@ const callWithRetry = async (
         // Fall through to the shared error handling below.
       }
     }
-    if (message.includes('429') && retries > 0) {
-      const delay = RETRY_DELAYS[RETRY_DELAYS.length - retries] ?? 15000;
-      console.warn(`Rate limited — retrying in ${delay / 1000}s (${retries} retries left)`);
+    if (retries > 0 && (message.includes('429') || shouldRetryGeminiError(error))) {
+      const delay = getGeminiRetryDelayMs(error, retries);
+      console.warn(`AI request retry scheduled in ${delay / 1000}s (${retries} retries left)`);
       await new Promise((r) => setTimeout(r, delay));
       emitAiProgress(onProgress, 'preparing', `Retrying in ${delay / 1000}s…`);
       return callWithRetry(prompt, expectJson, retries - 1, hasRefreshedSession, onProgress);

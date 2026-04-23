@@ -25,11 +25,11 @@ interface PersistentCacheRecord<T> {
 }
 
 const getDefaultStorage = (): StorageLike | null => {
-  if (typeof window === "undefined" || !("localStorage" in window)) {
+  if (typeof window === "undefined" || !("sessionStorage" in window)) {
     return null;
   }
 
-  return window.localStorage;
+  return window.sessionStorage;
 };
 
 const createStorageKey = (namespace: string, cacheKey: string): string =>

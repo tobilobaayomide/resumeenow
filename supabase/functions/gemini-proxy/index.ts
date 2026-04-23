@@ -36,6 +36,11 @@ type GeminiProxySuccessPayload = {
   usage: GeminiUsagePayload;
 };
 
+type GeminiProviderResult = {
+  text: string;
+  model: string;
+};
+
 type BeginAiRequestResult = {
   allowed: boolean;
   error_code: string | null;
@@ -63,6 +68,18 @@ type GeminiProgressEmitter = (
   phase: GeminiProgressPhase,
   label?: string,
 ) => void | Promise<void>;
+
+type EdgeRateLimitBucket = {
+  count: number;
+  resetAt: number;
+};
+
+const MAX_PROMPT_CHARS = 12_000;
+const EDGE_RATE_LIMIT_WINDOW_MS = 5 * 60 * 1000;
+const EDGE_RATE_LIMIT_MAX_REQUESTS = 20;
+const PRIMARY_GEMINI_MODEL = "gemini-2.5-flash";
+const FALLBACK_GEMINI_MODEL = "gemini-2.5-flash-lite";
+const edgeRateLimitBuckets = new Map<string, EdgeRateLimitBucket>();
 
 const buildJsonResponse = (payload: Record<string, unknown>, status: number, corsHeaders: Record<string, string>) =>
   new Response(JSON.stringify(payload), {
@@ -96,6 +113,52 @@ const buildBurstRateLimitMessage = (retryAfterSeconds: unknown): string => {
     : "You're sending AI requests too quickly. Please wait a moment and try again.";
 };
 
+const getClientIp = (req: Request): string | null => {
+  const forwardedFor = req.headers.get("x-forwarded-for") || req.headers.get("x-real-ip");
+  if (!forwardedFor) {
+    return null;
+  }
+
+  const firstIp = forwardedFor
+    .split(",")
+    .map((part) => part.trim())
+    .find(Boolean);
+
+  return firstIp || null;
+};
+
+const enforceEdgeRateLimit = (key: string, now = Date.now()) => {
+  for (const [bucketKey, bucket] of edgeRateLimitBuckets.entries()) {
+    if (bucket.resetAt <= now) {
+      edgeRateLimitBuckets.delete(bucketKey);
+    }
+  }
+
+  const existingBucket = edgeRateLimitBuckets.get(key);
+  if (!existingBucket || existingBucket.resetAt <= now) {
+    edgeRateLimitBuckets.set(key, {
+      count: 1,
+      resetAt: now + EDGE_RATE_LIMIT_WINDOW_MS,
+    });
+    return;
+  }
+
+  if (existingBucket.count >= EDGE_RATE_LIMIT_MAX_REQUESTS) {
+    const retryAfterSeconds = Math.max(1, Math.ceil((existingBucket.resetAt - now) / 1000));
+    throw new HttpError(
+      429,
+      buildBurstRateLimitMessage(retryAfterSeconds),
+      {
+        error: "RATE_LIMITED",
+        retryAfterSeconds,
+      },
+    );
+  }
+
+  existingBucket.count += 1;
+  edgeRateLimitBuckets.set(key, existingBucket);
+};
+
 const extractProviderMessage = async (response: Response): Promise<string> => {
   try {
     const payload = await response.clone().json();
@@ -123,16 +186,75 @@ const extractProviderMessage = async (response: Response): Promise<string> => {
   return `AI provider returned ${response.status}.`;
 };
 
+const isRetryableProviderOverload = (status: number, message: string): boolean => {
+  if (status === 429 || status >= 500) {
+    return true;
+  }
+
+  return /currently experiencing high demand|spikes in demand|try again later|temporarily unavailable/i
+    .test(message);
+};
+
+const invokeGeminiModel = async ({
+  apiKey,
+  model,
+  prompt,
+  expectJson,
+}: {
+  apiKey: string;
+  model: string;
+  prompt: string;
+  expectJson: boolean;
+}): Promise<GeminiProviderResult> => {
+  const res = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: prompt }] }],
+        generationConfig: {
+          temperature: 0.3,
+          ...(expectJson ? { responseMimeType: "application/json" } : {}),
+        },
+      }),
+    },
+  );
+
+  if (!res.ok) {
+    const providerMessage = await extractProviderMessage(res);
+    throw new HttpError(res.status === 429 ? 429 : 502, providerMessage, {
+      error: "AI_PROVIDER_ERROR",
+      providerStatus: res.status,
+      providerModel: model,
+    });
+  }
+
+  const data = await res.json();
+  const text = data.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
+
+  if (!text.trim()) {
+    throw new HttpError(502, "AI provider returned an empty response.", {
+      error: "AI_PROVIDER_EMPTY",
+      providerModel: model,
+    });
+  }
+
+  return { text, model };
+};
+
 const executeGeminiRequest = async ({
   authHeader,
   prompt,
   expectJson,
   emitStatus,
+  rateLimitKey,
 }: {
   authHeader: string;
   prompt: string;
   expectJson: boolean;
   emitStatus?: GeminiProgressEmitter;
+  rateLimitKey: string;
 }): Promise<GeminiProxySuccessPayload> => {
   const apiKey = Deno.env.get("GEMINI_API_KEY");
   const supabaseUrl = Deno.env.get("SUPABASE_URL");
@@ -160,6 +282,8 @@ const executeGeminiRequest = async ({
       error: "INVALID_JWT",
     });
   }
+
+  enforceEdgeRateLimit(rateLimitKey);
 
   await emitStatus?.("checking_limits");
 
@@ -265,43 +389,40 @@ const executeGeminiRequest = async ({
   try {
     await emitStatus?.("generating");
 
-    const res = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: {
-            temperature: 0.3,
-            ...(expectJson ? { responseMimeType: "application/json" } : {}),
-          },
-        }),
-      },
-    );
-
-    if (!res.ok) {
-      const providerMessage = await extractProviderMessage(res);
-      throw new HttpError(res.status === 429 ? 429 : 502, providerMessage, {
-        error: "AI_PROVIDER_ERROR",
-        providerStatus: res.status,
+    let providerResult: GeminiProviderResult;
+    try {
+      providerResult = await invokeGeminiModel({
+        apiKey,
+        model: PRIMARY_GEMINI_MODEL,
+        prompt,
+        expectJson,
       });
-    }
-
-    const data = await res.json();
-    const text = data.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
-
-    if (!text.trim()) {
-      throw new HttpError(502, "AI provider returned an empty response.", {
-        error: "AI_PROVIDER_EMPTY",
-      });
+    } catch (providerError) {
+      if (
+        providerError instanceof HttpError &&
+        providerError.payload.error === "AI_PROVIDER_ERROR" &&
+        isRetryableProviderOverload(
+          typeof providerError.payload.providerStatus === "number" ? providerError.payload.providerStatus : 0,
+          providerError.message,
+        )
+      ) {
+        await emitStatus?.("generating", "Gemini 2.5 Flash is busy. Switching to Flash-Lite…");
+        providerResult = await invokeGeminiModel({
+          apiKey,
+          model: FALLBACK_GEMINI_MODEL,
+          prompt,
+          expectJson,
+        });
+      } else {
+        throw providerError;
+      }
     }
 
     await emitStatus?.("finalizing");
     await completeAiRequest(false);
 
     return {
-      text,
+      text: providerResult.text,
       usage: {
         usedCredits: beginRequest.used_credits,
         creditLimit: beginRequest.credit_limit,
@@ -336,9 +457,22 @@ Deno.serve(async (req: Request) => {
     const prompt = typeof payload.prompt === "string" ? payload.prompt : "";
     const expectJson = Boolean(payload.expectJson);
     const stream = payload.stream === true;
+    const token = authHeader.replace(/^Bearer\s+/i, "").trim();
+    const rateLimitKey = `${token.slice(0, 24) || "unknown-token"}:${getClientIp(req) || "unknown-ip"}`;
 
     if (!prompt.trim()) {
       return buildJsonResponse({ error: "INVALID_REQUEST", message: "Missing AI prompt." }, 400, corsHeaders);
+    }
+
+    if (prompt.length > MAX_PROMPT_CHARS) {
+      return buildJsonResponse(
+        {
+          error: "PROMPT_TOO_LARGE",
+          message: `AI prompt is too large. Max length is ${MAX_PROMPT_CHARS} characters.`,
+        },
+        413,
+        corsHeaders,
+      );
     }
 
     if (stream) {
@@ -354,6 +488,7 @@ Deno.serve(async (req: Request) => {
               authHeader,
               prompt,
               expectJson,
+              rateLimitKey,
               emitStatus: (phase, label) => {
                 send("status", { phase, label });
               },
@@ -363,7 +498,11 @@ Deno.serve(async (req: Request) => {
           } catch (err) {
             const message = err instanceof Error ? err.message : "Unexpected AI server failure.";
             const status = err instanceof HttpError ? err.status : 500;
-            send("error", { message, status });
+            send("error", {
+              message,
+              status,
+              ...(err instanceof HttpError ? err.payload : {}),
+            });
           } finally {
             controller.close();
           }
@@ -377,6 +516,7 @@ Deno.serve(async (req: Request) => {
       authHeader,
       prompt,
       expectJson,
+      rateLimitKey,
     });
 
     return buildJsonResponse(result, 200, corsHeaders);
