@@ -1,4 +1,5 @@
 import { createClient, type SupabaseClient, type User } from '@supabase/supabase-js';
+import { applySetCookieHeaders, resolveSessionFromApiRequest } from './session.js';
 
 export class HttpError extends Error {
   status: number;
@@ -16,7 +17,7 @@ export interface ApiRequest {
 }
 
 export interface ApiResponse {
-  setHeader: (name: string, value: string) => void;
+  setHeader: (name: string, value: string | string[]) => void;
   status: (code: number) => ApiResponse;
   send: (body: string) => void;
 }
@@ -73,38 +74,19 @@ export const getSupabaseServiceClient = async (): Promise<SupabaseClient> => {
   return supabaseServiceClientPromise;
 };
 
-const getBearerToken = (authorizationHeader: string | string[] | undefined) => {
-  if (!authorizationHeader) return null;
-
-  const authorization = Array.isArray(authorizationHeader)
-    ? authorizationHeader[0]
-    : authorizationHeader;
-  const [scheme, token] = String(authorization).trim().split(/\s+/, 2);
-
-  if (!/^Bearer$/i.test(scheme) || !token) return null;
-  return token;
-};
-
 export const authenticateAdminRequest = async (
   req: ApiRequest,
+  res?: ApiResponse,
 ): Promise<{
   supabase: SupabaseClient;
   user: User;
   role: 'admin' | 'super_admin';
 }> => {
-  const accessToken = getBearerToken(req.headers.authorization);
-  if (!accessToken) {
-    throw new HttpError(401, 'Authentication required. Please sign in again.');
-  }
-
+  const session = await resolveSessionFromApiRequest(req);
   const supabase = await getSupabaseServiceClient();
-  const {
-    data: { user },
-    error: userError,
-  } = await supabase.auth.getUser(accessToken);
-
-  if (userError || !user) {
-    throw new HttpError(401, 'Invalid or expired session. Please sign in again.');
+  const user = session.user;
+  if (res) {
+    applySetCookieHeaders((name, value) => res.setHeader(name, value), session.setCookieHeaders);
   }
 
   const { data: profile, error: profileError } = await supabase

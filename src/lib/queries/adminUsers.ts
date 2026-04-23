@@ -1,4 +1,3 @@
-import { getValidAccessToken } from '../auth/accessToken';
 import {
   parseAdminUserActionResult,
   parseAdminUserDetailResponse,
@@ -42,15 +41,7 @@ const readErrorMessage = async (response: Response): Promise<string> => {
 };
 
 export const fetchAdminUsers = async (): Promise<AdminUserRecord[]> => {
-  const accessToken = await getValidAccessToken(
-    'Please sign in again to access the admin console.',
-  );
-
-  const response = await fetch(ADMIN_USERS_ENDPOINT, {
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-    },
-  });
+  const response = await fetch(ADMIN_USERS_ENDPOINT);
 
   if (!response.ok) {
     throw new Error(await readErrorMessage(response));
@@ -61,16 +52,8 @@ export const fetchAdminUsers = async (): Promise<AdminUserRecord[]> => {
 };
 
 export const fetchAdminUserDetail = async (userId: string): Promise<AdminUserDetail> => {
-  const accessToken = await getValidAccessToken(
-    'Please sign in again to view user detail from the admin console.',
-  );
-
   const params = new URLSearchParams({ userId });
-  const response = await fetch(`${ADMIN_USER_DETAIL_ENDPOINT}?${params.toString()}`, {
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-    },
-  });
+  const response = await fetch(`${ADMIN_USER_DETAIL_ENDPOINT}?${params.toString()}`);
 
   if (!response.ok) {
     throw new Error(await readErrorMessage(response));
@@ -83,15 +66,10 @@ export const fetchAdminUserDetail = async (userId: string): Promise<AdminUserDet
 export const runAdminUserAction = async (
   input: AdminUserActionInput,
 ): Promise<AdminUserActionResult> => {
-  const accessToken = await getValidAccessToken(
-    'Please sign in again to manage users from the admin console.',
-  );
-
   const response = await fetch(ADMIN_USER_ACTIONS_ENDPOINT, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      Authorization: `Bearer ${accessToken}`,
     },
     body: JSON.stringify(input),
   });

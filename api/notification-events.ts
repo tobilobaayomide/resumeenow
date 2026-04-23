@@ -1,5 +1,6 @@
 import { createClient, type SupabaseClient, type User } from '@supabase/supabase-js';
 import type { NotificationEventType } from '../src/lib/notifications/types.js';
+import { applySetCookieHeaders, resolveSessionFromApiRequest } from './_lib/session.js';
 
 export const config = {
   maxDuration: 30,
@@ -21,7 +22,7 @@ interface ApiRequest {
 }
 
 interface ApiResponse {
-  setHeader: (name: string, value: string) => void;
+  setHeader: (name: string, value: string | string[]) => void;
   status: (code: number) => ApiResponse;
   send: (body: string) => void;
 }
@@ -145,33 +146,11 @@ const getSupabaseServiceClient = async (): Promise<SupabaseClient> => {
   return supabaseServiceClientPromise;
 };
 
-const getBearerToken = (authorizationHeader: string | string[] | undefined) => {
-  if (!authorizationHeader) return null;
-
-  const authorization = Array.isArray(authorizationHeader)
-    ? authorizationHeader[0]
-    : authorizationHeader;
-  const [scheme, token] = String(authorization).trim().split(/\s+/, 2);
-
-  if (!/^Bearer$/i.test(scheme) || !token) return null;
-  return token;
-};
-
-const authenticateRequest = async (req: ApiRequest) => {
-  const accessToken = getBearerToken(req.headers.authorization);
-  if (!accessToken) {
-    throw new HttpError(401, 'Authentication required. Please sign in again.');
-  }
-
+const authenticateRequest = async (req: ApiRequest, res: ApiResponse) => {
+  const session = await resolveSessionFromApiRequest(req);
   const supabase = await getSupabaseServiceClient();
-  const {
-    data: { user },
-    error,
-  } = await supabase.auth.getUser(accessToken);
-
-  if (error || !user) {
-    throw new HttpError(401, 'Invalid or expired session. Please sign in again.');
-  }
+  const user = session.user;
+  applySetCookieHeaders((name, value) => res.setHeader(name, value), session.setCookieHeaders);
 
   const { data: profile, error: profileError } = await supabase
     .from('profiles')
@@ -580,7 +559,7 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
 
   try {
     const requestBody = parseBody(req);
-    const { supabase, user } = await authenticateRequest(req);
+    const { supabase, user } = await authenticateRequest(req, res);
 
     if (!user.email) {
       throw new HttpError(400, 'Notification delivery requires a valid email.');

@@ -17,7 +17,7 @@ interface ApiRequest {
 }
 
 interface ApiResponse {
-  setHeader: (name: string, value: string) => void;
+  setHeader: (name: string, value: string | string[]) => void;
   status: (code: number) => ApiResponse;
   send: (body: string) => void;
 }
@@ -44,7 +44,7 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
   }
 
   try {
-    const { supabase } = await authenticateAdminRequest(req);
+    const { supabase } = await authenticateAdminRequest(req, res);
     const userId = getRequestedUserId(req);
     const { data, error } = await supabase.auth.admin.getUserById(userId);
 

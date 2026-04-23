@@ -127,7 +127,7 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
   }
 
   try {
-    const { supabase } = await authenticateAdminRequest(req);
+    const { supabase } = await authenticateAdminRequest(req, res);
     const campaigns = await buildCampaignHistory(supabase);
     sendJson(res, 200, { campaigns });
   } catch (error) {

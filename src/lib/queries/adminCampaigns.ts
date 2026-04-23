@@ -7,7 +7,6 @@ import {
   parseAdminCampaignHistoryResponse,
   parseAdminCampaignResult,
 } from '../../schemas/integrations/admin';
-import { getValidAccessToken } from '../auth/accessToken';
 
 const ADMIN_CAMPAIGNS_ENDPOINT = '/api/admin-campaigns';
 const ADMIN_CAMPAIGN_HISTORY_ENDPOINT = '/api/admin-campaign-history';
@@ -39,15 +38,10 @@ const readErrorMessage = async (response: Response): Promise<string> => {
 export const sendAdminCampaign = async (
   input: AdminCampaignInput,
 ): Promise<AdminCampaignResult> => {
-  const accessToken = await getValidAccessToken(
-    'Please sign in again to access the admin console.',
-  );
-
   const response = await fetch(ADMIN_CAMPAIGNS_ENDPOINT, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      Authorization: `Bearer ${accessToken}`,
     },
     body: JSON.stringify(input),
   });
@@ -60,15 +54,7 @@ export const sendAdminCampaign = async (
 };
 
 export const fetchAdminCampaignHistory = async (): Promise<AdminCampaignHistoryRecord[]> => {
-  const accessToken = await getValidAccessToken(
-    'Please sign in again to access the admin console.',
-  );
-
-  const response = await fetch(ADMIN_CAMPAIGN_HISTORY_ENDPOINT, {
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-    },
-  });
+  const response = await fetch(ADMIN_CAMPAIGN_HISTORY_ENDPOINT);
 
   if (!response.ok) {
     throw new Error(await readErrorMessage(response));

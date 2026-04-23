@@ -708,7 +708,7 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
       supabase,
       user: actor,
       role: actorRole,
-    } = await authenticateAdminRequest(req);
+    } = await authenticateAdminRequest(req, res);
     auditSupabase = supabase;
     auditActorId = actor.id;
     auditActorRole = actorRole;
