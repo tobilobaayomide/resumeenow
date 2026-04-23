@@ -1,5 +1,4 @@
 import { reportRuntimeValidationIssue } from '../observability/runtimeValidation';
-import { supabase } from '../supabase';
 
 export type NotificationPreferencesRecord = Record<string, unknown>;
 
@@ -36,18 +35,43 @@ export const getNotificationPreferencesQueryKey = (
   userId: string | null | undefined,
 ) => ['notificationPreferences', userId ?? null] as const;
 
+const NOTIFICATION_PREFERENCES_ENDPOINT = '/api/notification-preferences';
+
+const readErrorMessage = async (response: Response): Promise<string> => {
+  try {
+    const payload = (await response.clone().json()) as {
+      message?: string;
+      error?: string;
+    };
+
+    if (typeof payload.message === 'string' && payload.message.trim()) {
+      return payload.message.trim();
+    }
+
+    if (typeof payload.error === 'string' && payload.error.trim()) {
+      return payload.error.trim();
+    }
+  } catch {
+    // Fall through to text parsing.
+  }
+
+  const text = (await response.text()).trim();
+  return text || 'Failed to update notification preferences.';
+};
+
 export const fetchNotificationPreferences = async (
   userId: string,
 ): Promise<NotificationPreferencesRecord | null> => {
-  const { data, error } = await supabase
-    .from('notification_preferences')
-    .select('*')
-    .eq('user_id', userId)
-    .maybeSingle();
+  const response = await fetch(NOTIFICATION_PREFERENCES_ENDPOINT, {
+    method: 'GET',
+  });
 
-  if (error) {
-    throw error;
+  if (!response.ok) {
+    throw new Error(await readErrorMessage(response));
   }
+
+  const payload = (await response.json()) as { preferences?: unknown };
+  const data = payload.preferences;
 
   return normalizeNotificationPreferencesRecord(data, userId);
 };
@@ -56,17 +80,20 @@ export const upsertNotificationPreferences = async (
   userId: string,
   updates: Record<string, unknown>,
 ): Promise<NotificationPreferencesRecord> => {
-  const { data, error } = await supabase
-    .from('notification_preferences')
-    .upsert(updates, {
-      onConflict: 'user_id',
-    })
-    .select()
-    .single();
+  const response = await fetch(NOTIFICATION_PREFERENCES_ENDPOINT, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(updates),
+  });
 
-  if (error) {
-    throw error;
+  if (!response.ok) {
+    throw new Error(await readErrorMessage(response));
   }
+
+  const payload = (await response.json()) as { preferences?: unknown };
+  const data = payload.preferences;
 
   const savedPreferences = normalizeNotificationPreferencesRecord(data, userId);
   if (!savedPreferences) {

@@ -1,6 +1,5 @@
-import { supabase } from '../supabase';
-
 const PRO_WAITLIST_JOINED_AT_FIELD = 'pro_waitlist_joined_at';
+const PRO_WAITLIST_ENDPOINT = '/api/pro-waitlist';
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null;
@@ -24,66 +23,68 @@ export const PRO_WAITLIST_QUERY_STALE_TIME = 300_000;
 export const getProWaitlistQueryKey = (userId: string | null | undefined) =>
   ['proWaitlist', userId ?? null] as const;
 
-export const fetchProWaitlistStatus = async (userId: string): Promise<boolean> => {
-  const { data, error } = await supabase
-    .from('profiles')
-    .select(PRO_WAITLIST_JOINED_AT_FIELD)
-    .eq('id', userId)
-    .maybeSingle();
+const readErrorMessage = async (response: Response): Promise<string> => {
+  try {
+    const payload = (await response.clone().json()) as {
+      message?: string;
+      error?: string;
+    };
 
-  if (error) {
-    throw error;
+    if (typeof payload.message === 'string' && payload.message.trim()) {
+      return payload.message.trim();
+    }
+
+    if (typeof payload.error === 'string' && payload.error.trim()) {
+      return payload.error.trim();
+    }
+  } catch {
+    // Fall through to text parsing.
   }
 
-  return getJoinedAtValue(data) !== null;
+  const text = (await response.text()).trim();
+  return text || 'Failed to load Pro waitlist status.';
 };
 
-export const joinProWaitlist = async (userId: string): Promise<JoinProWaitlistResult> => {
-  const { data: existingData, error: existingError } = await supabase
-    .from('profiles')
-    .select(PRO_WAITLIST_JOINED_AT_FIELD)
-    .eq('id', userId)
-    .maybeSingle();
+export const fetchProWaitlistStatus = async (): Promise<boolean> => {
+  const response = await fetch(PRO_WAITLIST_ENDPOINT);
 
-  if (existingError) {
-    throw existingError;
+  if (!response.ok) {
+    throw new Error(await readErrorMessage(response));
   }
 
-  const existingJoinedAt = getJoinedAtValue(existingData);
-  if (existingJoinedAt) {
-    return {
-      joinedAt: existingJoinedAt,
-      alreadyJoined: true,
-    };
+  const payload = (await response.json()) as {
+    joined?: unknown;
+    joinedAt?: unknown;
+  };
+
+  return payload.joined === true || getJoinedAtValue({
+    [PRO_WAITLIST_JOINED_AT_FIELD]: payload.joinedAt,
+  }) !== null;
+};
+
+export const joinProWaitlist = async (): Promise<JoinProWaitlistResult> => {
+  const response = await fetch(PRO_WAITLIST_ENDPOINT, {
+    method: 'POST',
+  });
+
+  if (!response.ok) {
+    throw new Error(await readErrorMessage(response));
   }
 
-  const joinedAt = new Date().toISOString();
-  const { data, error } = await supabase
-    .from('profiles')
-    .upsert(
-      {
-        id: userId,
-        [PRO_WAITLIST_JOINED_AT_FIELD]: joinedAt,
-        updated_at: joinedAt,
-      },
-      {
-        onConflict: 'id',
-      },
-    )
-    .select(PRO_WAITLIST_JOINED_AT_FIELD)
-    .single();
+  const data = (await response.json()) as {
+    joinedAt?: unknown;
+    alreadyJoined?: unknown;
+  };
 
-  if (error) {
-    throw error;
-  }
-
-  const savedJoinedAt = getJoinedAtValue(data);
+  const savedJoinedAt = getJoinedAtValue({
+    [PRO_WAITLIST_JOINED_AT_FIELD]: data.joinedAt,
+  });
   if (!savedJoinedAt) {
     throw new Error('Failed to record your Pro waitlist entry.');
   }
 
   return {
     joinedAt: savedJoinedAt,
-    alreadyJoined: false,
+    alreadyJoined: data.alreadyJoined === true,
   };
 };

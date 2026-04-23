@@ -1,7 +1,15 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { User } from '@supabase/supabase-js';
 import { toast } from 'sonner';
+import {
+  AUTH_SESSION_SYNCED_EVENT,
+  clearServerAuthSession,
+  clearTransientSupabaseSession,
+  getServerAuthUser,
+  syncActiveSupabaseSessionToServer,
+} from '../lib/auth/serverSession';
 import { triggerNotificationEvent } from '../lib/notifications/client';
+import { fetchProfileRecord } from '../lib/queries/profile';
 import { parseAccountStatus } from '../schemas/integrations/profile';
 import { AuthContext } from './auth-context';
 
@@ -16,33 +24,56 @@ const areUsersEquivalent = (left: User | null, right: User | null): boolean => {
   );
 };
 
+const isResetPasswordRoute = (): boolean =>
+  typeof window !== 'undefined' && window.location.pathname === '/reset-password';
+
+const syncUserState = (
+  nextUser: User | null,
+  setUser: React.Dispatch<React.SetStateAction<User | null>>,
+  setLoading: React.Dispatch<React.SetStateAction<boolean>>,
+) => {
+  setUser((currentUser) =>
+    areUsersEquivalent(currentUser, nextUser) ? currentUser : nextUser,
+  );
+  setLoading(false);
+};
+
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const lastWelcomeNotificationUserIdRef = useRef<string | null>(null);
   const suspensionHandledUserIdRef = useRef<string | null>(null);
 
-  const forceSuspendSignOut = useCallback(async (reason = 'Your account has been suspended.') => {
-    const { supabase } = await import('../lib/supabase');
-    await supabase.auth.signOut();
-    setUser(null);
-    setLoading(false);
-    toast.error(reason);
+  const clearSensitiveClientState = useCallback(async () => {
+    const [{ clearBuilderStorage }, { clearAiResponseCaches }] = await Promise.all([
+      import('../store/builderStore'),
+      import('../lib/gemini'),
+    ]);
+
+    clearBuilderStorage();
+    clearAiResponseCaches();
   }, []);
 
+  const completeSignOut = useCallback(async () => {
+    await clearServerAuthSession().catch(() => {
+      // Still clear the transient local session if server cookie cleanup fails.
+    });
+    await clearTransientSupabaseSession().catch(() => {
+      // Ignore transient session cleanup failures while signing out.
+    });
+    await clearSensitiveClientState();
+    setUser(null);
+    setLoading(false);
+  }, [clearSensitiveClientState]);
+
+  const forceSuspendSignOut = useCallback(async (reason = 'Your account has been suspended.') => {
+    await completeSignOut();
+    toast.error(reason);
+  }, [completeSignOut]);
+
   const readAccountStatus = useCallback(async (userId: string) => {
-    const { supabase } = await import('../lib/supabase');
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('account_status')
-      .eq('id', userId)
-      .maybeSingle();
-
-    if (error) {
-      throw error;
-    }
-
-    return parseAccountStatus(data);
+    const profile = await fetchProfileRecord(userId);
+    return parseAccountStatus(profile);
   }, []);
 
   useEffect(() => {
@@ -52,61 +83,94 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const initializeAuth = async () => {
       try {
         const { supabase } = await import('../lib/supabase');
-        const {
-          data: { session: activeSession },
-        } = await supabase.auth.getSession();
+        let nextUser = await getServerAuthUser();
 
         if (!mounted) return;
 
-        const nextUser = activeSession?.user ?? null;
-        if (nextUser?.id) {
-          const accountStatus = await readAccountStatus(nextUser.id);
-
-          if (!mounted) return;
-
-          if (accountStatus === 'suspended') {
-            suspensionHandledUserIdRef.current = nextUser.id;
-            await forceSuspendSignOut();
-            return;
+        if (!nextUser && !isResetPasswordRoute()) {
+          try {
+            nextUser = await syncActiveSupabaseSessionToServer();
+          } catch (error) {
+            if (
+              error instanceof Error &&
+              error.message.toLowerCase().includes('suspended')
+            ) {
+              await forceSuspendSignOut();
+              return;
+            }
+            nextUser = null;
           }
         }
 
-        setUser((currentUser) => {
-          return areUsersEquivalent(currentUser, nextUser) ? currentUser : nextUser;
-        });
-        setLoading(false);
+        if (nextUser?.id) {
+          syncUserState(nextUser, setUser, setLoading);
+
+          try {
+            const accountStatus = await readAccountStatus(nextUser.id);
+
+            if (!mounted) return;
+
+            if (accountStatus === 'suspended') {
+              suspensionHandledUserIdRef.current = nextUser.id;
+              await forceSuspendSignOut();
+              return;
+            }
+          } catch {
+            // A just-issued cookie session can race the first profile read in dev.
+          }
+        }
+
+        syncUserState(nextUser, setUser, setLoading);
 
         const {
           data: { subscription },
         } = supabase.auth.onAuthStateChange((_event, nextSession) => {
           void (async () => {
-            const nextUser = nextSession?.user ?? null;
-            if (nextUser?.id) {
-              try {
-                const accountStatus = await readAccountStatus(nextUser.id);
+            if (isResetPasswordRoute() || !nextSession?.user) {
+              return;
+            }
 
+            try {
+              const serverUser = await syncActiveSupabaseSessionToServer();
+              if (!serverUser?.id) {
+                return;
+              }
+
+              syncUserState(serverUser, setUser, setLoading);
+
+              try {
+                const accountStatus = await readAccountStatus(serverUser.id);
                 if (accountStatus === 'suspended') {
-                  if (suspensionHandledUserIdRef.current !== nextUser.id) {
-                    suspensionHandledUserIdRef.current = nextUser.id;
+                  if (suspensionHandledUserIdRef.current !== serverUser.id) {
+                    suspensionHandledUserIdRef.current = serverUser.id;
                     await forceSuspendSignOut();
                   }
                   return;
                 }
               } catch {
-                // Fall through to normal auth handling if status lookup fails.
+                // Ignore transient post-login profile fetch failures.
+              }
+            } catch (error) {
+              if (
+                error instanceof Error &&
+                error.message.toLowerCase().includes('suspended')
+              ) {
+                await forceSuspendSignOut();
               }
             }
-
-            setUser((currentUser) =>
-              areUsersEquivalent(currentUser, nextUser) ? currentUser : nextUser,
-            );
-            setLoading(false);
           })();
         });
 
         unsubscribe = () => subscription.unsubscribe();
-      } catch {
+      } catch (error) {
         if (mounted) {
+          if (
+            error instanceof Error &&
+            error.message.toLowerCase().includes('suspended')
+          ) {
+            await forceSuspendSignOut();
+            return;
+          }
           setLoading(false);
         }
       }
@@ -114,9 +178,39 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     void initializeAuth();
 
+    const handleServerSessionSynced = (event: Event) => {
+      const syncedUser =
+        event instanceof CustomEvent &&
+        typeof event.detail === 'object' &&
+        event.detail !== null &&
+        'user' in event.detail
+          ? ((event.detail as { user?: User | null }).user ?? null)
+          : null;
+
+      if (!syncedUser) {
+        void initializeAuth();
+        return;
+      }
+
+      syncUserState(syncedUser, setUser, setLoading);
+      void (async () => {
+        try {
+          const accountStatus = await readAccountStatus(syncedUser.id);
+          if (accountStatus === 'suspended') {
+            suspensionHandledUserIdRef.current = syncedUser.id;
+            await forceSuspendSignOut();
+          }
+        } catch {
+          // Ignore transient post-login profile fetch failures.
+        }
+      })();
+    };
+    window.addEventListener(AUTH_SESSION_SYNCED_EVENT, handleServerSessionSynced);
+
     return () => {
       mounted = false;
       unsubscribe?.();
+      window.removeEventListener(AUTH_SESSION_SYNCED_EVENT, handleServerSessionSynced);
     };
   }, [forceSuspendSignOut, readAccountStatus]);
 
@@ -129,11 +223,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     let active = true;
     let intervalId: number | null = null;
     let removeFocusListener: (() => void) | null = null;
-    let channel: { unsubscribe?: () => void } | null = null;
 
     const startWatchingAccountStatus = async () => {
-      const { supabase } = await import('../lib/supabase');
-
       const handleSuspendedStatus = async () => {
         if (!active || suspensionHandledUserIdRef.current === user.id) {
           return;
@@ -164,25 +255,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       intervalId = window.setInterval(() => {
         void checkCurrentStatus();
       }, 15_000);
-
-      channel = supabase
-        .channel(`profile-status:${user.id}`)
-        .on(
-          'postgres_changes',
-          {
-            event: 'UPDATE',
-            schema: 'public',
-            table: 'profiles',
-            filter: `id=eq.${user.id}`,
-          },
-          (payload) => {
-            const nextStatus = parseAccountStatus(payload.new);
-            if (nextStatus === 'suspended') {
-              void handleSuspendedStatus();
-            }
-          },
-        )
-        .subscribe();
     };
 
     void startWatchingAccountStatus();
@@ -193,7 +265,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         window.clearInterval(intervalId);
       }
       removeFocusListener?.();
-      channel?.unsubscribe?.();
     };
   }, [forceSuspendSignOut, readAccountStatus, user]);
 
@@ -224,9 +295,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [user]);
 
   const signOut = useCallback(async () => {
-    const { supabase } = await import('../lib/supabase');
-    await supabase.auth.signOut();
-  }, []);
+    await completeSignOut();
+  }, [completeSignOut]);
 
   const value = useMemo(
     () => ({ user, loading, signOut }),

@@ -1,4 +1,3 @@
-import { supabase } from '../supabase';
 import type { PlanTier } from '../../types/context';
 import { getDefaultPlanSnapshot, type PlanSnapshot } from './planState';
 
@@ -13,6 +12,30 @@ export {
 
 export const getPlanSnapshotQueryKey = (userId: string | null | undefined) =>
   ['planSnapshot', userId ?? null] as const;
+
+const PLAN_ENDPOINT = '/api/plan';
+
+const readErrorMessage = async (response: Response): Promise<string> => {
+  try {
+    const payload = (await response.clone().json()) as {
+      message?: string;
+      error?: string;
+    };
+
+    if (typeof payload.message === 'string' && payload.message.trim()) {
+      return payload.message.trim();
+    }
+
+    if (typeof payload.error === 'string' && payload.error.trim()) {
+      return payload.error.trim();
+    }
+  } catch {
+    // Fall through to text parsing.
+  }
+
+  const text = (await response.text()).trim();
+  return text || 'Failed to load plan.';
+};
 
 const normalizePlanTier = (value: unknown): PlanTier =>
   value === 'pro' ? 'pro' : 'free';
@@ -35,35 +58,32 @@ export const fetchPlanSnapshot = async (userId: string | null): Promise<PlanSnap
     return getDefaultPlanSnapshot();
   }
 
-  const [subscriptionResult, usageResult] = await Promise.all([
-    supabase
-      .from('user_subscriptions')
-      .select('plan_tier')
-      .eq('user_id', userId)
-      .maybeSingle(),
-    supabase
-      .from('user_api_usage')
-      .select('ai_credits_used, last_reset_at')
-      .eq('user_id', userId)
-      .maybeSingle(),
-  ]);
+  const response = await fetch(PLAN_ENDPOINT);
 
-  if (subscriptionResult.error) {
-    throw subscriptionResult.error;
+  if (!response.ok) {
+    throw new Error(await readErrorMessage(response));
   }
 
-  if (usageResult.error) {
-    throw usageResult.error;
-  }
-
-  const lastResetDateStr = usageResult.data?.last_reset_at ?? null;
+  const payload = (await response.json()) as {
+    snapshot?: {
+      tier?: unknown;
+      usedCredits?: unknown;
+      lastResetAt?: string | null;
+    };
+  };
+  const lastResetDateStr = payload.snapshot?.lastResetAt ?? null;
   const lastResetDate = toIsoDate(lastResetDateStr);
   const today = new Date().toISOString().split('T')[0];
   const isNewDay = lastResetDate != null && lastResetDate !== today;
 
   return {
-    tier: normalizePlanTier(subscriptionResult.data?.plan_tier),
-    usedCredits: isNewDay ? 0 : (usageResult.data?.ai_credits_used ?? 0),
+    tier: normalizePlanTier(payload.snapshot?.tier),
+    usedCredits:
+      isNewDay
+        ? 0
+        : typeof payload.snapshot?.usedCredits === 'number'
+          ? payload.snapshot.usedCredits
+          : 0,
     dynamicFreeLimit: getDefaultPlanSnapshot().dynamicFreeLimit,
   };
 };

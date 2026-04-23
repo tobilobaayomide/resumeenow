@@ -1,5 +1,4 @@
 import { reportRuntimeValidationIssue } from '../observability/runtimeValidation';
-import { supabase } from '../supabase';
 import { safeParseResumeRecord } from '../../schemas/domain/resume';
 import {
   DEFAULT_TEMPLATE_ID,
@@ -11,6 +10,30 @@ import {
 
 export const getResumesQueryKey = (userId: string | null | undefined) =>
   ['resumes', userId ?? null] as const;
+
+const RESUMES_ENDPOINT = '/api/resumes';
+
+const readErrorMessage = async (response: Response): Promise<string> => {
+  try {
+    const payload = (await response.clone().json()) as {
+      message?: string;
+      error?: string;
+    };
+
+    if (typeof payload.message === 'string' && payload.message.trim()) {
+      return payload.message.trim();
+    }
+
+    if (typeof payload.error === 'string' && payload.error.trim()) {
+      return payload.error.trim();
+    }
+  } catch {
+    // Fall through to text parsing.
+  }
+
+  const text = (await response.text()).trim();
+  return text || 'Failed to load resumes.';
+};
 
 const parseResumeRows = (data: unknown, userId: string): ResumeRecord[] => {
   const invalidResumeIds: string[] = [];
@@ -47,41 +70,76 @@ const parseResumeRows = (data: unknown, userId: string): ResumeRecord[] => {
 };
 
 export const fetchResumes = async (userId: string): Promise<ResumeRecord[]> => {
-  const { data, error } = await supabase
-    .from('resumes')
-    .select('*')
-    .eq('user_id', userId)
-    .order('updated_at', { ascending: false });
+  const response = await fetch(RESUMES_ENDPOINT);
 
-  if (error) {
-    throw error;
+  if (!response.ok) {
+    throw new Error(await readErrorMessage(response));
   }
 
+  const payload = (await response.json()) as { resumes?: unknown };
+  const data = payload.resumes;
+
   return parseResumeRows(data, userId);
+};
+
+export const fetchResumeRecord = async (
+  userId: string,
+  id: string,
+): Promise<ResumeRecord> => {
+  const params = new URLSearchParams({ id });
+  const response = await fetch(`${RESUMES_ENDPOINT}?${params.toString()}`);
+
+  if (!response.ok) {
+    throw new Error(await readErrorMessage(response));
+  }
+
+  const payload = (await response.json()) as { resume?: unknown };
+  const parsedResume = safeParseResumeRecord(payload.resume);
+  if (!parsedResume.success) {
+    reportRuntimeValidationIssue({
+      key: `resumes.fetchOne.invalid-row:${userId}:${id}`,
+      source: 'resumes.fetchOne',
+      action: 'Received an invalid resume row while loading a single resume.',
+      details: {
+        userId,
+        resumeId: id,
+      },
+    });
+    throw new Error('Failed to parse resume.');
+  }
+
+  return parsedResume.data;
 };
 
 export const createResumeRecord = async (
   userId: string,
   title: string,
   templateId: TemplateId = DEFAULT_TEMPLATE_ID,
+  content = INITIAL_RESUME_DATA,
 ): Promise<ResumeRecord> => {
   const payload = {
-    user_id: userId,
     title: title.trim() || 'Untitled Resume',
     template_id: normalizeTemplateId(templateId),
-    content: INITIAL_RESUME_DATA,
-    updated_at: new Date().toISOString(),
+    content,
   };
 
-  const { data, error } = await supabase
-    .from('resumes')
-    .insert([payload])
-    .select()
-    .single();
+  const response = await fetch(RESUMES_ENDPOINT, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      title: payload.title,
+      templateId: payload.template_id,
+      content: payload.content,
+    }),
+  });
 
-  if (error) {
-    throw error;
+  if (!response.ok) {
+    throw new Error(await readErrorMessage(response));
   }
+
+  const { resume: data } = (await response.json()) as { resume?: unknown };
 
   const normalizedResume = safeParseResumeRecord(data);
   if (!normalizedResume.success) {
@@ -99,14 +157,57 @@ export const createResumeRecord = async (
   return normalizedResume.data;
 };
 
-export const deleteResumeRecord = async (userId: string, id: string): Promise<void> => {
-  const { error } = await supabase
-    .from('resumes')
-    .delete()
-    .eq('id', id)
-    .eq('user_id', userId);
+export const updateResumeRecord = async (
+  userId: string,
+  id: string,
+  input: {
+    title: string;
+    templateId: TemplateId;
+    content: ResumeRecord['content'];
+  },
+): Promise<ResumeRecord> => {
+  const params = new URLSearchParams({ id });
+  const response = await fetch(`${RESUMES_ENDPOINT}?${params.toString()}`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      title: input.title.trim() || 'Untitled Resume',
+      templateId: normalizeTemplateId(input.templateId),
+      content: input.content,
+    }),
+  });
 
-  if (error) {
-    throw error;
+  if (!response.ok) {
+    throw new Error(await readErrorMessage(response));
+  }
+
+  const { resume: data } = (await response.json()) as { resume?: unknown };
+  const normalizedResume = safeParseResumeRecord(data);
+  if (!normalizedResume.success) {
+    reportRuntimeValidationIssue({
+      key: `resumes.update.invalid-row:${userId}:${id}`,
+      source: 'resumes.update',
+      action: 'Received an invalid resume row after update.',
+      details: {
+        userId,
+        resumeId: id,
+      },
+    });
+    throw new Error('Failed to parse updated resume.');
+  }
+
+  return normalizedResume.data;
+};
+
+export const deleteResumeRecord = async (_userId: string, id: string): Promise<void> => {
+  const params = new URLSearchParams({ id });
+  const response = await fetch(`${RESUMES_ENDPOINT}?${params.toString()}`, {
+    method: 'DELETE',
+  });
+
+  if (!response.ok) {
+    throw new Error(await readErrorMessage(response));
   }
 };

@@ -11,7 +11,7 @@ import {
 } from '../../lib/queries/notifications';
 import {
   parseNotificationPreferencesFormState,
-  parseNotificationPreferencesUpdate,
+  parseSelfNotificationPreferencesUpdate,
 } from '../../schemas/integrations/notifications';
 import type {
   NotificationPreferencesFormState,
@@ -95,13 +95,11 @@ export const useNotificationSettingsController = ({
         throw new Error('Login required.');
       }
 
-      const updates = parseNotificationPreferencesUpdate({
-        user_id: userId,
+      const updates = parseSelfNotificationPreferencesUpdate({
         weekly_digest: nextFormState.weeklyDigest,
         ai_usage_alerts: nextFormState.aiUsageAlerts,
         pro_waitlist_updates: nextFormState.proWaitlistUpdates,
         product_updates: nextFormState.productUpdates,
-        updated_at: new Date().toISOString(),
       });
 
       return upsertNotificationPreferences(userId, updates);

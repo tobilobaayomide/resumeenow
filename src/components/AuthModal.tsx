@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { FiX, FiMail, FiLock, FiUser, FiEye, FiEyeOff, FiLinkedin, FiRefreshCw } from "react-icons/fi";
 import { FcGoogle } from "react-icons/fc";
 import { supabase } from "../lib/supabase";
+import { syncActiveSupabaseSessionToServer } from "../lib/auth/serverSession";
 import { toast } from "sonner";
 import type { AuthModalMode, AuthModalProps, OAuthProvider } from "../types/ui";
 
@@ -84,6 +85,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ open, onClose, mode, postAuthPend
         if (error) throw error;
 
         if (data.session) {
+          await syncActiveSupabaseSessionToServer();
           toast.success("Account created successfully!");
           onClose({ preservePendingTemplate: true });
           return;
@@ -97,6 +99,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ open, onClose, mode, postAuthPend
           password,
         });
         if (error) throw error;
+        await syncActiveSupabaseSessionToServer();
         toast.success("Successfully logged in!");
         onClose({ preservePendingTemplate: true });
       }
@@ -179,7 +182,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ open, onClose, mode, postAuthPend
         <div className="p-7 md:p-8">
           <div className="text-center mb-7">
             <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-black/45 mb-2">
-              ResumeNow Access
+              ResumeeNow Access
             </p>
             <h2 id="auth-modal-title" className="text-2xl font-semibold text-gray-900 tracking-tight">
               {currentMode === "login" ? "Welcome Back" : "Create Your Account"}

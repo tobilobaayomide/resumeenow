@@ -18,7 +18,7 @@ import {
   PROFILE_QUERY_STALE_TIME,
   upsertProfileRecord,
 } from '../../lib/queries/profile';
-import { parseCareerProfileUpdate } from '../../schemas/integrations/profile';
+import { parseSelfProfileUpdate } from '../../schemas/integrations/profile';
 import type { CareerProfileState, UseCareerProfileControllerArgs, UseCareerProfileControllerResult } from '../../types/dashboard';
 
 export const useCareerProfileController = ({
@@ -73,8 +73,7 @@ export const useCareerProfileController = ({
         throw new Error('Login required.');
       }
 
-      const updates = parseCareerProfileUpdate({
-        id: user.id,
+      const updates = parseSelfProfileUpdate({
         full_name: updatedProfile.full_name,
         headline: updatedProfile.headline,
         location: updatedProfile.location,
@@ -84,7 +83,6 @@ export const useCareerProfileController = ({
         experience: updatedProfile.experience,
         education: updatedProfile.education,
         skills: updatedProfile.skills,
-        updated_at: new Date().toISOString(),
       });
 
       const savedProfileRecord = await upsertProfileRecord(user.id, updates);

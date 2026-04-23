@@ -73,7 +73,7 @@ export const PlanProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const hasUnlimitedAccess = isAdmin;
   const proWaitlistQuery = useQuery({
     queryKey: proWaitlistQueryKey,
-    queryFn: () => fetchProWaitlistStatus(currentUserId as string),
+    queryFn: () => fetchProWaitlistStatus(),
     enabled: currentUserId !== null && effectivePlanStatus === 'ready' && !isPro,
     staleTime: PRO_WAITLIST_QUERY_STALE_TIME,
     refetchOnWindowFocus: false,
@@ -122,7 +122,7 @@ export const PlanProvider: React.FC<{ children: React.ReactNode }> = ({ children
         throw new Error('Login required.');
       }
 
-      return joinProWaitlist(currentUserId);
+      return joinProWaitlist();
     },
     onSuccess: ({ joinedAt, alreadyJoined }) => {
       if (currentUserId !== null) {

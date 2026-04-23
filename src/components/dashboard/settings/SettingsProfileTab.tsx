@@ -42,7 +42,7 @@ const SettingsProfileTab: React.FC<SettingsProfileTabProps> = ({
             type="file"
             ref={fileInputRef}
             className="hidden"
-            accept="image/*"
+            accept="image/png,image/jpeg,image/webp"
             onChange={onAvatarUpload}
           />
         </div>
@@ -50,6 +50,9 @@ const SettingsProfileTab: React.FC<SettingsProfileTabProps> = ({
           <h3 className="text-lg font-semibold text-gray-900">Profile Photo</h3>
           <p className="text-sm font-light text-gray-500 max-w-xs">
             This image will be displayed on your profile and shared resumes.
+          </p>
+          <p className="text-xs font-light text-gray-400 max-w-xs">
+            PNG, JPEG, or WebP only. Maximum file size: 2 MB.
           </p>
         </div>
       </div>

@@ -1,5 +1,4 @@
 import { reportRuntimeValidationIssue } from '../observability/runtimeValidation';
-import { supabase } from '../supabase';
 import type { NotificationEventType } from '../notifications/types';
 
 export interface NotificationEventRecord {
@@ -13,6 +12,7 @@ export interface NotificationEventRecord {
 }
 
 export const NOTIFICATION_EVENTS_QUERY_STALE_TIME = 30_000;
+const NOTIFICATION_FEED_ENDPOINT = '/api/notification-feed';
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -67,20 +67,39 @@ const normalizeNotificationEventRecord = (
 export const getNotificationEventsQueryKey = (userId: string | null | undefined) =>
   ['notificationEvents', userId ?? null] as const;
 
+const readErrorMessage = async (response: Response): Promise<string> => {
+  try {
+    const payload = (await response.clone().json()) as {
+      message?: string;
+      error?: string;
+    };
+
+    if (typeof payload.message === 'string' && payload.message.trim()) {
+      return payload.message.trim();
+    }
+
+    if (typeof payload.error === 'string' && payload.error.trim()) {
+      return payload.error.trim();
+    }
+  } catch {
+    // Fall through to text parsing.
+  }
+
+  const text = (await response.text()).trim();
+  return text || 'Failed to load notifications.';
+};
+
 export const fetchNotificationEvents = async (
   userId: string,
 ): Promise<NotificationEventRecord[]> => {
-  const { data, error } = await supabase
-    .from('notification_events')
-    .select('id, type, payload, status, created_at, read_at, sent_at')
-    .eq('user_id', userId)
-    .in('status', ['sent', 'skipped'])
-    .order('created_at', { ascending: false })
-    .limit(20);
+  const response = await fetch(NOTIFICATION_FEED_ENDPOINT);
 
-  if (error) {
-    throw error;
+  if (!response.ok) {
+    throw new Error(await readErrorMessage(response));
   }
+
+  const payload = (await response.json()) as { events?: unknown };
+  const data = payload.events;
 
   return Array.isArray(data)
     ? data
@@ -90,23 +109,24 @@ export const fetchNotificationEvents = async (
 };
 
 export const markNotificationEventsRead = async (
-  userId: string,
+  _userId: string,
   eventIds: string[],
 ): Promise<void> => {
   if (eventIds.length === 0) {
     return;
   }
 
-  const { error } = await supabase
-    .from('notification_events')
-    .update({
-      read_at: new Date().toISOString(),
-    })
-    .eq('user_id', userId)
-    .in('id', eventIds)
-    .is('read_at', null);
+  const response = await fetch(NOTIFICATION_FEED_ENDPOINT, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      eventIds,
+    }),
+  });
 
-  if (error) {
-    throw error;
+  if (!response.ok) {
+    throw new Error(await readErrorMessage(response));
   }
 };

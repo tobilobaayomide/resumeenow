@@ -144,6 +144,23 @@ export const CareerProfileUpdateSchema = z.object({
   updated_at: z.string(),
 });
 
+export const SelfProfileUpdateSchema = z
+  .object({
+    full_name: z.string().optional(),
+    headline: z.string().optional(),
+    location: z.string().optional(),
+    phone: z.string().optional(),
+    website: z.string().optional(),
+    bio: z.string().optional(),
+    avatar_url: z.string().nullable().optional(),
+    experience: z.array(ResumeExperienceItemSchema).optional(),
+    education: z.array(ResumeEducationItemSchema).optional(),
+    skills: z.array(z.string()).optional(),
+  })
+  .refine((value) => Object.keys(value).length > 0, {
+    message: 'At least one editable profile field is required.',
+  });
+
 export const parseProfileResumeImport = (
   value: unknown,
   userEmail = '',
@@ -213,3 +230,6 @@ export const parseAvatarProfileUpdate = (value: unknown) =>
 
 export const parseCareerProfileUpdate = (value: unknown) =>
   CareerProfileUpdateSchema.parse(value);
+
+export const parseSelfProfileUpdate = (value: unknown) =>
+  SelfProfileUpdateSchema.parse(value);

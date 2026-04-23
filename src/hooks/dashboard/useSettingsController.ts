@@ -9,14 +9,13 @@ import {
   getProfileQueryKey,
   PROFILE_QUERY_STALE_TIME,
   type ProfileRecord,
+  uploadProfileAvatar,
   upsertProfileRecord,
 } from '../../lib/queries/profile';
 import {
-  parseAvatarProfileUpdate,
+  parseSelfProfileUpdate,
   parseSettingsFormState,
-  parseSettingsProfileUpdate,
 } from '../../schemas/integrations/profile';
-import { supabase } from '../../lib/supabase';
 import type {
   SettingsFormState,
   SettingsTabId,
@@ -30,13 +29,13 @@ const EMPTY_SETTINGS_STATE: SettingsFormState = {
   bio: '',
   avatarUrl: null,
 };
+const MAX_AVATAR_FILE_BYTES = 2 * 1024 * 1024;
+const ALLOWED_AVATAR_MIME_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp']);
 
 const getFallbackSettingsState = (user: User): SettingsFormState =>
   parseSettingsFormState(
     { full_name: user.user_metadata?.full_name, bio: '' },
-    typeof user.user_metadata?.avatar_url === 'string'
-      ? user.user_metadata.avatar_url
-      : null,
+    null,
   );
 
 const resolveSettingsFormState = (
@@ -100,34 +99,16 @@ export const useSettingsController = ({
       }
 
       const fullName = `${nextFormState.firstName} ${nextFormState.lastName}`.trim();
-      const updates = parseSettingsProfileUpdate({
-        id: user.id,
+      const updates = parseSelfProfileUpdate({
         full_name: fullName,
         bio: nextFormState.bio,
-        avatar_url: nextFormState.avatarUrl,
-        updated_at: new Date().toISOString(),
       });
 
-      const savedProfile = await upsertProfileRecord(user.id, updates);
-      const { error: authUpdateError } = await supabase.auth.updateUser({
-        data: {
-          ...user.user_metadata,
-          full_name: fullName,
-          avatar_url: nextFormState.avatarUrl,
-        },
-      });
-
-      return {
-        savedProfile,
-        authUpdateError,
-      };
+      return upsertProfileRecord(user.id, updates);
     },
-    onSuccess: ({ savedProfile, authUpdateError }) => {
+    onSuccess: (savedProfile) => {
       queryClient.setQueryData(profileQueryKey, savedProfile);
       setDraftFormState(null);
-      if (authUpdateError) {
-        toast('Settings saved, but account display info may take time to refresh.');
-      }
       toast.success('Settings saved successfully');
     },
     onError: (error: unknown) => {
@@ -141,38 +122,19 @@ export const useSettingsController = ({
         throw new Error('Please sign in again and retry.');
       }
 
-      const fileExt = file.name.split('.').pop() || 'jpg';
-      const filePath = `${user.id}/${Date.now()}-${Math.random().toString(36).slice(2)}.${fileExt}`;
-
-      const { error: uploadError } = await supabase.storage
-        .from('avatars')
-        .upload(filePath, file);
-      if (uploadError) {
-        throw uploadError;
+      if (file.size > MAX_AVATAR_FILE_BYTES) {
+        throw new Error('Avatar images must be 2 MB or smaller.');
       }
 
-      const { data } = supabase.storage.from('avatars').getPublicUrl(filePath);
-      const nextAvatarUrl = data.publicUrl;
-      const profileUpdate = parseAvatarProfileUpdate({
-        id: user.id,
-        avatar_url: nextAvatarUrl,
-        updated_at: new Date().toISOString(),
-      });
-      const savedProfile = await upsertProfileRecord(user.id, profileUpdate);
+      if (file.type && !ALLOWED_AVATAR_MIME_TYPES.has(file.type)) {
+        throw new Error('Only PNG, JPEG, and WebP avatar uploads are supported.');
+      }
 
-      const fullName = `${formState.firstName} ${formState.lastName}`.trim();
-      const { error: authUpdateError } = await supabase.auth.updateUser({
-        data: {
-          ...user.user_metadata,
-          full_name: fullName,
-          avatar_url: nextAvatarUrl,
-        },
-      });
+      const { profile: savedProfile, avatarUrl: nextAvatarUrl } = await uploadProfileAvatar(user.id, file);
 
       return {
         savedProfile,
         nextAvatarUrl,
-        authUpdateError,
       };
     },
   });
@@ -200,7 +162,7 @@ export const useSettingsController = ({
     const loadingToast = toast.loading('Uploading avatar...');
 
     try {
-      const { savedProfile, nextAvatarUrl, authUpdateError } =
+      const { savedProfile, nextAvatarUrl } =
         await avatarUploadMutation.mutateAsync(file);
       const nextServerFormState = resolveSettingsFormState(savedProfile, user);
 
@@ -220,9 +182,6 @@ export const useSettingsController = ({
           : nextDraftState;
       });
       toast.dismiss(loadingToast);
-      if (authUpdateError) {
-        toast('Avatar saved, but account display info may take time to refresh.');
-      }
       toast.success('Avatar uploaded and saved');
     } catch (error: unknown) {
       toast.dismiss(loadingToast);

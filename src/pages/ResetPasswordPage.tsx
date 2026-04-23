@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { FiCheck, FiLock } from "react-icons/fi";
 import { toast } from "sonner";
 import { supabase } from "../lib/supabase";
+import { syncActiveSupabaseSessionToServer } from "../lib/auth/serverSession";
 import Seo from "../components/seo/Seo";
 
 const ResetPasswordPage: React.FC = () => {
@@ -68,6 +69,9 @@ const ResetPasswordPage: React.FC = () => {
     try {
       const { error } = await supabase.auth.updateUser({ password });
       if (error) throw error;
+      await syncActiveSupabaseSessionToServer().catch(() => {
+        // Keep the password reset flow successful even if server-session sync fails.
+      });
       setDone(true);
       toast.success("Password updated successfully.");
     } catch (err: unknown) {

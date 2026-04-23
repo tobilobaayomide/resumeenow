@@ -1,6 +1,4 @@
 import { reportRuntimeValidationIssue } from '../observability/runtimeValidation';
-import { supabase } from '../supabase';
-
 export type ProfileRecord = Record<string, unknown>;
 
 export const PROFILE_QUERY_STALE_TIME = 300_000;
@@ -32,33 +30,64 @@ const normalizeProfileRecord = (value: unknown, userId: string): ProfileRecord |
 export const getProfileQueryKey = (userId: string | null | undefined) =>
   ['profile', userId ?? null] as const;
 
-export const fetchProfileRecord = async (userId: string): Promise<ProfileRecord | null> => {
-  const { data, error } = await supabase
-    .from('profiles')
-    .select('*')
-    .eq('id', userId)
-    .maybeSingle();
+const PROFILE_UPDATE_ENDPOINT = '/api/profile';
+const AVATAR_UPLOAD_ENDPOINT = '/api/avatar-upload';
 
-  if (error) {
-    throw error;
+const readErrorMessage = async (response: Response): Promise<string> => {
+  try {
+    const payload = (await response.clone().json()) as {
+      message?: string;
+      error?: string;
+    };
+
+    if (typeof payload.message === 'string' && payload.message.trim()) {
+      return payload.message.trim();
+    }
+
+    if (typeof payload.error === 'string' && payload.error.trim()) {
+      return payload.error.trim();
+    }
+  } catch {
+    // Fall through to text parsing.
   }
 
-  return normalizeProfileRecord(data, userId);
+  const text = (await response.text()).trim();
+  return text || 'Failed to update profile.';
+};
+
+export const fetchProfileRecord = async (userId: string): Promise<ProfileRecord | null> => {
+  const response = await fetch(PROFILE_UPDATE_ENDPOINT, {
+    method: 'GET',
+    credentials: 'include',
+  });
+
+  if (!response.ok) {
+    throw new Error(await readErrorMessage(response));
+  }
+
+  const payload = (await response.json()) as { profile?: unknown };
+  return normalizeProfileRecord(payload.profile ?? null, userId);
 };
 
 export const upsertProfileRecord = async (
   userId: string,
   updates: Record<string, unknown>,
 ): Promise<ProfileRecord> => {
-  const { data, error } = await supabase
-    .from('profiles')
-    .upsert(updates)
-    .select()
-    .single();
+  const response = await fetch(PROFILE_UPDATE_ENDPOINT, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    credentials: 'include',
+    body: JSON.stringify(updates),
+  });
 
-  if (error) {
-    throw error;
+  if (!response.ok) {
+    throw new Error(await readErrorMessage(response));
   }
+
+  const payload = (await response.json()) as { profile?: unknown };
+  const data = payload.profile;
 
   const savedProfile = normalizeProfileRecord(data, userId);
   if (!savedProfile) {
@@ -66,4 +95,41 @@ export const upsertProfileRecord = async (
   }
 
   return savedProfile;
+};
+
+export const uploadProfileAvatar = async (
+  userId: string,
+  file: File,
+): Promise<{ profile: ProfileRecord; avatarUrl: string }> => {
+  const response = await fetch(AVATAR_UPLOAD_ENDPOINT, {
+    method: 'POST',
+    headers: {
+      ...(file.type ? { 'Content-Type': file.type } : {}),
+    },
+    credentials: 'include',
+    body: file,
+  });
+
+  if (!response.ok) {
+    throw new Error(await readErrorMessage(response));
+  }
+
+  const payload = (await response.json()) as {
+    profile?: unknown;
+    avatarUrl?: unknown;
+  };
+  const profile = normalizeProfileRecord(payload.profile, userId);
+  const avatarUrl =
+    typeof payload.avatarUrl === 'string' && payload.avatarUrl.trim()
+      ? payload.avatarUrl
+      : null;
+
+  if (!profile || !avatarUrl) {
+    throw new Error('Failed to parse uploaded avatar response.');
+  }
+
+  return {
+    profile,
+    avatarUrl,
+  };
 };

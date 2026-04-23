@@ -42,6 +42,12 @@ export const NotificationPreferencesUpdateSchema = z.object({
   updated_at: z.string(),
 });
 
+export const SelfNotificationPreferencesUpdateSchema =
+  NotificationPreferencesUpdateSchema.omit({
+    user_id: true,
+    updated_at: true,
+  });
+
 export const parseNotificationPreferencesFormState = (
   value: unknown,
 ): NotificationPreferencesFormState =>
@@ -51,3 +57,6 @@ export const parseNotificationPreferencesFormState = (
 
 export const parseNotificationPreferencesUpdate = (value: unknown) =>
   NotificationPreferencesUpdateSchema.parse(value);
+
+export const parseSelfNotificationPreferencesUpdate = (value: unknown) =>
+  SelfNotificationPreferencesUpdateSchema.parse(value);
