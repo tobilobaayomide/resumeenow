@@ -1,5 +1,6 @@
 import {
   HttpError,
+  isRecord,
   sendJson,
   type ApiRequest,
   type ApiResponse,
@@ -12,6 +13,8 @@ export const config = {
 
 const normalizePlanTier = (value: unknown): 'free' | 'pro' =>
   value === 'pro' ? 'pro' : 'free';
+
+const PRO_WAITLIST_JOINED_AT_FIELD = 'pro_waitlist_joined_at';
 
 const toIsoDate = (value: string | null): string | null => {
   if (!value) {
@@ -26,9 +29,41 @@ const toIsoDate = (value: string | null): string | null => {
   return parsedDate.toISOString().split('T')[0];
 };
 
+const getJoinedAtValue = (value: unknown): string | null => {
+  if (!isRecord(value)) {
+    return null;
+  }
+
+  const joinedAt = value[PRO_WAITLIST_JOINED_AT_FIELD];
+  return typeof joinedAt === 'string' && joinedAt.trim() ? joinedAt : null;
+};
+
+const getView = (req: ApiRequest): 'snapshot' | 'waitlist' => {
+  const host = Array.isArray(req.headers.host) ? req.headers.host[0] : req.headers.host;
+  const forwardedProto = Array.isArray(req.headers['x-forwarded-proto'])
+    ? req.headers['x-forwarded-proto'][0]
+    : req.headers['x-forwarded-proto'];
+  const protocol = typeof forwardedProto === 'string' && forwardedProto
+    ? forwardedProto
+    : 'https';
+  const url = new URL(req.url ?? '/api/plan', `${protocol}://${host ?? 'localhost'}`);
+  return url.searchParams.get('view') === 'waitlist' ? 'waitlist' : 'snapshot';
+};
+
 export default async function handler(req: ApiRequest, res: ApiResponse) {
-  if (req.method !== 'GET') {
+  const view = getView(req);
+
+  if (view === 'snapshot' && req.method !== 'GET') {
     res.setHeader('Allow', 'GET');
+    sendJson(res, 405, {
+      error: 'METHOD_NOT_ALLOWED',
+      message: 'Method not allowed.',
+    });
+    return;
+  }
+
+  if (view === 'waitlist' && req.method !== 'GET' && req.method !== 'POST') {
+    res.setHeader('Allow', 'GET, POST');
     sendJson(res, 405, {
       error: 'METHOD_NOT_ALLOWED',
       message: 'Method not allowed.',
@@ -38,6 +73,68 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
 
   try {
     const { supabase, user } = await authenticateUserRequest(req, res);
+
+    if (view === 'waitlist') {
+      const { data: existingData, error: existingError } = await supabase
+        .from('profiles')
+        .select(PRO_WAITLIST_JOINED_AT_FIELD)
+        .eq('id', user.id)
+        .maybeSingle();
+
+      if (existingError) {
+        throw existingError;
+      }
+
+      const existingJoinedAt = getJoinedAtValue(existingData);
+
+      if (req.method === 'GET') {
+        sendJson(res, 200, {
+          joined: existingJoinedAt !== null,
+          joinedAt: existingJoinedAt,
+        });
+        return;
+      }
+
+      if (existingJoinedAt) {
+        sendJson(res, 200, {
+          joinedAt: existingJoinedAt,
+          alreadyJoined: true,
+        });
+        return;
+      }
+
+      const joinedAt = new Date().toISOString();
+      const { data, error } = await supabase
+        .from('profiles')
+        .upsert(
+          {
+            id: user.id,
+            [PRO_WAITLIST_JOINED_AT_FIELD]: joinedAt,
+            updated_at: joinedAt,
+          },
+          {
+            onConflict: 'id',
+          },
+        )
+        .select(PRO_WAITLIST_JOINED_AT_FIELD)
+        .single();
+
+      if (error) {
+        throw error;
+      }
+
+      const savedJoinedAt = getJoinedAtValue(data);
+      if (!savedJoinedAt) {
+        throw new HttpError(500, 'Failed to record your Pro waitlist entry.');
+      }
+
+      sendJson(res, 200, {
+        joinedAt: savedJoinedAt,
+        alreadyJoined: false,
+      });
+      return;
+    }
+
     const [subscriptionResult, usageResult] = await Promise.all([
       supabase
         .from('user_subscriptions')
