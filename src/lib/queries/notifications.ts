@@ -35,7 +35,7 @@ export const getNotificationPreferencesQueryKey = (
   userId: string | null | undefined,
 ) => ['notificationPreferences', userId ?? null] as const;
 
-const NOTIFICATION_PREFERENCES_ENDPOINT = '/api/notification-preferences';
+const NOTIFICATION_PREFERENCES_ENDPOINT = '/api/notifications?view=preferences';
 
 const readErrorMessage = async (response: Response): Promise<string> => {
   try {
