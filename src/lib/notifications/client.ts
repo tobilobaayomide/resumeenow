@@ -1,6 +1,6 @@
 import type { TriggerNotificationEventInput } from './types';
 
-const NOTIFICATION_EVENTS_ENDPOINT = '/api/notification-events';
+const NOTIFICATION_EVENTS_ENDPOINT = '/api/notifications?view=events';
 export const NOTIFICATION_EVENT_CREATED = 'resumeenow:notification-event-created';
 
 export const triggerNotificationEvent = async ({
