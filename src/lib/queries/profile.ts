@@ -31,7 +31,7 @@ export const getProfileQueryKey = (userId: string | null | undefined) =>
   ['profile', userId ?? null] as const;
 
 const PROFILE_UPDATE_ENDPOINT = '/api/profile';
-const AVATAR_UPLOAD_ENDPOINT = '/api/avatar-upload';
+const AVATAR_UPLOAD_ENDPOINT = '/api/profile?action=avatar';
 
 const readErrorMessage = async (response: Response): Promise<string> => {
   try {
