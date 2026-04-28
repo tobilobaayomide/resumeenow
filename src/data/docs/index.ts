@@ -396,7 +396,7 @@ export const API_ROUTE_GROUPS: ApiRouteGroup[] = [
     routes: [
       {
         method: 'POST',
-        path: '/api/notification-events',
+        path: '/api/notifications?view=events',
         auth: 'signed-in user bearer token',
         purpose: 'Creates or sends app-triggered notifications such as welcome, waitlist, and AI usage alerts.',
         consumedBy: 'Auth, plan, and notification client helpers.',
