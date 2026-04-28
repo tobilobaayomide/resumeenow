@@ -12,7 +12,7 @@ export interface NotificationEventRecord {
 }
 
 export const NOTIFICATION_EVENTS_QUERY_STALE_TIME = 30_000;
-const NOTIFICATION_FEED_ENDPOINT = '/api/notification-feed';
+const NOTIFICATION_FEED_ENDPOINT = '/api/notifications?view=feed';
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
