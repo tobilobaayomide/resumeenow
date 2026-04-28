@@ -1,5 +1,5 @@
 const PRO_WAITLIST_JOINED_AT_FIELD = 'pro_waitlist_joined_at';
-const PRO_WAITLIST_ENDPOINT = '/api/pro-waitlist';
+const PRO_WAITLIST_ENDPOINT = '/api/plan?view=waitlist';
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null;
